@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE-edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/adminpage.css">
+    <link href='https://cdn.boxicons.com/fonts/basic/boxicons.min.css' rel='stylesheet'>
+    <title>EduTrip Admin</title>
+</head>
+
+<body>
+    <nav class="sidebar close">
+        <header>
+            <div class="image-text">
+                <span class="image">
+                    <img src="/logo.png.png" alt="logo">
+                </span>
+                <div class="text header-text">
+                    <span class="name"> EduTrip </span>
+                    <span class="desc">Admin Panel</span>
+                </div>
+            </div>
+            <i class='bxr bx-chevron-right toggle'></i>
+        </header>
+        <div class="menu-bar">
+            <div class="menu">
+                <ul class="menu-links">
+                    <li class="nav-link">
+                        <a href="#">
+                            <i class='bxr  bx-dashboard icons'></i>
+                            <span class="text nav-text">Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-link">
+                        <a href="#">
+                            <i class='bxr bx-calendar-detail icon'></i>
+                            <span class="text nav-text">Events</span>
+                        </a>
+                    </li>
+                    <li class="nav-link">
+                        <a href="#">
+                            <i class='bxr bx-file icon'></i>
+                            <span class="text nav-text">Request</span>
+                        </a>
+                    </li>
+                    <li class="nav-link">
+                        <a href="#">
+                            <i class='bxr bx-group icon'></i>
+                            <span class="text nav-text">Participants</span>
+                        </a>
+                    </li>
+                    <li class="nav-link">
+                        <a href="#">
+                            <i class='bxr bx-bus icon'></i>
+                            <span class="text nav-text">Bus Assignment</span>
+                        </a>
+                    </li>
+                    <li class="nav-link">
+                        <a href="#">
+                            <i class='bxr bx-megaphone-alt icon'></i>
+                            <span class="text nav-text">Announcement</span>
+                        </a>
+                    </li>
+                    <li class="nav-link">
+                        <a href="#">
+                            <i class='bxr bx-certification icon'></i>
+                            <span class="text nav-text">E-Certificate</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <div class="bottom-content">
+				<li class="">
+					<a href="#" onclick="logout()">
+						<i class='bxr bx-arrow-out-left-square-half icon'></i>
+						<span class="text nav-text">Logout</span>
+					</a>
+				</li>
+            </div>
+        </div>
+    </nav>
+    <main class="main-content">
+        <div id="dashboard" class="dashboard-container" style="display: none;">
+            <h1>Dashboard</h1>
+            <div class="dashboard-items">
+                <div class="item" id="reg-request">
+                    <h2>Registration Request</h2>
+                    <p>Manage pending registration requests here.</p>
+                </div>
+                <div class="item" id="bus-request">
+                    <h2>Bus Assignment Request</h2>
+                    <p>Handle bus assignment requests.</p>
+                </div>
+                <div class="item" id="participants">
+                    <h2>Participants</h2>
+                    <p>View and manage event participants.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script src="/adminpage.js"></script>
+</body>
+
+</html>

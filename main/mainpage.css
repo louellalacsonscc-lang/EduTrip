@@ -1,0 +1,98 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+* {
+    font-family: "Poppins", sans-serif;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --body-color: #e4e9f7;
+    --sidebar-color: #FFF;
+    --primary-color: #315594;
+    --primary-color-light: #F6F5FF;
+    --toggle-color: #DDD;
+    --tex-color: #707070;
+
+    --trans-02: all 0.2s ease;
+    --trans-03: all 0.3s ease;
+    --trans-04: all 0.4s ease;
+    --trans-05: all 0.5s ease;
+}
+
+body {
+    height: 100vh;
+    background: var(--body-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.container {
+    width: 100%;
+    max-width: 400px;
+    background: var(--sidebar-color);
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.form-container {
+    text-align: center;
+}
+
+.form-toggle {
+    display: flex;
+    margin-bottom: 20px;
+}
+
+.form-toggle button {
+    flex: 1;
+    padding: 10px;
+    background: var(--primary-color-light);
+    border: none;
+    color: var(--tex-color);
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--trans-02);
+}
+
+.form-toggle button.active {
+    background: var(--primary-color);
+    color: var(--sidebar-color);
+}
+
+.form h2 {
+    margin-bottom: 20px;
+    color: var(--primary-color);
+}
+
+.form form {
+    display: flex;
+    flex-direction: column;
+}
+
+.form input {
+    margin-bottom: 15px;
+    padding: 10px;
+    border: 1px solid var(--toggle-color);
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+.form button {
+    padding: 10px;
+    background: var(--primary-color);
+    color: var(--sidebar-color);
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: var(--trans-02);
+}
+
+.form button:hover {
+    background: var(--primary-color-light);
+    color: var(--primary-color);
+}
