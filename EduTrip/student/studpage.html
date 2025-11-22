@@ -6,76 +6,186 @@
     <meta http-equiv="X-UA-Compatible" content="IE-edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/student/studpage.css">
-    <link href='https://cdn.boxicons.com/fonts/basic/boxicons.min.css' rel='stylesheet'>
-    <title>EduTrip</title>
-
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <title>EduTrip Student</title>
 </head>
 
 <body>
-    <nav class="sidebar close">
+    <nav class="sidebar">
         <header>
             <div class="image-text">
                 <span class="image">
-                    <img src="/logo.png.png" alt="logo">
+                    <img src="/logo.png.png" alt="logo" onerror="this.style.display='none'">
                 </span>
                 <div class="text header-text">
-                    <span class="name"> EduTrip </span>
-                    <span class="desc">Seminars and Tours</span>
+                    <span class="name">EduTrip</span>
+                    <span class="desc">Student Portal</span>
                 </div>
             </div>
-            <i class='bxr  bx-chevron-right  toggle'></i>
+            <i class='bx bx-arrow-to-right toggle'></i>
         </header>
         <div class="menu-bar">
             <div class="menu">
                 <ul class="menu-links">
                     <li class="nav-link">
-                        <a href="#">
-                            <i class='bxr  bx-user-circle icon'></i>
+                        <a href="#" class="active" data-page="profile">
+                            <i class='bx bx-user-circle icon'></i>
                             <span class="text nav-text">Profile</span>
                         </a>
                     </li>
                     <li class="nav-link">
-                        <a href="#">
-                            <i class='bxr  bx-calendar-detail icon'></i>
+                        <a href="#" data-page="events">
+                            <i class='bx bx-calendar-alt icon'></i>
                             <span class="text nav-text">Events</span>
                         </a>
                     </li>
                     <li class="nav-link">
-                        <a href="#">
-                            <i class='bxr  bx-bell icon'></i>
+                        <a href="#" data-page="my-registrations">
+                            <i class='bx bx-list-check icon'></i>
+                            <span class="text nav-text">My Registrations</span>
+                        </a>
+                    </li>
+                    <li class="nav-link">
+                        <a href="#" data-page="notification">
+                            <i class='bx bx-bell icon'></i>
                             <span class="text nav-text">Notification</span>
                         </a>
                     </li>
                     <li class="nav-link">
-                        <a href="#">
-                            <i class='bxr  bx-bus icon'></i>
+                        <a href="#" data-page="bus">
+                            <i class='bx bx-bus icon'></i>
                             <span class="text nav-text">Bus Assignment</span>
                         </a>
                     </li>
                     <li class="nav-link">
-                        <a href="#">
-                            <i class='bxr  bx-megaphone-alt icon'></i>
+                        <a href="#" data-page="announcement">
+                            <i class='bx bx-megaphone icon'></i>
                             <span class="text nav-text">Announcement</span>
                         </a>
                     </li>
                     <li class="nav-link">
-                        <a href="#">
-                            <i class='bxr  bx-certification icon'></i>
+                        <a href="#" data-page="certificate">
+                            <i class='bx bx-certificate icon'></i>
                             <span class="text nav-text">E-Certificate</span>
                         </a>
                     </li>
                 </ul>
             </div>
             <div class="bottom-content">
-				<li class="">
-					<a href="#" onclick="logout()">
-						<i class='bxr bx-arrow-out-left-square-half icon'></i>
-						<span class="text nav-text">Logout</span>
-					</a>
-				</li>
+                <li class="nav-link">
+                    <a href="#" onclick="logout()">
+                        <i class='bx bx-log-out icon'></i>
+                        <span class="text nav-text">Logout</span>
+                    </a>
+                </li>
             </div>
         </div>
     </nav>
+
+    <main class="main-content">
+        <!-- Profile Page -->
+        <div id="profile" class="page-container active">
+            <h1>Student Profile</h1>
+            <div class="profile-info">
+                <div class="info-card">
+                    <h3>Personal Information</h3>
+                    <div id="user-info">
+                        <p><strong>Name:</strong> <span id="user-name">Loading...</span></p>
+                        <p><strong>Student Number:</strong> <span id="user-student-number">Loading...</span></p>
+                        <p><strong>Email:</strong> <span id="user-email">Loading...</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Events Page -->
+        <div id="events" class="page-container">
+            <h1>Available Events</h1>
+            <div class="events-list" id="events-list">
+                <div class="no-data">
+                    <i class='bx bx-calendar'></i>
+                    <p>Loading events...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Event Registration Modal -->
+        <div id="registration-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Register for Event</h2>
+                <form id="registration-form" enctype="multipart/form-data">
+                    <input type="hidden" id="event-id" name="event_id">
+                    <input type="hidden" id="user-id" name="user_id">
+                    
+                    <div class="form-group">
+                        <label for="registration-form-file">Registration Form (Image/PDF):</label>
+                        <input type="file" id="registration-form-file" name="registration_form" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx" required>
+                        <small>Upload a clear photo or scan of your completed registration form</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="waiver-form-file">Waiver Form (Image/PDF):</label>
+                        <input type="file" id="waiver-form-file" name="waiver_form" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx" required>
+                        <small>Upload a clear photo or scan of your signed waiver form</small>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Submit Registration</button>
+                        <button type="button" class="btn btn-secondary" id="cancel-registration">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- My Registrations Page -->
+        <div id="my-registrations" class="page-container">
+            <h1>My Registrations</h1>
+            <div class="registrations-list" id="registrations-list">
+                <div class="no-data">
+                    <i class='bx bx-loader-circle bx-spin'></i>
+                    <p>Loading your registrations...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Other pages -->
+        <div id="notification" class="page-container">
+            <h1>Notifications</h1>
+            <div class="no-data">
+                <i class='bx bx-bell'></i>
+                <p>No new notifications</p>
+                <p>You'll see important updates here</p>
+            </div>
+        </div>
+
+        <div id="bus" class="page-container">
+            <h1>Bus Assignment</h1>
+            <div class="no-data">
+                <i class='bx bx-bus'></i>
+                <p>Bus assignment information will appear here</p>
+                <p>Once your registration is approved, you'll see your bus details</p>
+            </div>
+        </div>
+
+        <div id="announcement" class="page-container">
+            <h1>Announcements</h1>
+            <div class="no-data">
+                <i class='bx bx-megaphone'></i>
+                <p>No announcements at the moment</p>
+                <p>Check back later for important updates</p>
+            </div>
+        </div>
+
+        <div id="certificate" class="page-container">
+            <h1>E-Certificates</h1>
+            <div class="no-data">
+                <i class='bx bx-certificate'></i>
+                <p>No certificates available yet</p>
+                <p>Your e-certificates will appear here after event completion</p>
+            </div>
+        </div>
+    </main>
     <script src="/student/studpage.js"></script>
 </body>
 

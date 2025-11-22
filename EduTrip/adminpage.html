@@ -28,43 +28,43 @@
             <div class="menu">
                 <ul class="menu-links">
                     <li class="nav-link">
-                        <a href="#">
+                        <a href="#" class="active" data-page="dashboard">
                             <i class='bxr  bx-dashboard icons'></i>
                             <span class="text nav-text">Dashboard</span>
                         </a>
                     </li>
                     <li class="nav-link">
-                        <a href="#">
+                        <a href="#" data-page="events">
                             <i class='bxr bx-calendar-detail icon'></i>
                             <span class="text nav-text">Events</span>
                         </a>
                     </li>
                     <li class="nav-link">
-                        <a href="#">
+                        <a href="#" data-page="requests">
                             <i class='bxr bx-file icon'></i>
                             <span class="text nav-text">Request</span>
                         </a>
                     </li>
                     <li class="nav-link">
-                        <a href="#">
+                        <a href="#" data-page="participants">
                             <i class='bxr bx-group icon'></i>
                             <span class="text nav-text">Participants</span>
                         </a>
                     </li>
                     <li class="nav-link">
-                        <a href="#">
+                        <a href="#" data-page="bus">
                             <i class='bxr bx-bus icon'></i>
                             <span class="text nav-text">Bus Assignment</span>
                         </a>
                     </li>
                     <li class="nav-link">
-                        <a href="#">
+                        <a href="#" data-page="announcement">
                             <i class='bxr bx-megaphone-alt icon'></i>
                             <span class="text nav-text">Announcement</span>
                         </a>
                     </li>
                     <li class="nav-link">
-                        <a href="#">
+                        <a href="#" data-page="certificate">
                             <i class='bxr bx-certification icon'></i>
                             <span class="text nav-text">E-Certificate</span>
                         </a>
@@ -82,7 +82,7 @@
         </div>
     </nav>
     <main class="main-content">
-        <div id="dashboard" class="dashboard-container" style="display: none;">
+        <div id="dashboard" class="page-container active">
             <h1>Dashboard</h1>
             <div class="dashboard-items">
                 <div class="item" id="reg-request">
@@ -98,6 +98,48 @@
                     <p>View and manage event participants.</p>
                 </div>
             </div>
+        </div>
+
+        <div id="requests" class="page-container">
+            <h1>Registration Requests</h1>
+            <div class="requests-container">
+                <div class="filters">
+                    <select id="status-filter">
+                        <option value="all">All Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
+                </div>
+                <div class="requests-list" id="requests-list">
+                    <!-- Requests will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <div id="events" class="page-container">
+            <h1>Events Management</h1>
+            <p>Events management content goes here...</p>
+        </div>
+
+        <div id="participants-page" class="page-container">
+            <h1>Participants Management</h1>
+            <p>Participants management content goes here...</p>
+        </div>
+
+        <div id="bus" class="page-container">
+            <h1>Bus Assignment</h1>
+            <p>Bus assignment content goes here...</p>
+        </div>
+
+        <div id="announcement" class="page-container">
+            <h1>Announcements</h1>
+            <p>Announcements content goes here...</p>
+        </div>
+
+        <div id="certificate" class="page-container">
+            <h1>E-Certificates</h1>
+            <p>E-Certificates content goes here...</p>
         </div>
     </main>
     <script src="/adminpage.js"></script>

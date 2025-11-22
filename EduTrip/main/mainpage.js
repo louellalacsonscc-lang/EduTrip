@@ -38,6 +38,12 @@ document.querySelector('#login-form form').addEventListener('submit', async (e) 
         
         if (data.success) {
             alert('Login successful!');
+            // Store user data in localStorage
+            localStorage.setItem('user', JSON.stringify(data.user));
+            localStorage.setItem('token', 'logged-in'); // Simple token for demo
+            
+            console.log('User logged in:', data.user);
+            
             // Redirect based on role
             if (data.user.role === 'admin') {
                 window.location.href = '/admin';
@@ -48,6 +54,7 @@ document.querySelector('#login-form form').addEventListener('submit', async (e) 
             alert(data.error || 'Login failed');
         }
     } catch (error) {
+        console.error('Login error:', error);
         alert('Server not running. Please start the server first.');
     }
 });
@@ -67,6 +74,11 @@ document.querySelector('#register-form form').addEventListener('submit', async (
         return;
     }
     
+    if (password.length < 6) {
+        alert('Password must be at least 6 characters long!');
+        return;
+    }
+    
     try {
         const response = await fetch('http://localhost:3000/api/register', {
             method: 'POST',
@@ -81,16 +93,26 @@ document.querySelector('#register-form form').addEventListener('submit', async (
         if (data.success) {
             alert('Registration successful! Please login.');
             loginToggle.click(); // Switch to login form
+            // Clear form
+            e.target.reset();
         } else {
             alert(data.error || 'Registration failed');
         }
     } catch (error) {
+        console.error('Registration error:', error);
         alert('Server not running. Please start the server first.');
     }
 });
 
-function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/';
-}
+// Check if user is already logged in
+document.addEventListener('DOMContentLoaded', function() {
+    const user = localStorage.getItem('user');
+    if (user) {
+        const userData = JSON.parse(user);
+        if (userData.role === 'admin') {
+            window.location.href = '/admin';
+        } else if (userData.role === 'student') {
+            window.location.href = '/student';
+        }
+    }
+});
