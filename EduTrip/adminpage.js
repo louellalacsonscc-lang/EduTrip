@@ -53,7 +53,134 @@ document.getElementById('participants').addEventListener('click', () => {
     const participantsLink = Array.from(navLinks).find(link => link.getAttribute('data-page') === 'participants');
     if (participantsLink) participantsLink.click();
 });
+// Event Management Functions
+async function loadAdminEvents() {
+    try {
+        const response = await fetch('/api/events');
+        const events = await response.json();
+        
+        const eventsList = document.getElementById('admin-events-list');
+        
+        if (events.length === 0) {
+            eventsList.innerHTML = '<p>No events created yet.</p>';
+            return;
+        }
+        
+        eventsList.innerHTML = events.map(event => `
+            <div class="admin-event-card">
+                <h3>${event.title}</h3>
+                <p><strong>Description:</strong> ${event.description}</p>
+                <p><strong>Date:</strong> ${event.date ? new Date(event.date).toLocaleDateString() : 'TBA'}</p>
+                <p><strong>Location:</strong> ${event.location}</p>
+                <p><strong>Status:</strong> ${event.status || 'active'}</p>
+                <div class="admin-event-actions">
+                    <button class="btn btn-delete" onclick="deleteEvent(${event.id})">
+                        Delete Event
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Error loading events:', error);
+        document.getElementById('admin-events-list').innerHTML = '<p>Error loading events.</p>';
+    }
+}
 
+async function createEvent(eventData) {
+    try {
+        const response = await fetch('/api/events', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(eventData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Event created successfully!');
+            document.getElementById('create-event-form').reset();
+            loadAdminEvents(); // Reload the events list
+        } else {
+            alert('Error creating event: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Error creating event:', error);
+        alert('Error creating event: ' + error.message);
+    }
+}
+
+async function deleteEvent(eventId) {
+    if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/events/${eventId}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Event deleted successfully!');
+            loadAdminEvents(); // Reload the events list
+        } else {
+            alert('Error deleting event: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Error deleting event:', error);
+        alert('Error deleting event: ' + error.message);
+    }
+}
+
+// Update navigation to load events when events page is clicked
+navLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+        e.preventDefault();
+        
+        // Remove active class from all links and pages
+        navLinks.forEach(l => l.classList.remove('active'));
+        pages.forEach(page => page.classList.remove('active'));
+        
+        // Add active class to clicked link
+        link.classList.add('active');
+        
+        // Show corresponding page
+        const pageId = link.getAttribute('data-page');
+        const targetPage = document.getElementById(pageId === 'participants' ? 'participants-page' : pageId);
+        if (targetPage) {
+            targetPage.classList.add('active');
+            
+            // Load data based on page
+            switch(pageId) {
+                case 'requests':
+                    loadRegistrationRequests();
+                    break;
+                case 'events':
+                    loadAdminEvents();
+                    break;
+            }
+        }
+    });
+});
+
+// Handle create event form submission
+document.getElementById('create-event-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const eventData = {
+        title: formData.get('title'),
+        description: formData.get('description'),
+        date: formData.get('date'),
+        location: formData.get('location')
+    };
+    
+    createEvent(eventData);
+});
 // Registration Requests Management
 async function loadRegistrationRequests() {
     console.log('Loading registration requests...');

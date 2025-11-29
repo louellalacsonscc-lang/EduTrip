@@ -117,10 +117,40 @@
             </div>
         </div>
 
-        <div id="events" class="page-container">
-            <h1>Events Management</h1>
-            <p>Events management content goes here...</p>
+<div id="events" class="page-container">
+    <h1>Events Management</h1>
+    <div class="events-management">
+        <div class="create-event-section">
+            <h2>Create New Event</h2>
+            <form id="create-event-form">
+                <div class="form-group">
+                    <label for="event-title">Event Title:</label>
+                    <input type="text" id="event-title" name="title" required>
+                </div>
+                <div class="form-group">
+                    <label for="event-description">Description:</label>
+                    <textarea id="event-description" name="description" rows="4" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="event-date">Date:</label>
+                    <input type="date" id="event-date" name="date" required>
+                </div>
+                <div class="form-group">
+                    <label for="event-location">Location:</label>
+                    <input type="text" id="event-location" name="location" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Create Event</button>
+            </form>
         </div>
+        
+        <div class="existing-events-section">
+            <h2>Existing Events</h2>
+            <div class="events-list" id="admin-events-list">
+                <!-- Events will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
 
         <div id="participants-page" class="page-container">
             <h1>Participants Management</h1>

@@ -385,6 +385,95 @@ header .image-text .header-text {
 .close:hover {
     color: #000;
 }
+
+/* Events Management Styles */
+.events-management {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-top: 20px;
+}
+
+.create-event-section {
+    background: var(--primary-color-light);
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.existing-events-section {
+    background: var(--primary-color-light);
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.create-event-section h2,
+.existing-events-section h2 {
+    color: var(--primary-color);
+    margin-bottom: 20px;
+    font-size: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--tex-color);
+    font-weight: 500;
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--toggle-color);
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: "Poppins", sans-serif;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* Admin Events List */
+.admin-event-card {
+    background: var(--sidebar-color);
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.admin-event-card h3 {
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+.admin-event-card p {
+    color: var(--tex-color);
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.admin-event-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+}
+
+.btn-delete {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-delete:hover {
+    background: #c82333;
+}
 /* Boxicons styling */
 .bxr {
     color: var(--tex-color);

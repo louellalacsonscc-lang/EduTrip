@@ -355,7 +355,49 @@ app.get('/api/registration-requests', (req, res) => {
         res.json(rows);
     });
 });
+// Create new event (admin only)
+app.post('/api/events', (req, res) => {
+    const { title, description, date, location } = req.body;
+    
+    if (!title || !description || !date || !location) {
+        return res.status(400).json({ error: 'All fields are required' });
+    }
+    
+    db.run("INSERT INTO events (title, description, date, location) VALUES (?, ?, ?, ?)", 
+        [title, description, date, location], 
+        function(err) {
+            if (err) {
+                console.log('Database error creating event:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            res.json({ success: true, message: 'Event created successfully', eventId: this.lastID });
+        });
+});
 
+// Delete event (admin only)
+app.delete('/api/events/:id', (req, res) => {
+    const { id } = req.params;
+    
+    // First check if there are any registration requests for this event
+    db.get("SELECT COUNT(*) as count FROM registration_requests WHERE event_id = ?", [id], (err, row) => {
+        if (err) {
+            console.log('Database error checking registrations:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        
+        if (row.count > 0) {
+            return res.status(400).json({ error: 'Cannot delete event with existing registrations' });
+        }
+        
+        db.run("DELETE FROM events WHERE id = ?", [id], function(err) {
+            if (err) {
+                console.log('Database error deleting event:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            res.json({ success: true, message: 'Event deleted successfully' });
+        });
+    });
+});
 // Update registration request status
 app.put('/api/registration-requests/:id', (req, res) => {
     const { id } = req.params;
