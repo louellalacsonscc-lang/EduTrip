@@ -149,17 +149,22 @@ db.serialize(() => {
                 else console.log('Student user ready');
             });
     
-    // Insert some sample events if they don't exist
-    db.run(`INSERT OR IGNORE INTO events (title, description, date, location, max_participants) VALUES 
-            ('Tech Conference 2024', 'Annual technology conference featuring industry experts and workshops', '2024-06-15', 'Convention Center', 200),
-            ('Campus Tour', 'Guided tour of the university campus for new students', '2024-06-20', 'University Campus', 50),
-            ('Career Seminar', 'Career development seminar with HR professionals', '2024-06-25', 'Auditorium', 100),
-            ('Science Field Trip', 'Educational field trip to science museum', '2024-07-01', 'Science Museum', 80)`,
-            function(err) {
-                if (err) console.error('Error inserting sample events:', err);
-                else console.log('Sample events ready');
-            });
-});
+// Insert sample events with 2025-2026 dates
+db.run(`INSERT OR IGNORE INTO events (title, description, date, location) VALUES 
+        ('Tech Conference 2025', 'Annual technology conference featuring industry experts and workshops', '2025-06-15', 'Convention Center'),
+        ('Campus Tour', 'Guided tour of the university campus for new students', '2025-06-20', 'University Campus'),
+        ('Career Seminar', 'Career development seminar with HR professionals', '2025-06-25', 'Auditorium'),
+        ('Science Field Trip', 'Educational field trip to science museum', '2025-07-01', 'Science Museum'),
+        ('Leadership Summit 2025', 'Developing leadership skills for future professionals', '2025-08-10', 'Business Center'),
+        ('Art Exhibition', 'Showcasing student artwork and creative projects', '2025-09-15', 'Art Gallery'),
+        ('Sports Tournament', 'Annual inter-college sports competition', '2025-10-05', 'Sports Complex'),
+        ('Winter Workshop Series', 'Skill development workshops during winter break', '2025-12-15', 'Various Locations'),
+        ('Research Symposium 2026', 'Presenting student research projects and findings', '2026-02-20', 'Conference Hall'),
+        ('Cultural Festival', 'Celebrating diversity through cultural performances', '2026-03-25', 'Main Quad')`,
+        function(err) {
+            if (err) console.error('Error inserting sample events:', err);
+            else console.log('Sample events ready');
+        });
 
 // Simple session middleware (for demo purposes)
 const requireAuth = (req, res, next) => {
@@ -423,3 +428,4 @@ app.listen(PORT, () => {
     console.log(`   Student: student@edutrip.com / student123`);
     console.log(`🐛 Debug endpoint available: http://localhost:${PORT}/api/debug/db-state`);
 });
+})

@@ -138,22 +138,19 @@ async function loadEvents() {
             return;
         }
         
-        eventsList.innerHTML = events.map(event => `
-            <div class="event-card">
-                <h3>${event.title || 'Untitled Event'}</h3>
-                <p>${event.description || 'No description available for this event.'}</p>
-                <div class="event-meta">
-                    <span><i class='bx bx-calendar'></i> ${event.date ? new Date(event.date).toLocaleDateString() : 'Date TBA'}</span>
-                    <span><i class='bx bx-map'></i> ${event.location || 'Location TBA'}</span>
-                </div>
-                <div class="event-meta">
-                    <span><i class='bx bx-group'></i> ${event.current_participants || 0} / ${event.max_participants || 'Unlimited'} participants</span>
-                </div>
-                <button class="btn btn-primary" onclick="openRegistrationModal(${event.id})">
-                    Register Now
-                </button>
-            </div>
-        `).join('');
+eventsList.innerHTML = events.map(event => `
+    <div class="event-card">
+        <h3>${event.title || 'Untitled Event'}</h3>
+        <p>${event.description || 'No description available for this event.'}</p>
+        <div class="event-meta">
+            <span><i class='bx bx-calendar'></i> ${event.date ? new Date(event.date).toLocaleDateString() : 'Date TBA'}</span>
+            <span><i class='bx bx-map'></i> ${event.location || 'Location TBA'}</span>
+        </div>
+        <button class="btn btn-primary" onclick="openRegistrationModal(${event.id})">
+            Register Now
+        </button>
+    </div>
+`).join('');
         
     } catch (error) {
         console.error('Error loading events:', error);

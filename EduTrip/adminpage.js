@@ -92,41 +92,41 @@ async function loadRegistrationRequests() {
             return;
         }
         
-        requestsList.innerHTML = filteredRequests.map(request => `
-            <div class="request-item">
-                <div class="request-header">
-                    <div class="request-info">
-                        <h3>${request.name}</h3>
-                        <p><strong>Student Number:</strong> ${request.student_number || 'N/A'}</p>
-                        <p><strong>Email:</strong> ${request.email}</p>
-                        <p><strong>Event:</strong> ${request.event_title}</p>
-                        <p><strong>Date:</strong> ${request.event_date ? new Date(request.event_date).toLocaleDateString() : 'N/A'}</p>
-                        <p><strong>Location:</strong> ${request.event_location || 'N/A'}</p>
-                        <p><strong>Submitted:</strong> ${request.created_at ? new Date(request.created_at).toLocaleString() : 'N/A'}</p>
-                    </div>
-                    <div class="request-status status-${request.status}">
-                        ${request.status ? request.status.toUpperCase() : 'UNKNOWN'}
-                    </div>
-                </div>
-                <div class="request-actions">
-                    ${request.status !== 'approved' ? `
-                        <button class="btn btn-approve" onclick="updateRequestStatus(${request.id}, 'approved')">
-                            Approve
-                        </button>
-                    ` : ''}
-                    ${request.status !== 'rejected' ? `
-                        <button class="btn btn-reject" onclick="updateRequestStatus(${request.id}, 'rejected')">
-                            Reject
-                        </button>
-                    ` : ''}
-                    ${request.status !== 'pending' ? `
-                        <button class="btn btn-pending" onclick="updateRequestStatus(${request.id}, 'pending')">
-                            Set Pending
-                        </button>
-                    ` : ''}
-                </div>
+requestsList.innerHTML = filteredRequests.map(request => `
+    <div class="request-item">
+        <div class="request-header">
+            <div class="request-info">
+                <h3>${request.name}</h3>
+                <p><strong>Student Number:</strong> ${request.student_number || 'N/A'}</p>
+                <p><strong>Email:</strong> ${request.email}</p>
+                <p><strong>Event:</strong> ${request.event_title}</p>
+                <p><strong>Date:</strong> ${request.event_date ? new Date(request.event_date).toLocaleDateString() : 'N/A'}</p>
+                <p><strong>Location:</strong> ${request.event_location || 'N/A'}</p>
+                <p><strong>Submitted:</strong> ${request.created_at ? new Date(request.created_at).toLocaleString() : 'N/A'}</p>
             </div>
-        `).join('');
+            <div class="request-status status-${request.status}">
+                ${request.status ? request.status.toUpperCase() : 'UNKNOWN'}
+            </div>
+        </div>
+        <div class="request-actions">
+            ${request.status !== 'approved' ? `
+                <button class="btn btn-approve" onclick="updateRequestStatus(${request.id}, 'approved')">
+                    Approve
+                </button>
+            ` : ''}
+            ${request.status !== 'rejected' ? `
+                <button class="btn btn-reject" onclick="updateRequestStatus(${request.id}, 'rejected')">
+                    Reject
+                </button>
+            ` : ''}
+            ${request.status !== 'pending' ? `
+                <button class="btn btn-pending" onclick="updateRequestStatus(${request.id}, 'pending')">
+                    Set Pending
+                </button>
+            ` : ''}
+        </div>
+    </div>
+`).join('');
         
     } catch (error) {
         console.error('Error loading registration requests:', error);

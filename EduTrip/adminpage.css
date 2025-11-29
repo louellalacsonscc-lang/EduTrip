@@ -25,7 +25,6 @@ body {
     height: 100vh;
     background: var(--body-color);
     transition: var(--trans-04);
-    display: flex;
 }
 
 .sidebar {
@@ -37,7 +36,6 @@ body {
     padding: 10px 14px;
     background: var(--sidebar-color);
     transition: var(--trans-05);
-    z-index: 1;
 }
 
 .sidebar.close {
@@ -142,9 +140,7 @@ header .image-text .header-text {
 }
 
 .sidebar li a:hover .icon,
-.sidebar li a:hover .text,
-.sidebar li a.active .icon,
-.sidebar li a.active .text {
+.sidebar li a:hover .text {
     color: var(--sidebar-color);
 }
 
@@ -157,15 +153,19 @@ header .image-text .header-text {
 
 .main-content {
     margin-left: 250px;
-    padding: 20px;
+    padding: 25px;
     width: calc(100% - 250px);
     transition: var(--trans-05);
+    min-height: 100vh;
+    background: var(--body-color);
+    overflow-y: auto;
 }
 
 .sidebar.close~.main-content {
     margin-left: 88px;
     width: calc(100% - 88px);
 }
+
 
 .page-container {
     background: var(--sidebar-color);
@@ -371,4 +371,31 @@ header .image-text .header-text {
 .file-links p {
     margin: 5px 0;
     font-size: 13px;
+}
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: var(--trans-02);
+    line-height: 1;
+}
+
+.close:hover {
+    color: #000;
+}
+/* Boxicons styling */
+.bxr {
+    color: var(--tex-color);
+    font-family: 'boxicons' !important;
+    font-weight: normal;
+    font-style: normal;
+    font-variant: normal;
+    line-height: 1;
+    display: inline-block;
+    text-transform: none;
+    speak: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }

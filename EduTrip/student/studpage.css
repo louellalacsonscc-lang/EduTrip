@@ -13,7 +13,8 @@
     --primary-color: #315594;
     --primary-color-light: #F6F5FF;
     --toggle-color: #DDD;
-    --text-color: #707070;
+    --tex-color: #707070;
+
     --trans-02: all 0.2s ease;
     --trans-03: all 0.3s ease;
     --trans-04: all 0.4s ease;
@@ -24,8 +25,6 @@ body {
     height: 100vh;
     background: var(--body-color);
     transition: var(--trans-04);
-    display: flex;
-    overflow: hidden;
 }
 
 .sidebar {
@@ -37,22 +36,17 @@ body {
     padding: 10px 14px;
     background: var(--sidebar-color);
     transition: var(--trans-05);
-    z-index: 100;
-    overflow-y: auto;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
 .sidebar.close {
-    width: 88px;
+    width: 88px
 }
 
 .sidebar .text {
     font-size: 16px;
     font-weight: 500;
-    color: var(--text-color);
+    color: var(--tex-color);
     transition: var(--trans-04);
-    white-space: nowrap;
-    opacity: 1;
 }
 
 .sidebar.close .text {
@@ -63,7 +57,6 @@ body {
     min-width: 60px;
     display: flex;
     align-items: center;
-    justify-content: center;
 }
 
 .sidebar li {
@@ -79,33 +72,27 @@ body {
     align-items: center;
     justify-content: center;
     min-width: 60px;
-    font-size: 22px;
-    transition: var(--trans-02);
+    font-size: 20px;
 }
 
 .sidebar li .icon,
 .sidebar li .text {
-    color: var(--text-color);
+    color: var(--tex-color);
     transition: var(--trans-02);
 }
 
 .sidebar header {
     position: relative;
-    padding: 10px 0;
-    margin-bottom: 20px;
 }
 
 .sidebar .image-text img {
-    width: 45px;
-    height: 45px;
-    border-radius: 8px;
-    object-fit: cover;
+    width: 40px;
+    border-radius: 6px;
 }
 
 .sidebar header .image-text {
     display: flex;
     align-items: center;
-    gap: 12px;
 }
 
 header .image-text .header-text {
@@ -115,87 +102,26 @@ header .image-text .header-text {
 
 .header-text .name {
     font-weight: 600;
-    color: var(--text-color);
-    font-size: 18px;
 }
 
 .header-text .desc {
-    margin-top: 2px;
-    font-size: 13px;
-    color: var(--text-color);
-    opacity: 0.8;
+    margin-top: -2px;
 }
 
-/* Overlapping Toggle Button */
 .sidebar header .toggle {
     position: absolute;
     top: 50%;
-    right: -20px; /* Half outside, half inside */
+    right: -25px;
     transform: translateY(-50%);
-    height: 40px;
-    width: 40px;
+    height: 25px;
+    width: 25px;
     background: var(--primary-color);
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
     color: var(--sidebar-color);
-    font-size: 20px;
-    cursor: pointer;
-    transition: var(--trans-03);
-    border: 3px solid var(--sidebar-color);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    z-index: 101;
-}
-
-.sidebar header .toggle:hover {
-    background: #2a4780;
-    transform: translateY(-50%) scale(1.1);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-}
-
-.sidebar.close header .toggle {
-    right: -20px; /* Keep the same position when closed */
-    transform: translateY(-50%) rotate(180deg);
-}
-
-.sidebar.close header .toggle:hover {
-    transform: translateY(-50%) rotate(180deg) scale(1.1);
-}
-
-/* Add a subtle glow effect */
-.sidebar header .toggle::before {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: linear-gradient(45deg, var(--primary-color), #4a7bff);
-    border-radius: 50%;
-    z-index: -1;
-    opacity: 0;
-    transition: var(--trans-03);
-}
-
-.sidebar header .toggle:hover::before {
-    opacity: 1;
-    animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-    0% {
-        transform: scale(1);
-        opacity: 0.8;
-    }
-    50% {
-        transform: scale(1.05);
-        opacity: 0.4;
-    }
-    100% {
-        transform: scale(1);
-        opacity: 0.8;
-    }
+    font-size: 22px;
 }
 
 .sidebar li a {
@@ -204,33 +130,27 @@ header .image-text .header-text {
     display: flex;
     align-items: center;
     text-decoration: none;
-    border-radius: 8px;
+    border-radius: 6px;
     transition: var(--trans-04);
-    padding: 0 12px;
-    position: relative;
 }
 
 .sidebar li a:hover,
 .sidebar li a.active {
     background: var(--primary-color);
-    transform: translateX(5px);
 }
 
 .sidebar li a:hover .icon,
-.sidebar li a:hover .text,
-.sidebar li a.active .icon,
-.sidebar li a.active .text {
+.sidebar li a:hover .text {
     color: var(--sidebar-color);
 }
 
 .sidebar .menu-bar {
-    height: calc(100% - 100px);
+    height: calc(100% - 50px);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
 }
 
-/* Main Content Styles */
 .main-content {
     margin-left: 250px;
     padding: 25px;
@@ -253,12 +173,6 @@ header .image-text .header-text {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     display: none;
     min-height: calc(100vh - 50px);
-    animation: fadeIn 0.3s ease-in-out;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
 }
 
 .page-container.active {
@@ -300,7 +214,7 @@ header .image-text .header-text {
 
 .info-card p {
     margin: 15px 0;
-    color: var(--text-color);
+    color: var(--tex-color);
     font-size: 16px;
     line-height: 1.6;
     padding: 8px 0;
@@ -359,7 +273,7 @@ header .image-text .header-text {
 }
 
 .event-card p {
-    color: var(--text-color);
+    color: var(--tex-color);
     margin: 10px 0;
     font-size: 14px;
     line-height: 1.5;
@@ -371,7 +285,7 @@ header .image-text .header-text {
     justify-content: space-between;
     margin: 20px 0;
     font-size: 13px;
-    color: var(--text-color);
+    color: var(--tex-color);
     flex-wrap: wrap;
     gap: 10px;
 }
@@ -422,7 +336,7 @@ header .image-text .header-text {
 
 .btn-secondary {
     background: var(--toggle-color);
-    color: var(--text-color);
+    color: var(--tex-color);
 }
 
 .btn-secondary:hover {
@@ -459,12 +373,6 @@ header .image-text .header-text {
     max-width: 500px;
     position: relative;
     box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-    animation: modalSlideIn 0.3s ease-out;
-}
-
-@keyframes modalSlideIn {
-    from { transform: translateY(-50px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
 }
 
 .close {
@@ -496,7 +404,7 @@ header .image-text .header-text {
 .form-group label {
     display: block;
     margin-bottom: 10px;
-    color: var(--text-color);
+    color: var(--tex-color);
     font-weight: 600;
     font-size: 14px;
 }
@@ -524,7 +432,7 @@ header .image-text .header-text {
 }
 
 .form-group small {
-    color: var(--text-color);
+    color: var(--tex-color);
     font-size: 12px;
     display: block;
     margin-top: 6px;
@@ -576,7 +484,7 @@ header .image-text .header-text {
 }
 
 .registration-info p {
-    color: var(--text-color);
+    color: var(--tex-color);
     margin: 8px 0;
     font-size: 14px;
     line-height: 1.5;
@@ -634,7 +542,7 @@ header .image-text .header-text {
 .no-data {
     text-align: center;
     padding: 60px 20px;
-    color: var(--text-color);
+    color: var(--tex-color);
 }
 
 .no-data i {
@@ -650,76 +558,9 @@ header .image-text .header-text {
     line-height: 1.5;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-    .sidebar {
-        width: 88px;
-    }
-    
-    .sidebar.close {
-        width: 0;
-        padding: 0;
-    }
-    
-    .main-content {
-        margin-left: 88px;
-        width: calc(100% - 88px);
-        padding: 15px;
-    }
-    
-    .sidebar.close ~ .main-content {
-        margin-left: 0;
-        width: 100%;
-    }
-    
-    .events-list {
-        grid-template-columns: 1fr;
-    }
-    
-    .profile-info {
-        flex-direction: column;
-    }
-    
-    .info-card {
-        min-width: auto;
-    }
-    
-    .registration-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .modal-content {
-        margin: 10% auto;
-        width: 95%;
-        padding: 25px;
-    }
-    
-    .page-container {
-        padding: 20px;
-    }
-    
-    .page-container h1 {
-        font-size: 24px;
-    }
-    
-    /* Adjust toggle for mobile */
-    .sidebar header .toggle {
-        right: -15px;
-        height: 35px;
-        width: 35px;
-        font-size: 18px;
-    }
-}
-
-/* Loading states */
-.loading {
-    opacity: 0.6;
-    pointer-events: none;
-}
-
-/* Boxicons fix */
-.bx {
+/* Boxicons styling */
+.bxr {
+    color: var(--tex-color);
     font-family: 'boxicons' !important;
     font-weight: normal;
     font-style: normal;
@@ -732,20 +573,3 @@ header .image-text .header-text {
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar {
-    width: 6px;
-}
-
-::-webkit-scrollbar-track {
-    background: var(--primary-color-light);
-}
-
-::-webkit-scrollbar-thumb {
-    background: var(--primary-color);
-    border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #2a4780;
-}
