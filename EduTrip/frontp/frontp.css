@@ -1,0 +1,138 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background: url('bgfrontp.avif') center/cover fixed;
+    text-align: center;
+}
+
+/* NAVBAR */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px 40px;
+}
+
+.navbar a {
+    margin: 0 15px;
+    text-decoration: none;
+    font-size: 20px;
+    color: black;
+}
+
+.btn {
+    background: #204ECF;
+    color: white;
+    border-radius: 25px;
+    padding: 10px 20px;
+    border: none;
+}
+
+.btn.outline {
+    background: white;
+    color: #204ECF;
+    border: 2px solid #204ECF;
+}
+
+/* HERO */
+.hero h1 {
+    font-size: 40px;
+    margin-top: 20px;
+}
+
+.short-desc {
+    opacity: 0.7;
+    margin-top: -10px;
+}
+
+/* CAROUSEL TITLE */
+.carousel-title {
+    font-size: 30px;
+    margin-top: 40px;
+}
+
+/* CAROUSEL */
+.carousel-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 30px;
+    perspective: 1000px;
+}
+
+.arrow {
+    font-size: 40px;
+    cursor: pointer;
+    padding: 20px;
+    user-select: none;
+    transition: 0.3s ease;
+}
+
+.arrow:hover {
+    transform: scale(1.2);
+    color: #204ECF;
+}
+
+.carousel {
+    display: flex;
+    gap: 40px;
+    align-items: center;
+    justify-content: center;
+}
+
+/* CARD STYLING */
+.card {
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 20px;
+    padding: 20px;
+    color: white;
+    width: 280px;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    transition: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    transform-origin: center;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.card.center {
+    opacity: 1;
+    transform: scale(1.15) rotateY(0deg);
+    box-shadow: 0 15px 50px rgba(32, 78, 207, 0.5);
+}
+
+.card.small {
+    opacity: 0.4;
+    transform: scale(0.85) rotateY(25deg);
+}
+
+.card.small:last-child {
+    transform: scale(0.85) rotateY(-25deg);
+}
+
+/* CARD IMAGE */
+.card-img {
+    width: 100%;
+    height: 200px;
+    border-radius: 12px;
+    object-fit: cover;
+    margin-bottom: 15px;
+}
+
+.card-img.hidden {
+    display: none;
+}
+
+/* CARD TEXT */
+.card-title {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.card-description {
+    font-size: 14px;
+    line-height: 1.6;
+    opacity: 0.9;
+}
