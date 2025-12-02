@@ -1,0 +1,99 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background: white;
+    text-align: center;
+}
+
+/* NAVBAR */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px 40px;
+}
+
+.navbar a {
+    margin: 0 15px;
+    text-decoration: none;
+    font-size: 20px;
+    color: black;
+}
+
+.btn {
+    background: #204ECF;
+    color: white;
+    border-radius: 25px;
+    padding: 10px 20px;
+    border: none;
+}
+
+.btn.outline {
+    background: white;
+    color: #204ECF;
+    border: 2px solid #204ECF;
+}
+
+/* HERO */
+.hero h1 {
+    font-size: 40px;
+    margin-top: 20px;
+}
+
+.short-desc {
+    opacity: 0.7;
+    margin-top: -10px;
+}
+
+/* CAROUSEL TITLE */
+.carousel-title {
+    font-size: 30px;
+    margin-top: 40px;
+}
+
+/* CAROUSEL */
+.carousel-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 30px;
+}
+
+.arrow {
+    font-size: 40px;
+    cursor: pointer;
+    padding: 20px;
+    user-select: none;
+}
+
+.carousel {
+    display: flex;
+    gap: 40px;
+    align-items: center;
+}
+
+/* CARD STYLING */
+.card {
+    background: black;
+    border-radius: 20px;
+    padding: 20px;
+    transition: 0.4s ease;
+    color: white;
+}
+
+.card.center {
+    width: 350px;
+    opacity: 1;
+}
+
+.card.small {
+    width: 200px;
+    opacity: 0.3;
+    transform: scale(0.8);
+}
+
+/* CARD IMAGE */
+.card-img {
+    width: 100%;
+    border-radius: 12px;
+}
