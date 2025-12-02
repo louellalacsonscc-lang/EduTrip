@@ -83,7 +83,7 @@ const db = new sqlite3.Database('./edutrip.db', (err) => {
     }
 });
 
-// Create tables with better error handling
+// Create tables
 db.serialize(() => {
     // Users table
     db.run(`CREATE TABLE IF NOT EXISTS users (
@@ -149,7 +149,7 @@ db.serialize(() => {
                 else console.log('Student user ready');
             });
     
-// Insert sample events with 2025-2026 dates
+// Insert sample events
 db.run(`INSERT OR IGNORE INTO events (title, description, date, location) VALUES 
         ('Tech Conference 2025', 'Annual technology conference featuring industry experts and workshops', '2025-06-15', 'Convention Center'),
         ('Campus Tour', 'Guided tour of the university campus for new students', '2025-06-20', 'University Campus'),
@@ -166,10 +166,7 @@ db.run(`INSERT OR IGNORE INTO events (title, description, date, location) VALUES
             else console.log('Sample events ready');
         });
 
-// Simple session middleware (for demo purposes)
 const requireAuth = (req, res, next) => {
-    // In a real app, you'd use proper sessions or JWT
-    // For demo, we'll allow access but check in the frontend
     next();
 };
 
@@ -271,6 +268,7 @@ app.get('/api/events/:id', (req, res) => {
 });
 
 // Get user's registration requests
+// Get user's registration requests - UPDATED VERSION
 app.get('/api/user/registration-requests', (req, res) => {
     const userId = req.query.user_id;
     
@@ -279,10 +277,10 @@ app.get('/api/user/registration-requests', (req, res) => {
     }
     
     const query = `
-        SELECT rr.*, e.title as event_title, e.date as event_date, e.location as event_location
+        SELECT rr.*, e.title as event_title, e.date as event_date, e.location as event_location, e.status as event_status
         FROM registration_requests rr
         JOIN events e ON rr.event_id = e.id
-        WHERE rr.user_id = ?
+        WHERE rr.user_id = ? AND e.status != 'cancelled'
         ORDER BY rr.created_at DESC
     `;
     
@@ -334,12 +332,14 @@ app.post('/api/registration-requests', upload.fields([
     });
 });
 
-// Get all registration requests (admin)
+// Get all registration requests (admin) - UPDATED VERSION
 app.get('/api/registration-requests', (req, res) => {
     console.log('Fetching registration requests...');
     
     const query = `
-        SELECT rr.*, u.name, u.email, u.student_number, e.title as event_title, e.date as event_date, e.location as event_location
+        SELECT rr.*, u.name, u.email, u.student_number, 
+               e.title as event_title, e.date as event_date, 
+               e.location as event_location, e.status as event_status
         FROM registration_requests rr
         JOIN users u ON rr.user_id = u.id
         JOIN events e ON rr.event_id = e.id
@@ -378,7 +378,7 @@ app.post('/api/events', (req, res) => {
 app.delete('/api/events/:id', (req, res) => {
     const { id } = req.params;
     
-    // First check if there are any registration requests for this event
+    // Check if there are any registration requests for this event
     db.get("SELECT COUNT(*) as count FROM registration_requests WHERE event_id = ?", [id], (err, row) => {
         if (err) {
             console.log('Database error checking registrations:', err);
@@ -437,8 +437,32 @@ app.get('/api/debug/db-state', (req, res) => {
         });
     });
 });
-
-// Serve pages with authentication check
+// Get ALL user's registration requests (including cancelled events)
+app.get('/api/user/all-registration-requests', (req, res) => {
+    const userId = req.query.user_id;
+    
+    if (!userId) {
+        return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    const query = `
+        SELECT rr.*, e.title as event_title, e.date as event_date, 
+               e.location as event_location, e.status as event_status
+        FROM registration_requests rr
+        JOIN events e ON rr.event_id = e.id
+        WHERE rr.user_id = ?
+        ORDER BY rr.created_at DESC
+    `;
+    
+    db.all(query, [userId], (err, rows) => {
+        if (err) {
+            console.log('Database error:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json(rows);
+    });
+});
+// With authentication checks
 app.get('/admin', requireAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'adminpage.html'));
 });
@@ -447,7 +471,7 @@ app.get('/student', requireAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'student/studpage.html'));
 });
 
-// Serve your existing HTML files with correct paths
+// Correct paths
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'main/mainpage.html'));
 });
@@ -456,12 +480,140 @@ app.get('/', (req, res) => {
 app.post('/api/logout', (req, res) => {
     res.json({ success: true, message: 'Logged out successfully' });
 });
+// Add this route in server.js after the existing routes
+
+// Serve uploaded files with proper headers
+app.get('/api/uploads/:filename', (req, res) => {
+    const { filename } = req.params;
+    const filePath = path.join(__dirname, 'uploads', filename);
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'File not found' });
+    }
+    
+    // Set appropriate headers
+    const ext = path.extname(filename).toLowerCase();
+    let contentType = 'application/octet-stream';
+    
+    if (ext === '.pdf') contentType = 'application/pdf';
+    else if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
+    else if (ext === '.png') contentType = 'image/png';
+    else if (ext === '.gif') contentType = 'image/gif';
+    else if (ext === '.doc') contentType = 'application/msword';
+    else if (ext === '.docx') contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    
+    res.sendFile(filePath);
+});
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
+// Add this to the CREATE TABLES section in server.js
+db.run(`CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    type TEXT DEFAULT 'info',
+    is_read BOOLEAN DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users (id)
+)`, (err) => {
+    if (err) console.error('Error creating notifications table:', err);
+    else console.log('Notifications table ready');
+});
+// Add these routes to server.js:
 
+// Create notification
+// Create notification
+app.post('/api/notifications', (req, res) => {
+    const { user_id, title, message, type } = req.body;
+    
+    if (!user_id || !title || !message) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    db.run("INSERT INTO notifications (user_id, title, message, type) VALUES (?, ?, ?, ?)",
+        [user_id, title, message, type || 'info'],
+        function(err) {
+            if (err) {
+                console.error('Error creating notification:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            res.json({ success: true, notificationId: this.lastID });
+        });
+});
+
+// Get user notifications
+app.get('/api/notifications/:user_id', (req, res) => {
+    const { user_id } = req.params;
+    
+    db.all("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC", 
+        [user_id], (err, notifications) => {
+            if (err) {
+                console.error('Error fetching user notifications:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            res.json(notifications);
+        });
+});
+
+// Mark notification as read
+app.put('/api/notifications/:id/read', (req, res) => {
+    const { id } = req.params;
+    
+    db.run("UPDATE notifications SET is_read = 1 WHERE id = ?", [id], function(err) {
+        if (err) {
+            console.error('Error marking notification as read:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ success: true });
+    });
+});
+// Update event (admin only)
+app.put('/api/events/:id', (req, res) => {
+    const { id } = req.params;
+    const { title, description, date, location, status } = req.body;
+    
+    if (!title || !description || !date || !location) {
+        return res.status(400).json({ error: 'All fields are required' });
+    }
+    
+    const validStatuses = ['active', 'cancelled', 'completed', 'upcoming'];
+    const eventStatus = status && validStatuses.includes(status) ? status : 'active';
+    
+    db.run(
+        `UPDATE events 
+         SET title = ?, description = ?, date = ?, location = ?, status = ?
+         WHERE id = ?`,
+        [title, description, date, location, eventStatus, id],
+        function(err) {
+            if (err) {
+                console.log('Database error updating event:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            res.json({ success: true, message: 'Event updated successfully' });
+        }
+    );
+});
+// Get notifications by user ID
+app.get('/api/notifications/user/:user_id', (req, res) => {
+    const { user_id } = req.params;
+    
+    db.all("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC", 
+        [user_id], (err, notifications) => {
+            if (err) {
+                console.error('Error fetching user notifications:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            res.json(notifications);
+        });
+});
 app.listen(PORT, () => {
     console.log(`🚀 EduTrip server running on http://localhost:${PORT}`);
     console.log(`📊 Using SQLite database: edutrip.db`);

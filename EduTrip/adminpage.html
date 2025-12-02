@@ -103,14 +103,18 @@
         <div id="requests" class="page-container">
             <h1>Registration Requests</h1>
             <div class="requests-container">
-                <div class="filters">
-                    <select id="status-filter">
-                        <option value="all">All Status</option>
-                        <option value="pending">Pending</option>
-                        <option value="approved">Approved</option>
-                        <option value="rejected">Rejected</option>
-                    </select>
-                </div>
+<div class="filters">
+    <select id="status-filter">
+        <option value="all">All Status</option>
+        <option value="pending">Pending</option>
+        <option value="approved">Approved</option>
+        <option value="rejected">Rejected</option>
+    </select>
+    <select id="event-status-filter">
+        <option value="active">Active Events Only</option>
+        <option value="all">All Events (Including Cancelled)</option>
+    </select>
+</div>
                 <div class="requests-list" id="requests-list">
                     <!-- Requests will be loaded here -->
                 </div>
@@ -172,6 +176,61 @@
             <p>E-Certificates content goes here...</p>
         </div>
     </main>
+    <!-- File Viewing Modal -->
+<div id="file-modal" class="file-modal">
+    <div class="file-modal-content">
+        <div class="file-header">
+            <h3>Uploaded Documents</h3>
+            <span class="close" id="close-file-modal">&times;</span>
+        </div>
+        <div class="file-preview-container" id="file-preview-container">
+            <!-- File previews will be loaded here -->
+        </div>
+        <div class="file-actions">
+            <button class="btn btn-download" id="download-all-btn">
+                <i class='bx bx-download'></i> Download All
+            </button>
+            <button class="btn btn-secondary" id="close-modal-btn">Close</button>
+        </div>
+    </div>
+</div>
+<div id="edit-event-modal" class="edit-event-modal">
+    <div class="edit-event-modal-content">
+        <span class="close" id="close-edit-modal">&times;</span>
+        <h2>Edit Event</h2>
+        <form id="edit-event-form">
+            <input type="hidden" id="edit-event-id">
+            <div class="form-group">
+                <label for="edit-event-title">Event Title:</label>
+                <input type="text" id="edit-event-title" name="title" required>
+            </div>
+            <div class="form-group">
+                <label for="edit-event-description">Description:</label>
+                <textarea id="edit-event-description" name="description" rows="4" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="edit-event-date">Date:</label>
+                <input type="date" id="edit-event-date" name="date" required>
+            </div>
+            <div class="form-group">
+                <label for="edit-event-location">Location:</label>
+                <input type="text" id="edit-event-location" name="location" required>
+            </div>
+            <div class="form-group">
+                <label for="edit-event-status">Status:</label>
+                <select id="edit-event-status" name="status">
+                    <option value="active">Active</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="completed">Completed</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="button" class="btn btn-secondary" id="cancel-edit">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
     <script src="/adminpage.js"></script>
 </body>
 

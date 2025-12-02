@@ -29,8 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     currentUser = user;
     console.log('Student logged in:', user.name);
-    
-    // Initialize the page
+    loadNotifications(); // Load notifications on startup
     initializePage();
 });
 
@@ -68,6 +67,9 @@ function initializePage() {
                     case 'my-registrations':
                         loadMyRegistrations();
                         break;
+                    case 'notification':
+                        loadNotifications();
+                        break;
                     case 'profile':
                         loadUserProfile();
                         break;
@@ -95,8 +97,20 @@ function initializePage() {
         }
     });
 
+    startNotificationPolling();
+    
     // Handle registration form submission
     document.getElementById('registration-form').addEventListener('submit', handleRegistrationSubmit);
+}
+
+// Add real-time notification polling
+function startNotificationPolling() {
+    if (!currentUser || !currentUser.id) return;
+    
+    // Check for new notifications every 30 seconds
+    setInterval(() => {
+        loadNotifications();
+    }, 30000);
 }
 
 // Load user profile
@@ -138,19 +152,19 @@ async function loadEvents() {
             return;
         }
         
-eventsList.innerHTML = events.map(event => `
-    <div class="event-card">
-        <h3>${event.title || 'Untitled Event'}</h3>
-        <p>${event.description || 'No description available for this event.'}</p>
-        <div class="event-meta">
-            <span><i class='bx bx-calendar'></i> ${event.date ? new Date(event.date).toLocaleDateString() : 'Date TBA'}</span>
-            <span><i class='bx bx-map'></i> ${event.location || 'Location TBA'}</span>
-        </div>
-        <button class="btn btn-primary" onclick="openRegistrationModal(${event.id})">
-            Register Now
-        </button>
-    </div>
-`).join('');
+        eventsList.innerHTML = events.map(event => `
+            <div class="event-card">
+                <h3>${event.title || 'Untitled Event'}</h3>
+                <p>${event.description || 'No description available for this event.'}</p>
+                <div class="event-meta">
+                    <span><i class='bx bx-calendar'></i> ${event.date ? new Date(event.date).toLocaleDateString() : 'Date TBA'}</span>
+                    <span><i class='bx bx-map'></i> ${event.location || 'Location TBA'}</span>
+                </div>
+                <button class="btn btn-primary" onclick="openRegistrationModal(${event.id})">
+                    Register Now
+                </button>
+            </div>
+        `).join('');
         
     } catch (error) {
         console.error('Error loading events:', error);
@@ -220,7 +234,83 @@ async function handleRegistrationSubmit(e) {
     }
 }
 
+// Load notifications
+async function loadNotifications() {
+    if (!currentUser || !currentUser.id) return;
+    
+    try {
+        const response = await fetch(`/api/notifications/${currentUser.id}`);
+        const notifications = await response.json();
+        
+        const notificationPage = document.getElementById('notification');
+        if (notificationPage) {
+            const notificationsList = notificationPage.querySelector('.notifications-list') || 
+                                     (() => {
+                                         const div = document.createElement('div');
+                                         div.className = 'notifications-list';
+                                         notificationPage.innerHTML = '<h1>Notifications</h1>';
+                                         notificationPage.appendChild(div);
+                                         return div;
+                                     })();
+            
+            if (notifications.length === 0) {
+                notificationsList.innerHTML = `
+                    <div class="no-data">
+                        <i class='bx bx-bell'></i>
+                        <p>No notifications</p>
+                        <p>You'll see important updates here</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Update badge
+            const unreadCount = notifications.filter(n => !n.is_read).length;
+            const badge = document.getElementById('notification-badge');
+            if (badge) {
+                if (unreadCount > 0) {
+                    badge.textContent = unreadCount;
+                    badge.style.display = 'flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+            
+            notificationsList.innerHTML = notifications.map(notification => `
+                <div class="notification-item ${notification.is_read ? '' : 'unread'}" 
+                     onclick="markNotificationAsRead(${notification.id})">
+                    <div class="notification-header">
+                        <h3 class="notification-title">${notification.title}</h3>
+                        <span class="notification-time">
+                            ${new Date(notification.created_at).toLocaleString()}
+                        </span>
+                    </div>
+                    <p class="notification-message">${notification.message}</p>
+                    <span class="notification-type type-${notification.type || 'info'}">
+                        ${notification.type || 'info'}
+                    </span>
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Error loading notifications:', error);
+    }
+}
+
+async function markNotificationAsRead(notificationId) {
+    try {
+        await fetch(`/api/notifications/${notificationId}/read`, { method: 'PUT' });
+        // Reload notifications
+        if (document.getElementById('notification').classList.contains('active')) {
+            loadNotifications();
+        }
+    } catch (error) {
+        console.error('Error marking notification as read:', error);
+    }
+}
+
 // Load user's registrations
+// Load user's registrations - UPDATED VERSION
 async function loadMyRegistrations() {
     if (!currentUser || !currentUser.id) {
         document.getElementById('registrations-list').innerHTML = `
@@ -253,7 +343,7 @@ async function loadMyRegistrations() {
             registrationsList.innerHTML = `
                 <div class="no-data">
                     <i class='bx bx-inbox'></i>
-                    <p>No registration requests found</p>
+                    <p>No active registration requests found</p>
                     <p>Register for events to see them here</p>
                     <button class="btn btn-primary" onclick="document.querySelector('a[data-page=\\'events\\']').click()" style="margin-top: 15px;">
                         <i class='bx bx-calendar'></i> Browse Events
@@ -263,35 +353,57 @@ async function loadMyRegistrations() {
             return;
         }
         
-        registrationsList.innerHTML = registrations.map(reg => `
-            <div class="registration-item">
-                <div class="registration-header">
-                    <div class="registration-info">
-                        <h3>${reg.event_title || 'Unknown Event'}</h3>
-                        <p><strong>Date:</strong> ${reg.event_date ? new Date(reg.event_date).toLocaleDateString() : 'TBA'}</p>
-                        <p><strong>Location:</strong> ${reg.event_location || 'TBA'}</p>
-                        <p><strong>Submitted:</strong> ${reg.created_at ? new Date(reg.created_at).toLocaleString() : 'Unknown'}</p>
-                        ${reg.registration_form ? `
-                            <p><strong>Registration Form:</strong> 
-                                <a href="/uploads/${reg.registration_form}" target="_blank" title="View uploaded file">
-                                    <i class='bx bx-link-external'></i> View File
-                                </a>
-                            </p>
-                        ` : ''}
-                        ${reg.waiver_form ? `
-                            <p><strong>Waiver Form:</strong> 
-                                <a href="/uploads/${reg.waiver_form}" target="_blank" title="View uploaded file">
-                                    <i class='bx bx-link-external'></i> View File
-                                </a>
-                            </p>
-                        ` : ''}
+        registrationsList.innerHTML = registrations.map(reg => {
+            // Check if event is cancelled (even though API filters them out, this is a safety check)
+            if (reg.event_status === 'cancelled') {
+                return `
+                    <div class="registration-item cancelled">
+                        <div class="registration-header">
+                            <div class="registration-info">
+                                <h3>${reg.event_title || 'Unknown Event'} <span class="cancelled-badge">CANCELLED</span></h3>
+                                <p><strong>Date:</strong> ${reg.event_date ? new Date(reg.event_date).toLocaleDateString() : 'TBA'}</p>
+                                <p><strong>Location:</strong> ${reg.event_location || 'TBA'}</p>
+                                <p><strong>Submitted:</strong> ${reg.created_at ? new Date(reg.created_at).toLocaleString() : 'Unknown'}</p>
+                                <p class="cancelled-notice"><i class='bx bx-error'></i> This event has been cancelled. Your registration is no longer valid.</p>
+                            </div>
+                            <div class="registration-status status-cancelled">
+                                EVENT CANCELLED
+                            </div>
+                        </div>
                     </div>
-                    <div class="registration-status status-${reg.status || 'pending'}">
-                        ${reg.status ? reg.status.toUpperCase() : 'PENDING'}
+                `;
+            }
+            
+            return `
+                <div class="registration-item">
+                    <div class="registration-header">
+                        <div class="registration-info">
+                            <h3>${reg.event_title || 'Unknown Event'}</h3>
+                            <p><strong>Date:</strong> ${reg.event_date ? new Date(reg.event_date).toLocaleDateString() : 'TBA'}</p>
+                            <p><strong>Location:</strong> ${reg.event_location || 'TBA'}</p>
+                            <p><strong>Submitted:</strong> ${reg.created_at ? new Date(reg.created_at).toLocaleString() : 'Unknown'}</p>
+                            ${reg.registration_form ? `
+                                <p><strong>Registration Form:</strong> 
+                                    <a href="/uploads/${reg.registration_form}" target="_blank" title="View uploaded file">
+                                        <i class='bx bx-link-external'></i> View File
+                                    </a>
+                                </p>
+                            ` : ''}
+                            ${reg.waiver_form ? `
+                                <p><strong>Waiver Form:</strong> 
+                                    <a href="/uploads/${reg.waiver_form}" target="_blank" title="View uploaded file">
+                                        <i class='bx bx-link-external'></i> View File
+                                    </a>
+                                </p>
+                            ` : ''}
+                        </div>
+                        <div class="registration-status status-${reg.status || 'pending'}">
+                            ${reg.status ? reg.status.toUpperCase() : 'PENDING'}
+                        </div>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
         
     } catch (error) {
         console.error('Error loading registrations:', error);
@@ -306,6 +418,80 @@ async function loadMyRegistrations() {
             </div>
         `;
     }
+}
+// After the existing registrationsList.innerHTML = ... mapping code:
+const registrationsListElement = document.getElementById('registrations-list');
+if (registrationsListElement) {
+    registrationsListElement.innerHTML += `
+        <div style="text-align: center; margin-top: 20px;">
+            <button class="btn btn-secondary" onclick="loadRegistrationHistory()">
+                <i class='bx bx-history'></i> View Registration History (Including Cancelled)
+            </button>
+        </div>
+    `;
+}
+// Add function to load registration history
+async function loadRegistrationHistory() {
+    if (!currentUser || !currentUser.id) return;
+    
+    try {
+        const response = await fetch(`/api/user/all-registration-requests?user_id=${currentUser.id}`);
+        const allRegistrations = await response.json();
+        
+        // Filter out active registrations (already shown)
+        const cancelledRegistrations = allRegistrations.filter(reg => reg.event_status === 'cancelled');
+        
+        if (cancelledRegistrations.length === 0) {
+            alert('No cancelled event registrations found.');
+            return;
+        }
+        
+        // Show cancelled registrations in a modal
+        showCancelledRegistrationsModal(cancelledRegistrations);
+        
+    } catch (error) {
+        console.error('Error loading registration history:', error);
+        alert('Error loading registration history');
+    }
+}
+function showCancelledRegistrationsModal(cancelledRegistrations) {
+    const modalHTML = `
+        <div class="modal" id="history-modal">
+            <div class="modal-content">
+                <span class="close" onclick="document.getElementById('history-modal').style.display='none'">&times;</span>
+                <h2>Cancelled Event Registrations</h2>
+                <div class="cancelled-registrations-list">
+                    ${cancelledRegistrations.map(reg => `
+                        <div class="registration-item cancelled">
+                            <div class="registration-info">
+                                <h3>${reg.event_title}</h3>
+                                <p><strong>Date:</strong> ${reg.event_date ? new Date(reg.event_date).toLocaleDateString() : 'TBA'}</p>
+                                <p><strong>Location:</strong> ${reg.event_location || 'TBA'}</p>
+                                <p><strong>Submitted:</strong> ${new Date(reg.created_at).toLocaleString()}</p>
+                                <p><strong>Registration Status:</strong> ${reg.status.toUpperCase()}</p>
+                                <p class="cancelled-notice"><i class='bx bx-error'></i> This event has been cancelled.</p>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-secondary" onclick="document.getElementById('history-modal').style.display='none'">Close</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('history-modal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Show modal
+    document.getElementById('history-modal').style.display = 'block';
 }
 
 function logout() {
