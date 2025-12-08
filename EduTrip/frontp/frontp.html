@@ -10,130 +10,246 @@
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <title>EduTrip | Home</title>
     <style>
-        /* Black theme with blue accents - matches other pages */
+        /* Black theme with blue accents */
         .black-bg {
             background: #000000;
         }
-        .glass-card {
-            background: rgba(0, 0, 0, 0.8);
+        
+        /* Modern card design */
+        .modern-card {
+            background: rgba(17, 24, 39, 0.8);
             backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        /* SLOWER, SMOOTHER TRANSITIONS */
-        .transition-slow-smooth {
-            transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Smooth and slower */
-        }
-        
-        /* Carousel positioning */
-        .carousel-track {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            height: 500px;
-            width: 100%;
-        }
-        
-        /* Card states with smooth transitions */
-        .card-left {
-            position: absolute;
-            left: 10%;
-            transform: scale(0.85);
-            opacity: 0.6;
-            z-index: 10;
-            transition: all 0.8s ease-in-out;
-        }
-        
-        .card-center {
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%) scale(1.1);
-            opacity: 1;
-            z-index: 30;
-            box-shadow: 0 20px 60px rgba(59, 130, 246, 0.5);
-            border: 2px solid rgba(59, 130, 246, 0.8);
-            transition: all 0.8s ease-in-out;
-        }
-        
-        .card-right {
-            position: absolute;
-            right: 10%;
-            transform: scale(0.85);
-            opacity: 0.6;
-            z-index: 10;
-            transition: all 0.8s ease-in-out;
-        }
-        
-        .card-far-left {
-            position: absolute;
-            left: -15%;
-            transform: scale(0.7);
-            opacity: 0.3;
-            z-index: 5;
-            transition: all 0.8s ease-in-out;
-        }
-        
-        .card-far-right {
-            position: absolute;
-            right: -15%;
-            transform: scale(0.7);
-            opacity: 0.3;
-            z-index: 5;
-            transition: all 0.8s ease-in-out;
-        }
-        
-        .card-hidden {
-            opacity: 0;
-            transform: scale(0.6);
-            transition: all 0.8s ease-in-out;
-        }
-        
-        /* Card dimensions */
-        .card-base {
-            width: 300px;
-            min-height: 420px;
             border-radius: 1rem;
-        }
-        
-        /* Center card is slightly larger */
-        .card-center-size {
-            width: 340px;
-            min-height: 480px;
-        }
-        
-        /* Hover effects */
-        .card-hover:hover {
-            transform: translateY(-5px);
-            transition: transform 0.3s ease;
-        }
-        
-        .arrow-hover {
             transition: all 0.3s ease;
         }
         
-        .arrow-hover:hover {
-            transform: scale(1.2);
-            color: #3b82f6;
+        .modern-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.3);
         }
         
-        /* Gradient text */
-        .gradient-text {
+        /* Image container */
+        .visual {
+            position: relative;
+            overflow: hidden;
+            border-radius: 0.75rem;
+        }
+        
+        .visual::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+            pointer-events: none;
+        }
+        
+        .img {
+            width: 100%;
+            height: 192px;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+        
+        .modern-card:hover .img {
+            transform: scale(1.05);
+        }
+        
+        /* Content styling */
+        .content {
+            padding: 1.5rem;
+            color: #e5e7eb;
+        }
+        
+        .title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 0.75rem;
+            line-height: 1.3;
+        }
+        
+        .desc {
+            font-size: 0.875rem;
+            color: #9ca3af;
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+        }
+        
+        .card-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #3b82f6;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.875rem;
+            padding: 0.5rem 1rem;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 0.5rem;
+            transition: all 0.2s ease;
+        }
+        
+        .card-link:hover {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }
+        
+        /* Infinite Carousel Container */
+        .infinite-carousel {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            padding: 2rem 0;
+        }
+        
+        /* Carousel Track - Infinite */
+        .infinite-track {
+            display: flex;
+            gap: 1.5rem;
+            animation: scroll 30s linear infinite;
+            width: max-content;
+        }
+        
+        .infinite-track.paused {
+            animation-play-state: paused;
+        }
+        
+        /* Individual card */
+        .carousel-card {
+            flex: 0 0 auto;
+            width: 320px;
+        }
+        
+        /* Keyframes for infinite scrolling */
+        @keyframes scroll {
+            0% {
+                transform: translateX(0);
+            }
+            100% {
+                transform: translateX(calc(-320px * 5 - 1.5rem * 5)); /* 5 cards */
+            }
+        }
+        
+        /* Header styling */
+        .section-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
             background: linear-gradient(135deg, #3b82f6, #8b5cf6);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            margin-bottom: 1rem;
         }
         
-        /* Pulse animation for active indicator */
-        @keyframes gentle-pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
+        .section-subtitle {
+            color: #9ca3af;
+            font-size: 1.125rem;
+            max-width: 600px;
+            margin: 0 auto;
         }
         
-        .pulse-gentle {
-            animation: gentle-pulse 2s ease-in-out infinite;
+        /* Loading and empty states */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 1rem;
+        }
+        
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid rgba(59, 130, 246, 0.2);
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+        
+        .no-events {
+            text-align: center;
+            padding: 4rem 1rem;
+            color: #6b7280;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Gradient overlay for fade effect */
+        .carousel-wrapper {
+            position: relative;
+        }
+        
+        .carousel-wrapper::before,
+        .carousel-wrapper::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100px;
+            z-index: 2;
+            pointer-events: none;
+        }
+        
+        .carousel-wrapper::before {
+            left: 0;
+            background: linear-gradient(to right, #000, transparent);
+        }
+        
+        .carousel-wrapper::after {
+            right: 0;
+            background: linear-gradient(to left, #000, transparent);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .carousel-card {
+                width: 280px;
+            }
+            
+            .section-title {
+                font-size: 2rem;
+            }
+            
+            @keyframes scroll {
+                0% {
+                    transform: translateX(0);
+                }
+                100% {
+                    transform: translateX(calc(-280px * 5 - 1.5rem * 5));
+                }
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .carousel-card {
+                width: 260px;
+            }
+            
+            .section-title {
+                font-size: 1.75rem;
+            }
+            
+            @keyframes scroll {
+                0% {
+                    transform: translateX(0);
+                }
+                100% {
+                    transform: translateX(calc(-260px * 5 - 1.5rem * 5));
+                }
+            }
         }
     </style>
 </head>
@@ -145,7 +261,7 @@
             <!-- Logo -->
             <div class="flex items-center space-x-2">
                 <img src="/img/logo.png.png" alt="EduTrip Logo" class="w-8 h-8">
-                <span class="text-xl font-bold gradient-text">EduTrip</span>
+                <span class="text-xl font-bold text-blue-500">EduTrip</span>
             </div>
             
             <!-- Login Button -->
@@ -157,62 +273,35 @@
         </div>
     </nav>
 
-    <!-- ANNOUNCEMENTS CAROUSEL SECTION -->
+    <!-- INFINITE CAROUSEL SECTION -->
     <main class="min-h-screen flex items-center justify-center px-4 py-8">
         <div class="w-full max-w-6xl">
-            <h1 class="text-4xl md:text-5xl font-bold text-white text-center mb-12 gradient-text">
-                LATEST ANNOUNCEMENTS
-            </h1>
-
-            <!-- CAROUSEL -->
-            <div class="carousel-container">
-                <!-- Arrows -->
-                <div class="hidden md:flex">
-                    <button onclick="prevSlide()" class="arrow left arrow-hover absolute left-4 top-1/2 transform -translate-y-1/2 z-40 text-5xl text-gray-400 hover:text-blue-500 cursor-pointer p-2">
-                        <i class='bx bx-chevron-left'></i>
-                    </button>
-                    
-                    <button onclick="nextSlide()" class="arrow right arrow-hover absolute right-4 top-1/2 transform -translate-y-1/2 z-40 text-5xl text-gray-400 hover:text-blue-500 cursor-pointer p-2">
-                        <i class='bx bx-chevron-right'></i>
-                    </button>
-                </div>
-
-                <!-- Carousel Cards Container -->
-                <div class="carousel-track" id="carouselTrack">
-                    <!-- Cards will be loaded dynamically here -->
-                </div>
-
-                <!-- Mobile Navigation -->
-                <div class="flex md:hidden justify-center space-x-4 mt-8">
-                    <button onclick="prevSlide()" class="bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300">
-                        <i class='bx bx-chevron-left text-xl'></i>
-                    </button>
-                    <button onclick="nextSlide()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300">
-                        <i class='bx bx-chevron-right text-xl'></i>
-                    </button>
-                </div>
-
-                <!-- Carousel Indicators -->
-                <div class="flex justify-center space-x-3 mt-8" id="carouselIndicators">
-                    <!-- Indicators will be loaded dynamically -->
-                </div>
-
-                <!-- Loading State -->
-                <div id="loadingState" class="text-center py-10">
-                    <div class="inline-block">
-                        <i class='bx bx-loader-circle bx-spin text-4xl text-blue-500 mb-4'></i>
-                        <p class="text-gray-400">Loading announcements...</p>
+            <!-- Header -->
+            <div class="section-header">
+                <h1 class="section-title">Latest Announcements</h1>
+                <p class="section-subtitle">Discover upcoming educational events, seminars, and trips curated for students</p>
+            </div>
+            
+            <!-- Infinite Carousel -->
+            <div class="infinite-carousel">
+                <div class="carousel-wrapper">
+                    <div class="infinite-track" id="infiniteTrack">
+                        <!-- Events will be loaded dynamically here -->
                     </div>
                 </div>
-
-                <!-- No Events State -->
-                <div id="noEventsState" class="text-center py-10 hidden">
-                    <div class="inline-block">
-                        <i class='bx bx-calendar-x text-4xl text-gray-500 mb-4'></i>
-                        <p class="text-gray-400">No events available yet</p>
-                        <p class="text-gray-500 text-sm">Check back later for announcements</p>
-                    </div>
-                </div>
+            </div>
+            
+            <!-- Loading State -->
+            <div class="loading" id="loadingState">
+                <div class="spinner"></div>
+                <p>Loading announcements...</p>
+            </div>
+            
+            <!-- No Events State -->
+            <div class="no-events hidden" id="noEventsState">
+                <i class='bx bx-calendar-x text-4xl mb-4'></i>
+                <h3 class="text-xl font-semibold mb-2">No events available</h3>
+                <p class="text-gray-500">Check back later for upcoming announcements</p>
             </div>
         </div>
     </main>
@@ -224,7 +313,7 @@
                 <div class="mb-6 md:mb-0">
                     <div class="flex items-center space-x-2 mb-4">
                         <img src="/img/logo.png.png" alt="EduTrip Logo" class="w-10 h-10">
-                        <span class="text-2xl font-bold gradient-text">EduTrip</span>
+                        <span class="text-2xl font-bold text-blue-500">EduTrip</span>
                     </div>
                     <p class="text-gray-400">Educational Trips & Events Platform</p>
                 </div>

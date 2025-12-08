@@ -137,6 +137,9 @@ function initializePage() {
                     case 'notification':
                         loadNotifications();
                         break;
+                    case 'bus':
+                        loadBusAssignment();
+                        break;
                     case 'profile':
                         loadUserProfile();
                         break;
@@ -597,7 +600,118 @@ async function loadMyRegistrations() {
         }
     }
 }
-
+// Add this function to studpage.js
+async function loadBusAssignment() {
+    if (!currentUser || !currentUser.id) return;
+    
+    try {
+        const busPage = document.getElementById('bus');
+        if (!busPage) return;
+        
+        // First, get user's approved registrations
+        const response = await fetch(`/api/user/registration-requests?user_id=${currentUser.id}`);
+        const registrations = await response.json();
+        
+        // Filter for approved registrations
+        const approvedRegistrations = registrations.filter(reg => 
+            reg.status === 'approved' && reg.event_status !== 'cancelled'
+        );
+        
+        if (approvedRegistrations.length === 0) {
+            busPage.innerHTML = `
+                <div class="text-center py-10">
+                    <i class='bx bx-bus text-4xl text-gray-500 mb-3'></i>
+                    <p class="text-gray-400">No approved registrations found</p>
+                    <p class="text-gray-500 text-sm">Your bus assignment will appear here once your registration is approved</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let busAssignmentsHTML = '';
+        
+        // For each approved registration, try to get bus assignment
+        for (const registration of approvedRegistrations) {
+            try {
+                const busResponse = await fetch(`/api/events/${registration.event_id}/bus-assignments`);
+                const assignments = await busResponse.json();
+                
+                const userAssignment = assignments.find(assignment => 
+                    assignment.user_id === currentUser.id
+                );
+                
+                busAssignmentsHTML += `
+                    <div class="bg-black border border-gray-800 rounded-xl p-6 mb-4">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-lg font-semibold text-white">${registration.event_title}</h3>
+                                <div class="flex items-center space-x-4 text-gray-400 text-sm mt-2">
+                                    <span>${registration.event_date ? new Date(registration.event_date).toLocaleDateString() : 'TBA'}</span>
+                                    <span>${registration.event_location || 'TBA'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        ${userAssignment ? `
+                            <div class="bg-green-900/20 border border-green-800 rounded-lg p-4">
+                                <div class="flex items-center mb-3">
+                                    <i class='bx bx-bus text-2xl text-green-400 mr-3'></i>
+                                    <div>
+                                        <h4 class="text-white font-semibold">Bus ${userAssignment.bus_number}</h4>
+                                        <p class="text-gray-400 text-sm">Your assigned bus</p>
+                                    </div>
+                                </div>
+                                <div class="text-gray-300 text-sm space-y-1">
+                                    <p><strong>Capacity:</strong> ${userAssignment.capacity} seats</p>
+                                    <p><strong>Assigned on:</strong> ${new Date(userAssignment.assignment_date).toLocaleString()}</p>
+                                    ${userAssignment.notes ? `
+                                        <p><strong>Notes:</strong> ${userAssignment.notes}</p>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        ` : `
+                            <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 text-center">
+                                <i class='bx bx-time text-2xl text-yellow-400 mb-2'></i>
+                                <p class="text-gray-400">Bus assignment pending</p>
+                                <p class="text-gray-500 text-sm">Your bus assignment will be announced soon</p>
+                            </div>
+                        `}
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading bus assignment for event:', error);
+            }
+        }
+        
+        if (busAssignmentsHTML === '') {
+            busPage.innerHTML = `
+                <div class="text-center py-10">
+                    <i class='bx bx-time text-4xl text-yellow-500 mb-3'></i>
+                    <p class="text-gray-400">Bus assignments being prepared</p>
+                    <p class="text-gray-500 text-sm">Check back later for your bus assignment</p>
+                </div>
+            `;
+        } else {
+            busPage.innerHTML = `
+                <h1 class="text-2xl font-bold text-white mb-6">Bus Assignment</h1>
+                ${busAssignmentsHTML}
+            `;
+        }
+        
+    } catch (error) {
+        console.error('Error loading bus assignments:', error);
+        const busPage = document.getElementById('bus');
+        if (busPage) {
+            busPage.innerHTML = `
+                <div class="text-center py-10">
+                    <i class='bx bx-error text-4xl text-red-500 mb-3'></i>
+                    <p class="text-gray-400">Error loading bus assignments</p>
+                    <p class="text-gray-500 text-sm">Please try again later</p>
+                </div>
+            `;
+        }
+    }
+}
 function logout() {
     localStorage.removeItem('user');
     localStorage.removeItem('token');

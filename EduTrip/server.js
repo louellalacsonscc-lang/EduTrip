@@ -68,11 +68,11 @@ app.get('/studpage.css', (req, res) => {
 });
 
 app.get('/adminpage.js', (req, res) => {
-    res.sendFile(path.join(__dirname, 'adminpage.js'));
+    res.sendFile(path.join(__dirname, 'admin/adminpage.js'));
 });
 
 app.get('/adminpage.css', (req, res) => {
-    res.sendFile(path.join(__dirname, 'adminpage.css'));
+    res.sendFile(path.join(__dirname, 'admin/adminpage.css'));
 });
 
 // Database setup
@@ -129,6 +129,33 @@ db.serialize(() => {
         if (err) console.error('Error creating registration_requests table:', err);
         else console.log('Registration requests table ready');
     });
+    // Add this to the CREATE TABLES section in server.js
+db.run(`CREATE TABLE IF NOT EXISTS buses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bus_number TEXT UNIQUE NOT NULL,
+    capacity INTEGER NOT NULL,
+    current_passengers INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)`, (err) => {
+    if (err) console.error('Error creating buses table:', err);
+    else console.log('Buses table ready');
+});
+
+db.run(`CREATE TABLE IF NOT EXISTS bus_assignments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    event_id INTEGER NOT NULL,
+    bus_id INTEGER NOT NULL,
+    assignment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    notes TEXT,
+    FOREIGN KEY (user_id) REFERENCES users (id),
+    FOREIGN KEY (event_id) REFERENCES events (id),
+    FOREIGN KEY (bus_id) REFERENCES buses (id),
+    UNIQUE(user_id, event_id)  -- One user per event
+)`, (err) => {
+    if (err) console.error('Error creating bus_assignments table:', err);
+    else console.log('Bus assignments table ready');
+});
     
     // Insert default admin user
     const adminPassword = bcrypt.hashSync('admin123', 10);
@@ -458,7 +485,7 @@ app.get('/api/user/all-registration-requests', (req, res) => {
 });
 // With authentication checks
 app.get('/admin', requireAuth, (req, res) => {
-    res.sendFile(path.join(__dirname, 'adminpage.html'));
+    res.sendFile(path.join(__dirname, 'admin/adminpage.html'));
 });
 
 app.get('/student', requireAuth, (req, res) => {
@@ -524,9 +551,7 @@ db.run(`CREATE TABLE IF NOT EXISTS notifications (
     if (err) console.error('Error creating notifications table:', err);
     else console.log('Notifications table ready');
 });
-// Add these routes to server.js:
 
-// Create notification
 // Create notification
 app.post('/api/notifications', (req, res) => {
     const { user_id, title, message, type } = req.body;
@@ -610,6 +635,421 @@ app.get('/api/notifications/user/:user_id', (req, res) => {
             }
             res.json(notifications);
         });
+});
+// Add these routes after the existing routes
+
+// Bus Management API Endpoints
+
+// Create new bus
+app.post('/api/buses', (req, res) => {
+    const { bus_number, capacity } = req.body;
+    
+    if (!bus_number || !capacity) {
+        return res.status(400).json({ error: 'Bus number and capacity are required' });
+    }
+    
+    if (capacity <= 0) {
+        return res.status(400).json({ error: 'Capacity must be greater than 0' });
+    }
+    
+    db.run("INSERT INTO buses (bus_number, capacity) VALUES (?, ?)", 
+        [bus_number, capacity], 
+        function(err) {
+            if (err) {
+                console.error('Error creating bus:', err);
+                if (err.message.includes('UNIQUE constraint failed')) {
+                    return res.status(400).json({ error: 'Bus number already exists' });
+                }
+                return res.status(500).json({ error: 'Database error' });
+            }
+            res.json({ success: true, message: 'Bus created successfully', busId: this.lastID });
+        });
+});
+
+// Get all buses
+app.get('/api/buses', (req, res) => {
+    db.all("SELECT * FROM buses ORDER BY bus_number", [], (err, buses) => {
+        if (err) {
+            console.error('Error fetching buses:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json(buses);
+    });
+});
+
+// Get bus by ID
+app.get('/api/buses/:id', (req, res) => {
+    const { id } = req.params;
+    
+    db.get("SELECT * FROM buses WHERE id = ?", [id], (err, bus) => {
+        if (err) {
+            console.error('Error fetching bus:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        if (!bus) {
+            return res.status(404).json({ error: 'Bus not found' });
+        }
+        res.json(bus);
+    });
+});
+
+// Update bus
+app.put('/api/buses/:id', (req, res) => {
+    const { id } = req.params;
+    const { bus_number, capacity } = req.body;
+    
+    if (!bus_number || !capacity) {
+        return res.status(400).json({ error: 'Bus number and capacity are required' });
+    }
+    
+    db.run("UPDATE buses SET bus_number = ?, capacity = ? WHERE id = ?", 
+        [bus_number, capacity, id], 
+        function(err) {
+            if (err) {
+                console.error('Error updating bus:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            if (this.changes === 0) {
+                return res.status(404).json({ error: 'Bus not found' });
+            }
+            res.json({ success: true, message: 'Bus updated successfully' });
+        });
+});
+
+// Delete bus (only if no assignments)
+app.delete('/api/buses/:id', (req, res) => {
+    const { id } = req.params;
+    
+    // Check if there are any assignments for this bus
+    db.get("SELECT COUNT(*) as count FROM bus_assignments WHERE bus_id = ?", [id], (err, row) => {
+        if (err) {
+            console.error('Error checking bus assignments:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        
+        if (row.count > 0) {
+            return res.status(400).json({ error: 'Cannot delete bus with existing assignments' });
+        }
+        
+        db.run("DELETE FROM buses WHERE id = ?", [id], function(err) {
+            if (err) {
+                console.error('Error deleting bus:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            if (this.changes === 0) {
+                return res.status(404).json({ error: 'Bus not found' });
+            }
+            res.json({ success: true, message: 'Bus deleted successfully' });
+        });
+    });
+});
+
+// Assign participant to bus
+app.post('/api/bus-assignments', (req, res) => {
+    const { user_id, event_id, bus_id, notes } = req.body;
+    
+    if (!user_id || !event_id || !bus_id) {
+        return res.status(400).json({ error: 'User ID, Event ID, and Bus ID are required' });
+    }
+    
+    const createAssignment = async () => {
+        try {
+            // Check if bus exists
+            const bus = await new Promise((resolve, reject) => {
+                db.get("SELECT * FROM buses WHERE id = ?", [bus_id], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                });
+            });
+            
+            if (!bus) {
+                return res.status(404).json({ error: 'Bus not found' });
+            }
+            
+            // Check bus capacity
+            const busCount = await new Promise((resolve, reject) => {
+                db.get("SELECT COUNT(*) as count FROM bus_assignments WHERE bus_id = ?", 
+                    [bus_id], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row.count);
+                });
+            });
+            
+            if (busCount >= bus.capacity) {
+                return res.status(400).json({ error: 'Bus is at full capacity' });
+            }
+            
+            // Check if user is already assigned
+            const existing = await new Promise((resolve, reject) => {
+                db.get("SELECT * FROM bus_assignments WHERE user_id = ? AND event_id = ?", 
+                    [user_id, event_id], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                });
+            });
+            
+            if (existing) {
+                return res.status(400).json({ error: 'User is already assigned to a bus for this event' });
+            }
+            
+            // Create assignment
+            const result = await new Promise((resolve, reject) => {
+                db.run("INSERT INTO bus_assignments (user_id, event_id, bus_id, notes) VALUES (?, ?, ?, ?)", 
+                    [user_id, event_id, bus_id, notes || ''], 
+                    function(err) {
+                        if (err) reject(err);
+                        else resolve(this);
+                    });
+            });
+            
+            // Update bus passenger count
+            await new Promise((resolve, reject) => {
+                db.run("UPDATE buses SET current_passengers = current_passengers + 1 WHERE id = ?", 
+                    [bus_id], function(err) {
+                        if (err) reject(err);
+                        else resolve(this);
+                    });
+            });
+            
+            res.json({ 
+                success: true, 
+                message: 'Bus assignment created successfully',
+                assignmentId: result.lastID
+            });
+            
+        } catch (error) {
+            console.error('Error creating bus assignment:', error);
+            res.status(500).json({ error: 'Database error: ' + error.message });
+        }
+    };
+    
+    createAssignment();
+});
+
+// Get bus assignments for an event
+app.get('/api/events/:event_id/bus-assignments', (req, res) => {
+    const { event_id } = req.params;
+    
+    const query = `
+        SELECT ba.*, 
+               u.name as user_name, u.student_number, u.email,
+               b.bus_number, b.capacity,
+               e.title as event_title
+        FROM bus_assignments ba
+        JOIN users u ON ba.user_id = u.id
+        JOIN buses b ON ba.bus_id = b.id
+        JOIN events e ON ba.event_id = e.id
+        WHERE ba.event_id = ?
+        ORDER BY b.bus_number, ba.assignment_date
+    `;
+    
+    db.all(query, [event_id], (err, assignments) => {
+        if (err) {
+            console.error('Error fetching bus assignments:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json(assignments);
+    });
+});
+
+// Get bus assignments for a bus
+app.get('/api/buses/:bus_id/assignments', (req, res) => {
+    const { bus_id } = req.params;
+    
+    const query = `
+        SELECT ba.*, 
+               u.name as user_name, u.student_number, u.email,
+               b.bus_number, b.capacity,
+               e.title as event_title, e.date as event_date
+        FROM bus_assignments ba
+        JOIN users u ON ba.user_id = u.id
+        JOIN buses b ON ba.bus_id = b.id
+        JOIN events e ON ba.event_id = e.id
+        WHERE ba.bus_id = ?
+        ORDER BY ba.assignment_date
+    `;
+    
+    db.all(query, [bus_id], (err, assignments) => {
+        if (err) {
+            console.error('Error fetching bus assignments:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json(assignments);
+    });
+});
+
+// Move participant to different bus
+app.put('/api/bus-assignments/:assignment_id', (req, res) => {
+    const { assignment_id } = req.params;
+    const { new_bus_id, notes } = req.body;
+    
+    if (!new_bus_id) {
+        return res.status(400).json({ error: 'New bus ID is required' });
+    }
+    
+    // Use async/await pattern instead of nested callbacks
+    const moveAssignment = async () => {
+        try {
+            // Get current assignment
+            const assignment = await new Promise((resolve, reject) => {
+                db.get("SELECT * FROM bus_assignments WHERE id = ?", [assignment_id], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                });
+            });
+            
+            if (!assignment) {
+                return res.status(404).json({ error: 'Assignment not found' });
+            }
+            
+            const old_bus_id = assignment.bus_id;
+            
+            // Check if new bus exists
+            const newBus = await new Promise((resolve, reject) => {
+                db.get("SELECT * FROM buses WHERE id = ?", [new_bus_id], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                });
+            });
+            
+            if (!newBus) {
+                return res.status(404).json({ error: 'New bus not found' });
+            }
+            
+            // Check new bus capacity
+            const busCount = await new Promise((resolve, reject) => {
+                db.get("SELECT COUNT(*) as count FROM bus_assignments WHERE bus_id = ?", 
+                    [new_bus_id], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row.count);
+                });
+            });
+            
+            if (busCount >= newBus.capacity) {
+                return res.status(400).json({ error: 'New bus is at full capacity' });
+            }
+            
+            // Update assignment notes
+            const updatedNotes = notes ? 
+                `${assignment.notes || ''}\nMoved to bus ${newBus.bus_number} on ${new Date().toLocaleString()}: ${notes}`.trim() 
+                : assignment.notes;
+            
+            // Update assignment
+            await new Promise((resolve, reject) => {
+                db.run("UPDATE bus_assignments SET bus_id = ?, notes = ? WHERE id = ?", 
+                    [new_bus_id, updatedNotes, assignment_id], 
+                    function(err) {
+                        if (err) reject(err);
+                        else resolve(this);
+                    });
+            });
+            
+            // Update old bus passenger count
+            await new Promise((resolve, reject) => {
+                db.run("UPDATE buses SET current_passengers = current_passengers - 1 WHERE id = ?", 
+                    [old_bus_id], function(err) {
+                        if (err) reject(err);
+                        else resolve(this);
+                    });
+            });
+            
+            // Update new bus passenger count
+            await new Promise((resolve, reject) => {
+                db.run("UPDATE buses SET current_passengers = current_passengers + 1 WHERE id = ?", 
+                    [new_bus_id], function(err) {
+                        if (err) reject(err);
+                        else resolve(this);
+                    });
+            });
+            
+            res.json({ success: true, message: 'Assignment moved successfully' });
+            
+        } catch (error) {
+            console.error('Error moving bus assignment:', error);
+            res.status(500).json({ error: 'Database error: ' + error.message });
+        }
+    };
+    
+    moveAssignment();
+});
+
+// Remove bus assignment
+app.delete('/api/bus-assignments/:assignment_id', (req, res) => {
+    const { assignment_id } = req.params;
+    
+    const removeAssignment = async () => {
+        try {
+            // Get assignment details
+            const assignment = await new Promise((resolve, reject) => {
+                db.get("SELECT * FROM bus_assignments WHERE id = ?", [assignment_id], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                });
+            });
+            
+            if (!assignment) {
+                return res.status(404).json({ error: 'Assignment not found' });
+            }
+            
+            const bus_id = assignment.bus_id;
+            
+            // Delete assignment
+            const result = await new Promise((resolve, reject) => {
+                db.run("DELETE FROM bus_assignments WHERE id = ?", [assignment_id], function(err) {
+                    if (err) reject(err);
+                    else resolve(this);
+                });
+            });
+            
+            if (result.changes === 0) {
+                return res.status(404).json({ error: 'Assignment not found' });
+            }
+            
+            // Update bus passenger count
+            await new Promise((resolve, reject) => {
+                db.run("UPDATE buses SET current_passengers = current_passengers - 1 WHERE id = ?", 
+                    [bus_id], function(err) {
+                        if (err) reject(err);
+                        else resolve(this);
+                    });
+            });
+            
+            res.json({ success: true, message: 'Assignment removed successfully' });
+            
+        } catch (error) {
+            console.error('Error removing bus assignment:', error);
+            res.status(500).json({ error: 'Database error: ' + error.message });
+        }
+    };
+    
+    removeAssignment();
+});
+
+// Get participants eligible for bus assignment (approved registrations not yet assigned)
+app.get('/api/events/:event_id/eligible-participants', (req, res) => {
+    const { event_id } = req.params;
+    
+    const query = `
+        SELECT u.id, u.name, u.student_number, u.email,
+               rr.status, rr.created_at as registration_date,
+               e.title as event_title
+        FROM users u
+        JOIN registration_requests rr ON u.id = rr.user_id
+        JOIN events e ON rr.event_id = e.id
+        LEFT JOIN bus_assignments ba ON u.id = ba.user_id AND e.id = ba.event_id
+        WHERE e.id = ? 
+          AND rr.status = 'approved'
+          AND ba.id IS NULL
+        ORDER BY rr.created_at
+    `;
+    
+    db.all(query, [event_id], (err, participants) => {
+        if (err) {
+            console.error('Error fetching eligible participants:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json(participants);
+    });
 });
 app.listen(PORT, () => {
     console.log(`🚀 EduTrip server running on http://localhost:${PORT}`);

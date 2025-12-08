@@ -63,52 +63,43 @@
                 </button>
             </div>
 
-            <!-- Login Form -->
-            <div id="login-form" class="p-8">
-                <h2 class="text-2xl font-bold text-white mb-6">Welcome Back</h2>
-                <form id="loginForm">
-                    <div class="space-y-5">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class='bx bx-envelope text-gray-500'></i>
-                                </div>
-                                <input type="email" required 
-                                       class="pl-10 w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-600 input-focus transition-all"
-                                       placeholder="student@example.com">
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class='bx bx-lock-alt text-gray-500'></i>
-                                </div>
-                                <input type="password" required 
-                                       class="pl-10 w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-600 input-focus transition-all"
-                                       placeholder="••••••••">
-                            </div>
-                        </div>
-
-                        <button type="submit" 
-                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]">
-                            <i class='bx bx-log-in mr-2'></i>
-                            Sign In
-                        </button>
+<!-- Login Form -->
+<div id="login-form" class="p-8">
+    <h2 class="text-2xl font-bold text-white mb-6">Welcome Back</h2>
+    <form id="loginForm">
+        <div class="space-y-5">
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class='bx bx-envelope text-gray-500'></i>
                     </div>
-                </form>
-                
-                <!-- Demo Credentials -->
-                <div class="mt-8 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-                    <p class="text-sm text-gray-300 font-medium mb-2">Demo Credentials:</p>
-                    <div class="text-xs text-gray-400 space-y-1">
-                        <p><span class="font-semibold text-blue-400">Admin:</span> admin@edutrip.com / admin123</p>
-                        <p><span class="font-semibold text-blue-400">Student:</span> student@edutrip.com / student123</p>
-                    </div>
+                    <input type="email" required 
+                           class="pl-10 w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-600 input-focus transition-all"
+                           placeholder="student@example.com">
                 </div>
             </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class='bx bx-lock-alt text-gray-500'></i>
+                    </div>
+                    <input type="password" required 
+                           class="pl-10 w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-600 input-focus transition-all"
+                           placeholder="••••••••">
+                </div>
+            </div>
+
+            <button type="submit" 
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]">
+                <i class='bx bx-log-in mr-2'></i>
+                Sign In
+            </button>
+        </div>
+    </form>
+</div>
 
             <!-- Register Form -->
             <div id="register-form" class="p-8 hidden">
@@ -176,9 +167,9 @@
                 
                 <p class="mt-6 text-center text-gray-500 text-sm">
                     Already have an account? 
-                    <button id="switch-to-login" class="text-blue-400 hover:text-blue-300 font-semibold ml-1">
-                        Sign in here
-                    </button>
+<button type="button" id="switch-to-login" class="text-blue-400 hover:text-blue-300 font-semibold ml-1">
+    Sign in here
+</button>
                 </p>
             </div>
         </div>
@@ -190,71 +181,5 @@
     </div>
 
     <script src="/main/mainpage.js"></script>
-    <script>
-        // Toggle between login/register forms
-        const loginToggle = document.getElementById('login-toggle');
-        const registerToggle = document.getElementById('register-toggle');
-        const switchToLogin = document.getElementById('switch-to-login');
-        const loginForm = document.getElementById('login-form');
-        const registerForm = document.getElementById('register-form');
-
-        function showLogin() {
-            // Update toggle buttons
-            loginToggle.classList.add('border-blue-500', 'text-white');
-            loginToggle.classList.remove('text-gray-400', 'border-transparent');
-            registerToggle.classList.add('text-gray-400', 'border-transparent');
-            registerToggle.classList.remove('border-blue-500', 'text-white');
-            
-            // Update icons
-            loginToggle.querySelector('i').classList.remove('text-gray-500');
-            loginToggle.querySelector('i').classList.add('text-blue-400');
-            registerToggle.querySelector('i').classList.remove('text-blue-400');
-            registerToggle.querySelector('i').classList.add('text-gray-500');
-            
-            // Show/hide forms
-            loginForm.classList.remove('hidden');
-            registerForm.classList.add('hidden');
-        }
-
-        function showRegister() {
-            // Update toggle buttons
-            registerToggle.classList.add('border-blue-500', 'text-white');
-            registerToggle.classList.remove('text-gray-400', 'border-transparent');
-            loginToggle.classList.add('text-gray-400', 'border-transparent');
-            loginToggle.classList.remove('border-blue-500', 'text-white');
-            
-            // Update icons
-            registerToggle.querySelector('i').classList.remove('text-gray-500');
-            registerToggle.querySelector('i').classList.add('text-blue-400');
-            loginToggle.querySelector('i').classList.remove('text-blue-400');
-            loginToggle.querySelector('i').classList.add('text-gray-500');
-            
-            // Show/hide forms
-            registerForm.classList.remove('hidden');
-            loginForm.classList.add('hidden');
-        }
-
-        // Event listeners
-        loginToggle.addEventListener('click', showLogin);
-        registerToggle.addEventListener('click', showRegister);
-        
-        if (switchToLogin) {
-            switchToLogin.addEventListener('click', showLogin);
-        }
-
-        // Initialize with login form active
-        showLogin();
-
-        // Form submissions
-        document.getElementById('loginForm')?.addEventListener('submit', function(e) {
-            e.preventDefault();
-            console.log('Login form submitted - black theme');
-        });
-
-        document.getElementById('registerForm')?.addEventListener('submit', function(e) {
-            e.preventDefault();
-            console.log('Register form submitted - black theme');
-        });
-    </script>
 </body>
 </html>

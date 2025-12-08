@@ -542,6 +542,28 @@
 .duration-300 {
     transition-duration: 300ms;
 }
+/* Add smooth transitions for bus assignment sections */
+#bus-fleet-section,
+#event-assignments-section {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+#bus-fleet-section.hidden,
+#event-assignments-section.hidden {
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+    position: absolute;
+    visibility: hidden;
+}
+
+#bus-fleet-section:not(.hidden),
+#event-assignments-section:not(.hidden) {
+    opacity: 1;
+    transform: translateY(0);
+    position: relative;
+    visibility: visible;
+}
     </style>
 </head>
 
@@ -787,7 +809,260 @@
                 </div>
             </div>
         </div>
+<!-- Bus Assignment -->
+<div id="bus" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-white">Bus Assignment Management</h1>
+        <div class="flex space-x-4">
+            <button id="add-bus-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
+                <i class='bx bx-plus mr-2'></i> Add New Bus
+            </button>
+            <select id="bus-event-filter" class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500">
+                <option value="">Select Event</option>
+                <!-- Events will be loaded dynamically -->
+            </select>
+        </div>
+    </div>
+    
+    <!-- Bus Fleet Section -->
+    <div id="bus-fleet-section">
+        <h2 class="text-xl font-semibold text-white mb-4">Bus Fleet</h2>
+        <div id="bus-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Buses will be loaded here -->
+        </div>
+    </div>
+    
+    <!-- Event Bus Assignments Section - Show when event IS selected -->
+    <div id="event-assignments-section" class="hidden">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold text-white">Event Bus Assignments</h2>
+            <button id="clear-event-filter" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors">
+                <i class='bx bx-x mr-2'></i> Clear Event Filter
+            </button>
+        </div>
+        
+        <div id="bus-assignments-container">
+            <!-- Bus assignments will be loaded here -->
+        </div>
+        
+        <!-- Eligible Participants Section -->
+        <div id="eligible-participants-section" class="mt-8">
+            <h3 class="text-lg font-semibold text-white mb-4">Eligible Participants (Not Yet Assigned)</h3>
+            <div id="eligible-participants-list" class="space-y-3">
+                <!-- Eligible participants will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Announcement Page -->
+<div id="announcement" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-white">Announcements Management</h1>
+        <button id="create-announcement-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
+            <i class='bx bx-plus mr-2'></i> Create Announcement
+        </button>
+    </div>
+    
+    <!-- Announcements List -->
+    <div id="announcements-list" class="space-y-4">
+        <!-- Announcements will be loaded here -->
+        <div class="text-center py-10">
+            <i class='bx bx-message text-4xl text-gray-500 mb-3'></i>
+            <p class="text-gray-400">No announcements yet</p>
+            <p class="text-gray-500 text-sm">Create your first announcement to get started</p>
+        </div>
+    </div>
+    
+    <!-- Create Announcement Modal -->
+    <div id="announcement-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-xl w-11/12 max-w-2xl">
+            <div class="sticky top-0 bg-gray-900 border-b border-gray-800 p-6 flex justify-between items-center">
+                <h3 class="text-xl font-semibold text-white">Create New Announcement</h3>
+                <button id="close-announcement-modal" class="text-gray-400 hover:text-white text-2xl">
+                    <i class='bx bx-x'></i>
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <form id="create-announcement-form" class="space-y-5">
+                    <div>
+                        <label class="block text-gray-300 mb-2">Title</label>
+                        <input type="text" id="announcement-title" required 
+                               class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+                               placeholder="Enter announcement title">
+                    </div>
+                    <div>
+                        <label class="block text-gray-300 mb-2">Message</label>
+                        <textarea id="announcement-message" rows="6" required 
+                                  class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+                                  placeholder="Enter announcement message..."></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-gray-300 mb-2">Type</label>
+                        <select id="announcement-type" 
+                                class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                            <option value="info">Information</option>
+                            <option value="warning">Warning</option>
+                            <option value="urgent">Urgent</option>
+                            <option value="success">Success</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-300 mb-2">Target Audience</label>
+                        <select id="announcement-audience" 
+                                class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                            <option value="all">All Users</option>
+                            <option value="students">Students Only</option>
+                            <option value="participants">Event Participants Only</option>
+                            <option value="specific">Specific Event</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex space-x-4 pt-4">
+                        <button type="submit" 
+                                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                            Create Announcement
+                        </button>
+                        <button type="button" id="cancel-announcement" 
+                                class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 
+<!-- E-Certificate Page -->
+<div id="certificate" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-white">E-Certificate Management</h1>
+        <div class="flex space-x-4">
+            <select id="certificate-event-filter" class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500">
+                <option value="all">All Events</option>
+                <!-- Events will be loaded here -->
+            </select>
+            <button id="generate-certificates-btn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors">
+                <i class='bx bx-certification mr-2'></i> Generate Certificates
+            </button>
+        </div>
+    </div>
+    
+    <!-- Certificate Status Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-black border border-gray-800 rounded-lg p-4">
+            <div class="text-center">
+                <div class="text-3xl font-bold text-blue-500">0</div>
+                <div class="text-gray-400 text-sm">Generated</div>
+            </div>
+        </div>
+        <div class="bg-black border border-gray-800 rounded-lg p-4">
+            <div class="text-center">
+                <div class="text-3xl font-bold text-green-500">0</div>
+                <div class="text-gray-400 text-sm">Sent</div>
+            </div>
+        </div>
+        <div class="bg-black border border-gray-800 rounded-lg p-4">
+            <div class="text-center">
+                <div class="text-3xl font-bold text-yellow-500">0</div>
+                <div class="text-gray-400 text-sm">Pending</div>
+            </div>
+        </div>
+        <div class="bg-black border border-gray-800 rounded-lg p-4">
+            <div class="text-center">
+                <div class="text-3xl font-bold text-gray-500">0</div>
+                <div class="text-gray-400 text-sm">Total Participants</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Certificates List -->
+    <div id="certificates-list" class="space-y-4">
+        <div class="text-center py-10">
+            <i class='bx bx-certification text-4xl text-gray-500 mb-3'></i>
+            <p class="text-gray-400">No certificates generated yet</p>
+            <p class="text-gray-500 text-sm">Generate certificates for approved event participants</p>
+        </div>
+    </div>
+    
+    <!-- Generate Certificates Modal -->
+    <div id="generate-certificates-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-xl w-11/12 max-w-2xl">
+            <div class="sticky top-0 bg-gray-900 border-b border-gray-800 p-6 flex justify-between items-center">
+                <h3 class="text-xl font-semibold text-white">Generate E-Certificates</h3>
+                <button id="close-certificates-modal" class="text-gray-400 hover:text-white text-2xl">
+                    <i class='bx bx-x'></i>
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <form id="generate-certificates-form" class="space-y-5">
+                    <div>
+                        <label class="block text-gray-300 mb-2">Select Event</label>
+                        <select id="certificate-event-select" required 
+                                class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                            <option value="">Select an event</option>
+                            <!-- Events will be loaded here -->
+                        </select>
+                    </div>
+                    
+                    <div id="certificate-event-info" class="p-4 bg-gray-800 rounded-lg hidden">
+                        <!-- Event info will be shown here -->
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-300 mb-2">Certificate Template</label>
+                        <div class="space-y-2">
+                            <div class="flex items-center">
+                                <input type="radio" id="template-default" name="certificate-template" value="default" checked 
+                                       class="mr-2">
+                                <label for="template-default" class="text-gray-300">Default Template</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="radio" id="template-premium" name="certificate-template" value="premium" 
+                                       class="mr-2">
+                                <label for="template-premium" class="text-gray-300">Premium Template</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="radio" id="template-custom" name="certificate-template" value="custom" 
+                                       class="mr-2">
+                                <label for="template-custom" class="text-gray-300">Custom Template</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-300 mb-2">Options</label>
+                        <div class="space-y-2">
+                            <div class="flex items-center">
+                                <input type="checkbox" id="send-email" checked 
+                                       class="mr-2">
+                                <label for="send-email" class="text-gray-300">Send via email to participants</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="download-all" checked 
+                                       class="mr-2">
+                                <label for="download-all" class="text-gray-300">Download all as ZIP file</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-4 pt-4">
+                        <button type="submit" 
+                                class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                            <i class='bx bx-certification mr-2'></i> Generate Certificates
+                        </button>
+                        <button type="button" id="cancel-certificates" 
+                                class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
         <!-- Other pages (simplified) -->
 <div id="participants-page" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
     <div class="flex justify-between items-center mb-6">
@@ -823,21 +1098,6 @@
     <p class="text-gray-400">No approved participants found</p>
     <p class="text-gray-500 text-sm">Participants will appear here once registrations are approved</p>
 </div>
-
-        <div id="bus" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
-            <h1 class="text-2xl font-bold text-white mb-6">Bus Assignment</h1>
-            <p class="text-gray-400">Bus assignment content goes here...</p>
-        </div>
-
-        <div id="announcement" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
-            <h1 class="text-2xl font-bold text-white mb-6">Announcements</h1>
-            <p class="text-gray-400">Announcements content goes here...</p>
-        </div>
-
-        <div id="certificate" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
-            <h1 class="text-2xl font-bold text-white mb-6">E-Certificates</h1>
-            <p class="text-gray-400">E-Certificates content goes here...</p>
-        </div>
     </main>
 <!-- File Viewer Modal -->
 <div id="file-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
@@ -919,6 +1179,146 @@
                         Update Event
                     </button>
                     <button type="button" id="cancel-edit" 
+                            class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- Add Bus Modal -->
+<div id="add-bus-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-900 border border-gray-800 rounded-xl w-11/12 max-w-md">
+        <div class="sticky top-0 bg-gray-900 border-b border-gray-800 p-6 flex justify-between items-center">
+            <h3 class="text-xl font-semibold text-white">Add New Bus</h3>
+            <button id="close-add-bus-modal" class="text-gray-400 hover:text-white text-2xl">
+                <i class='bx bx-x'></i>
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <form id="add-bus-form" class="space-y-5">
+                <div>
+                    <label class="block text-gray-300 mb-2">Bus Number</label>
+                    <input type="text" id="bus-number" required 
+                           class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+                           placeholder="e.g., BUS-001">
+                </div>
+                <div>
+                    <label class="block text-gray-300 mb-2">Capacity</label>
+                    <input type="number" id="bus-capacity" required min="1" 
+                           class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+                           placeholder="Number of seats">
+                </div>
+                
+                <div class="flex space-x-4 pt-4">
+                    <button type="submit" 
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Add Bus
+                    </button>
+                    <button type="button" id="cancel-add-bus" 
+                            class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Participant to Bus Modal -->
+<div id="assign-bus-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-900 border border-gray-800 rounded-xl w-11/12 max-w-md">
+        <div class="sticky top-0 bg-gray-900 border-b border-gray-800 p-6 flex justify-between items-center">
+            <h3 class="text-xl font-semibold text-white">Assign to Bus</h3>
+            <button id="close-assign-bus-modal" class="text-gray-400 hover:text-white text-2xl">
+                <i class='bx bx-x'></i>
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <div id="assign-participant-info" class="mb-4 p-4 bg-gray-800 rounded-lg">
+                <!-- Participant info will be loaded here -->
+            </div>
+            
+            <form id="assign-bus-form" class="space-y-5">
+                <input type="hidden" id="assign-user-id">
+                <input type="hidden" id="assign-event-id">
+                
+                <div>
+                    <label class="block text-gray-300 mb-2">Select Bus</label>
+                    <select id="assign-bus-select" required 
+                            class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                        <option value="">Select a bus</option>
+                        <!-- Buses will be loaded here -->
+                    </select>
+                    <div id="bus-capacity-info" class="text-gray-400 text-sm mt-2"></div>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-300 mb-2">Notes (Optional)</label>
+                    <textarea id="assign-notes" rows="3" 
+                              class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+                              placeholder="Special requirements or notes..."></textarea>
+                </div>
+                
+                <div class="flex space-x-4 pt-4">
+                    <button type="submit" 
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Assign to Bus
+                    </button>
+                    <button type="button" id="cancel-assign-bus" 
+                            class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Move Participant to Different Bus Modal -->
+<div id="move-bus-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-900 border border-gray-800 rounded-xl w-11/12 max-w-md">
+        <div class="sticky top-0 bg-gray-900 border-b border-gray-800 p-6 flex justify-between items-center">
+            <h3 class="text-xl font-semibold text-white">Move to Different Bus</h3>
+            <button id="close-move-bus-modal" class="text-gray-400 hover:text-white text-2xl">
+                <i class='bx bx-x'></i>
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <div id="move-participant-info" class="mb-4 p-4 bg-gray-800 rounded-lg">
+                <!-- Participant info will be loaded here -->
+            </div>
+            
+            <form id="move-bus-form" class="space-y-5">
+                <input type="hidden" id="move-assignment-id">
+                <input type="hidden" id="move-current-bus-id">
+                
+                <div>
+                    <label class="block text-gray-300 mb-2">Select New Bus</label>
+                    <select id="move-bus-select" required 
+                            class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                        <option value="">Select a new bus</option>
+                        <!-- Available buses will be loaded here -->
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-300 mb-2">Reason for Move (Optional)</label>
+                    <textarea id="move-reason" rows="3" 
+                              class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+                              placeholder="Why is this move necessary?..."></textarea>
+                </div>
+                
+                <div class="flex space-x-4 pt-4">
+                    <button type="submit" 
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Move Participant
+                    </button>
+                    <button type="button" id="cancel-move-bus" 
                             class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
                         Cancel
                     </button>

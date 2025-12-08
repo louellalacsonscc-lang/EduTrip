@@ -5,19 +5,40 @@ const registerForm = document.getElementById('register-form');
 
 // Toggle forms
 loginToggle.addEventListener('click', () => {
-    loginToggle.classList.add('active');
-    registerToggle.classList.remove('active');
+    // Add blue underline to login, remove from register
+    loginToggle.classList.add('border-blue-500', 'text-white');
+    loginToggle.classList.remove('text-gray-400', 'border-transparent');
+    registerToggle.classList.add('text-gray-400', 'border-transparent');
+    registerToggle.classList.remove('border-blue-500', 'text-white');
+    
+    // Update icons
+    loginToggle.querySelector('i').classList.remove('text-gray-500');
+    loginToggle.querySelector('i').classList.add('text-blue-400');
+    registerToggle.querySelector('i').classList.remove('text-blue-400');
+    registerToggle.querySelector('i').classList.add('text-gray-500');
+    
+    // Show/hide forms
     loginForm.style.display = 'block';
     registerForm.style.display = 'none';
 });
 
 registerToggle.addEventListener('click', () => {
-    registerToggle.classList.add('active');
-    loginToggle.classList.remove('active');
+    // Add blue underline to register, remove from login
+    registerToggle.classList.add('border-blue-500', 'text-white');
+    registerToggle.classList.remove('text-gray-400', 'border-transparent');
+    loginToggle.classList.add('text-gray-400', 'border-transparent');
+    loginToggle.classList.remove('border-blue-500', 'text-white');
+    
+    // Update icons
+    registerToggle.querySelector('i').classList.remove('text-gray-500');
+    registerToggle.querySelector('i').classList.add('text-blue-400');
+    loginToggle.querySelector('i').classList.remove('text-blue-400');
+    loginToggle.querySelector('i').classList.add('text-gray-500');
+    
+    // Show/hide forms
     registerForm.style.display = 'block';
     loginForm.style.display = 'none';
 });
-
 // Login function
 document.querySelector('#login-form form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -115,4 +136,8 @@ document.addEventListener('DOMContentLoaded', function() {
             window.location.href = '/student';
         }
     }
+});
+document.getElementById('switch-to-login')?.addEventListener('click', function() {
+    // Trigger a click on the login toggle button
+    document.getElementById('login-toggle').click();
 });
