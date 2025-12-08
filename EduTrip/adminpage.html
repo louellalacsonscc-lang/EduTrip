@@ -5,233 +5,928 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE-edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="/adminpage.css">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <title>EduTrip Admin</title>
+    <style>
+        /* Black theme with blue accents */
+        .black-bg {
+            background: #000000;
+        }
+        .input-focus:focus {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+            border-color: #3b82f6;
+        }
+        .sidebar-item {
+            transition: all 0.2s ease;
+        }
+        .sidebar-item:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+        .sidebar-item.active {
+            background: #3b82f6;
+        }
+            /* Smooth sidebar transitions */
+    .sidebar {
+        transition: width 0.3s ease;
+    }
+    
+    main {
+        transition: margin-left 0.3s ease;
+    }
+    
+    /* Smooth text transitions */
+    .sidebar .text {
+        transition: opacity 0.3s ease, width 0.3s ease;
+        white-space: nowrap;
+        overflow: hidden;
+    }
+    
+    /* Keep icons fixed in position */
+    .sidebar-item .icon {
+        flex-shrink: 0;
+        width: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Toggle button rotation */
+    .toggle {
+        transition: transform 0.3s ease;
+    }
+    
+    .bx-chevron-left {
+        transform: rotate(180deg);
+    }
+    /* Add these CSS classes for participants page */
+.min-h-64 {
+    min-height: 16rem;
+}
+
+.bg-gray-900\/50 {
+    background-color: rgba(17, 24, 39, 0.5);
+}
+
+.border-gray-800\/50 {
+    border-color: rgba(31, 41, 55, 0.5);
+}
+
+.border-gray-800\/30 {
+    border-color: rgba(31, 41, 55, 0.3);
+}
+
+.bg-green-900\/30 {
+    background-color: rgba(20, 83, 45, 0.3);
+}
+
+.border-green-800 {
+    border-color: rgb(22 101 52);
+}
+
+.bg-red-900\/30 {
+    background-color: rgba(127, 29, 29, 0.3);
+}
+
+.border-red-800 {
+    border-color: rgb(153 27 27);
+}
+
+.bg-yellow-900\/30 {
+    background-color: rgba(113, 63, 18, 0.3);
+}
+
+.border-yellow-800 {
+    border-color: rgb(146 64 14);
+}
+
+.bg-blue-900\/30 {
+    background-color: rgba(30, 58, 138, 0.3);
+}
+
+.border-blue-800 {
+    border-color: rgb(30 64 175);
+}
+
+.opacity-80 {
+    opacity: 0.8;
+}
+
+.w-64 {
+    width: 16rem;
+}
+
+.w-full {
+    width: 100%;
+}
+
+.max-w-4xl {
+    max-width: 56rem;
+}
+
+.max-w-2xl {
+    max-width: 42rem;
+}
+
+.max-h-\[90vh\] {
+    max-height: 90vh;
+}
+
+.z-50 {
+    z-index: 50;
+}
+
+.flex-1 {
+    flex: 1 1 0%;
+}
+
+.grid-cols-1 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.gap-2 {
+    gap: 0.5rem;
+}
+
+.gap-3 {
+    gap: 0.75rem;
+}
+
+.gap-4 {
+    gap: 1rem;
+}
+
+.gap-6 {
+    gap: 1.5rem;
+}
+
+.gap-8 {
+    gap: 2rem;
+}
+
+.space-y-2 > * + * {
+    margin-top: 0.5rem;
+}
+
+.space-y-3 > * + * {
+    margin-top: 0.75rem;
+}
+
+.space-y-4 > * + * {
+    margin-top: 1rem;
+}
+
+.space-y-5 > * + * {
+    margin-top: 1.25rem;
+}
+
+.space-y-6 > * + * {
+    margin-top: 1.5rem;
+}
+
+.space-x-2 > * + * {
+    margin-left: 0.5rem;
+}
+
+.space-x-3 > * + * {
+    margin-left: 0.75rem;
+}
+
+.space-x-4 > * + * {
+    margin-left: 1rem;
+}
+
+.mb-2 {
+    margin-bottom: 0.5rem;
+}
+
+.mb-3 {
+    margin-bottom: 0.75rem;
+}
+
+.mb-4 {
+    margin-bottom: 1rem;
+}
+
+.mb-6 {
+    margin-bottom: 1.5rem;
+}
+
+.mt-1 {
+    margin-top: 0.25rem;
+}
+
+.mt-2 {
+    margin-top: 0.5rem;
+}
+
+.mt-3 {
+    margin-top: 0.75rem;
+}
+
+.mt-4 {
+    margin-top: 1rem;
+}
+
+.mt-6 {
+    margin-top: 1.5rem;
+}
+
+.ml-1 {
+    margin-left: 0.25rem;
+}
+
+.ml-2 {
+    margin-left: 0.5rem;
+}
+
+.ml-3 {
+    margin-left: 0.75rem;
+}
+
+.mr-1 {
+    margin-right: 0.25rem;
+}
+
+.mr-2 {
+    margin-right: 0.5rem;
+}
+
+.p-3 {
+    padding: 0.75rem;
+}
+
+.p-4 {
+    padding: 1rem;
+}
+
+.p-5 {
+    padding: 1.25rem;
+}
+
+.p-6 {
+    padding: 1.5rem;
+}
+
+.px-2 {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+.px-3 {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+}
+
+.px-4 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+.py-1 {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+}
+
+.py-2 {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+.py-3 {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+}
+
+.py-4 {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+.pt-4 {
+    padding-top: 1rem;
+}
+
+.pt-6 {
+    padding-top: 1.5rem;
+}
+
+.pb-3 {
+    padding-bottom: 0.75rem;
+}
+
+.text-xs {
+    font-size: 0.75rem;
+    line-height: 1rem;
+}
+
+.text-sm {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+
+.text-lg {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+}
+
+.text-xl {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+}
+
+.text-2xl {
+    font-size: 1.5rem;
+    line-height: 2rem;
+}
+
+.text-3xl {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+}
+
+.text-4xl {
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+}
+
+.text-6xl {
+    font-size: 3.75rem;
+    line-height: 1;
+}
+
+.font-medium {
+    font-weight: 500;
+}
+
+.font-semibold {
+    font-weight: 600;
+}
+
+.font-bold {
+    font-weight: 700;
+}
+
+.text-gray-300 {
+    --tw-text-opacity: 1;
+    color: rgb(209 213 219 / var(--tw-text-opacity, 1));
+}
+
+.text-gray-400 {
+    --tw-text-opacity: 1;
+    color: rgb(156 163 175 / var(--tw-text-opacity, 1));
+}
+
+.text-gray-500 {
+    --tw-text-opacity: 1;
+    color: rgb(107 114 128 / var(--tw-text-opacity, 1));
+}
+
+.text-blue-400 {
+    --tw-text-opacity: 1;
+    color: rgb(96 165 250 / var(--tw-text-opacity, 1));
+}
+
+.text-blue-500 {
+    --tw-text-opacity: 1;
+    color: rgb(59 130 246 / var(--tw-text-opacity, 1));
+}
+
+.text-green-400 {
+    --tw-text-opacity: 1;
+    color: rgb(74 222 128 / var(--tw-text-opacity, 1));
+}
+
+.text-red-400 {
+    --tw-text-opacity: 1;
+    color: rgb(248 113 113 / var(--tw-text-opacity, 1));
+}
+
+.text-red-500 {
+    --tw-text-opacity: 1;
+    color: rgb(239 68 68 / var(--tw-text-opacity, 1));
+}
+
+.text-yellow-400 {
+    --tw-text-opacity: 1;
+    color: rgb(250 204 21 / var(--tw-text-opacity, 1));
+}
+
+.rounded-lg {
+    border-radius: 0.5rem;
+}
+
+.rounded-xl {
+    border-radius: 0.75rem;
+}
+
+.border-b {
+    border-bottom-width: 1px;
+}
+
+.border-t {
+    border-top-width: 1px;
+}
+
+.overflow-auto {
+    overflow: auto;
+}
+
+.overflow-x-auto {
+    overflow-x: auto;
+}
+
+.overflow-hidden {
+    overflow: hidden;
+}
+
+.overflow-ellipsis {
+    text-overflow: ellipsis;
+}
+
+.whitespace-nowrap {
+    white-space: nowrap;
+}
+
+.bg-opacity-75 {
+    --tw-bg-opacity: 0.75;
+}
+
+.object-contain {
+    object-fit: contain;
+}
+
+.max-h-\[400px\] {
+    max-height: 400px;
+}
+
+.h-auto {
+    height: auto;
+}
+
+.inline-flex {
+    display: inline-flex;
+}
+
+.flex-col {
+    flex-direction: column;
+}
+
+.items-center {
+    align-items: center;
+}
+
+.justify-center {
+    justify-content: center;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.justify-end {
+    justify-content: flex-end;
+}
+
+.flex-wrap {
+    flex-wrap: wrap;
+}
+
+.self-center {
+    align-self: center;
+}
+
+.sticky {
+    position: sticky;
+}
+
+.top-0 {
+    top: 0px;
+}
+
+.right-2 {
+    right: 0.5rem;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.shadow-lg {
+    --tw-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --tw-shadow-colored: 0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);
+    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
+
+.transition-colors {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+.transition-all {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+.duration-300 {
+    transition-duration: 300ms;
+}
+    </style>
 </head>
 
-<body>
-    <nav class="sidebar close">
-        <header>
-            <div class="image-text">
-                <span class="image">
-                    <img src="/img/logo.png.png" alt="logo">
-                </span>
-                <div class="text header-text">
-                    <span class="name"> EduTrip </span>
-                    <span class="desc">Admin Panel</span>
-                </div>
-            </div>
-            <i class='bxr bx-chevron-right toggle'></i>
-        </header>
-        <div class="menu-bar">
-            <div class="menu">
-                <ul class="menu-links">
-                    <li class="nav-link">
-                        <a href="#" class="active" data-page="dashboard">
-                            <i class='bx  bx-grid-alt icon'></i>
-                            <span class="text nav-text">Dashboard</span>
-                        </a>
-                    </li>
-                    <li class="nav-link">
-                        <a href="#" data-page="events">
-                            <i class='bx bx-calendar-alt icon'></i>
-                            <span class="text nav-text">Events</span>
-                        </a>
-                    </li>
-                    <li class="nav-link">
-                        <a href="#" data-page="requests">
-                            <i class='bx bx-file icon'></i>
-                            <span class="text nav-text">Request</span>
-                        </a>
-                    </li>
-                    <li class="nav-link">
-                        <a href="#" data-page="participants">
-                            <i class='bx bx-group icon'></i>
-                            <span class="text nav-text">Participants</span>
-                        </a>
-                    </li>
-                    <li class="nav-link">
-                        <a href="#" data-page="bus">
-                            <i class='bx bx-bus icon'></i>
-                            <span class="text nav-text">Bus Assignment</span>
-                        </a>
-                    </li>
-                    <li class="nav-link">
-                        <a href="#" data-page="announcement">
-                            <i class='bx bx-notification icon'></i>
-                            <span class="text nav-text">Announcement</span>
-                        </a>
-                    </li>
-                    <li class="nav-link">
-                        <a href="#" data-page="certificate">
-                            <i class='bx bx-certification icon'></i>
-                            <span class="text nav-text">E-Certificate</span>
-                        </a>
-                    </li>
-                </ul>
-            </div>
-            <div class="bottom-content">
-				<li class="nav-link">
-					<a href="#" onclick="logout()">
-						<i class='bx bx-log-out icon'></i>
-						<span class="text nav-text">Logout</span>
-					</a>
-				</li>
+<body class="black-bg min-h-screen">
+    <!-- Sidebar -->
+    <nav class="sidebar close fixed top-0 left-0 h-full w-64 bg-gray-900 border-r border-gray-800 z-50 transition-all duration-300">
+<header class="p-5 border-b border-gray-800">
+    <div class="flex items-center relative">
+        <div class="w-10 h-10 flex items-center justify-center flex-shrink-0">
+            <img src="/img/logo.png.png" alt="logo" class="w-8 h-8">
+        </div>
+        <div class="ml-3 header-text transition-all duration-300">
+            <div class="name text-white font-bold">EduTrip</div>
+            <div class="desc text-gray-400 text-sm">Admin Portal</div>
+        </div>
+    </div>
+    <!-- Toggle button -->
+    <i class='bx bx-chevron-left toggle absolute top-6 right-0 transform translate-x-1/2 bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center cursor-pointer'></i>
+</header>
+        
+        <div class="p-4">
+            <ul class="space-y-2">
+                <li>
+                    <a href="#" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white active" data-page="dashboard">
+                        <i class='bx bx-grid-alt text-lg'></i>
+                        <span class="text">Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white" data-page="events">
+                        <i class='bx bx-calendar-alt text-lg'></i>
+                        <span class="text">Events</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white" data-page="requests">
+                        <i class='bx bx-file text-lg'></i>
+                        <span class="text">Request</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white" data-page="participants">
+                        <i class='bx bx-group text-lg'></i>
+                        <span class="text">Participants</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white" data-page="bus">
+                        <i class='bx bx-bus text-lg'></i>
+                        <span class="text">Bus Assignment</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white" data-page="announcement">
+                        <i class='bx bx-notification text-lg'></i>
+                        <span class="text">Announcement</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white" data-page="certificate">
+                        <i class='bx bx-certification text-lg'></i>
+                        <span class="text">E-Certificate</span>
+                    </a>
+                </li>
+            </ul>
+            
+            <div class="absolute bottom-6 left-0 right-0 px-4">
+                <a href="#" onclick="logout()" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-red-600/10">
+                    <i class='bx bx-log-out text-lg'></i>
+                    <span class="text">Logout</span>
+                </a>
             </div>
         </div>
     </nav>
-    <main class="main-content">
-        <div id="dashboard" class="page-container active">
-            <h1>Dashboard</h1>
-            <div class="dashboard-items">
-                <div class="item" id="reg-request">
-                    <h2>Registration Request</h2>
-                    <p>Manage pending registration requests here.</p>
+    
+    <!-- Main Content -->
+    <main class="ml-64 p-6 min-h-screen transition-all duration-300">
+        <!-- Dashboard -->
+        <div id="dashboard" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 active">
+            <h1 class="text-2xl font-bold text-white mb-6">Dashboard</h1>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-black border border-gray-800 rounded-lg p-6 cursor-pointer hover:border-blue-500 transition-colors" id="reg-request">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 class="text-lg font-semibold text-white">Registration Request</h2>
+                            <p class="text-gray-400 text-sm mt-1">Manage pending registration requests</p>
+                        </div>
+                        <div class="w-12 h-12 bg-blue-900/30 rounded-lg flex items-center justify-center">
+                            <i class='bx bx-file text-blue-400 text-xl'></i>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-3xl font-bold text-blue-500">24</span>
+                        <p class="text-gray-500 text-sm">pending</p>
+                    </div>
                 </div>
-                <div class="item" id="bus-request">
-                    <h2>Bus Assignment Request</h2>
-                    <p>Handle bus assignment requests.</p>
+                
+                <div class="bg-black border border-gray-800 rounded-lg p-6 cursor-pointer hover:border-blue-500 transition-colors" id="bus-request">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 class="text-lg font-semibold text-white">Bus Assignment</h2>
+                            <p class="text-gray-400 text-sm mt-1">Handle bus assignment requests</p>
+                        </div>
+                        <div class="w-12 h-12 bg-blue-900/30 rounded-lg flex items-center justify-center">
+                            <i class='bx bx-bus text-blue-400 text-xl'></i>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-3xl font-bold text-blue-500">8</span>
+                        <p class="text-gray-500 text-sm">requests</p>
+                    </div>
                 </div>
-                <div class="item" id="participants">
-                    <h2>Participants</h2>
-                    <p>View and manage event participants.</p>
+                
+                <div class="bg-black border border-gray-800 rounded-lg p-6 cursor-pointer hover:border-blue-500 transition-colors" id="participants">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 class="text-lg font-semibold text-white">Participants</h2>
+                            <p class="text-gray-400 text-sm mt-1">View and manage participants</p>
+                        </div>
+                        <div class="w-12 h-12 bg-blue-900/30 rounded-lg flex items-center justify-center">
+                            <i class='bx bx-group text-blue-400 text-xl'></i>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-3xl font-bold text-blue-500">156</span>
+                        <p class="text-gray-500 text-sm">total</p>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div id="requests" class="page-container">
-            <h1>Registration Requests</h1>
+        <!-- Requests Page -->
+        <div id="requests" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-2xl font-bold text-white">Registration Requests</h1>
+                <div class="flex space-x-4">
+                    <select id="status-filter" class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500">
+                        <option value="all">All Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
+                    <select id="event-status-filter" class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500">
+                        <option value="active">Active Events</option>
+                        <option value="all">All Events</option>
+                    </select>
+                </div>
+            </div>
+            
             <div class="requests-container">
-<div class="filters">
-    <select id="status-filter">
-        <option value="all">All Status</option>
-        <option value="pending">Pending</option>
-        <option value="approved">Approved</option>
-        <option value="rejected">Rejected</option>
-    </select>
-    <select id="event-status-filter">
-        <option value="active">Active Events Only</option>
-        <option value="all">All Events (Including Cancelled)</option>
-    </select>
-</div>
-                <div class="requests-list" id="requests-list">
-                    <!-- Requests will be loaded here -->
+                <div class="requests-list space-y-4" id="requests-list">
+                    <!-- Sample request item -->
+                    <div class="bg-black border border-gray-800 rounded-lg p-5 hover:border-blue-500/50 transition-colors">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-lg font-semibold text-white">John Doe</h3>
+                                <p class="text-gray-400 text-sm">Student #: S123456</p>
+                                <p class="text-gray-400 text-sm">Email: john@example.com</p>
+                                <p class="text-gray-400 text-sm">Event: Tech Conference 2025</p>
+                            </div>
+                            <span class="px-3 py-1 bg-yellow-900/30 text-yellow-400 border border-yellow-800 rounded-full text-sm font-medium">
+                                PENDING
+                            </span>
+                        </div>
+                        <div class="flex space-x-3">
+                            <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
+                                Approve
+                            </button>
+                            <button class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors">
+                                View Documents
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-<div id="events" class="page-container">
-    <h1>Events Management</h1>
-    <div class="events-management">
-        <div class="create-event-section">
-            <h2>Create New Event</h2>
-            <form id="create-event-form">
-                <div class="form-group">
-                    <label for="event-title">Event Title:</label>
-                    <input type="text" id="event-title" name="title" required>
+        <!-- Events Page -->
+        <div id="events" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
+            <h1 class="text-2xl font-bold text-white mb-6">Events Management</h1>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Create Event Form -->
+                <div class="bg-black border border-gray-800 rounded-xl p-6">
+                    <h2 class="text-xl font-semibold text-white mb-6">Create New Event</h2>
+                    <form id="create-event-form" class="space-y-5">
+                        <div>
+                            <label class="block text-gray-300 mb-2">Event Title</label>
+                            <input type="text" id="event-title" required 
+                                   class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-gray-300 mb-2">Description</label>
+                            <textarea id="event-description" rows="4" required 
+                                      class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"></textarea>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-gray-300 mb-2">Date</label>
+                                <input type="date" id="event-date" required 
+                                       class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-gray-300 mb-2">Location</label>
+                                <input type="text" id="event-location" required 
+                                       class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                            </div>
+                        </div>
+                        <button type="submit" 
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                            Create Event
+                        </button>
+                    </form>
                 </div>
-                <div class="form-group">
-                    <label for="event-description">Description:</label>
-                    <textarea id="event-description" name="description" rows="4" required></textarea>
+                
+                <!-- Existing Events -->
+                <div class="bg-black border border-gray-800 rounded-xl p-6">
+                    <h2 class="text-xl font-semibold text-white mb-6">Existing Events</h2>
+                    <div class="space-y-4" id="admin-events-list">
+                        <!-- Sample event card -->
+                        <div class="bg-gray-900 border border-gray-800 rounded-lg p-5 hover:border-blue-500/30 transition-colors">
+                            <div class="flex justify-between items-start mb-3">
+                                <h3 class="text-lg font-semibold text-white">Tech Conference 2025</h3>
+                                <span class="px-3 py-1 bg-green-900/30 text-green-400 border border-green-800 rounded-full text-xs font-medium">
+                                    ACTIVE
+                                </span>
+                            </div>
+                            <p class="text-gray-400 text-sm mb-3">Annual technology conference featuring industry experts...</p>
+                            <div class="flex justify-between text-gray-500 text-sm mb-4">
+                                <span>June 15, 2025</span>
+                                <span>Convention Center</span>
+                            </div>
+                            <div class="flex space-x-3">
+                                <button class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">
+                                    Edit
+                                </button>
+                                <button class="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="event-date">Date:</label>
-                    <input type="date" id="event-date" name="date" required>
-                </div>
-                <div class="form-group">
-                    <label for="event-location">Location:</label>
-                    <input type="text" id="event-location" name="location" required>
-                </div>
-                <button type="submit" class="btn btn-primary">Create Event</button>
-            </form>
-        </div>
-        
-        <div class="existing-events-section">
-            <h2>Existing Events</h2>
-            <div class="events-list" id="admin-events-list">
-                <!-- Events will be loaded here -->
             </div>
+        </div>
+
+        <!-- Other pages (simplified) -->
+<div id="participants-page" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-white">Participants Management</h1>
+        <div class="flex space-x-4">
+            <select id="participants-event-filter" class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500">
+                <option value="all">All Events</option>
+                <!-- Events will be loaded here dynamically -->
+            </select>
+            <input type="text" id="participants-search" placeholder="Search participants..." 
+                   class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500 w-64">
+        </div>
+    </div>
+    
+<!-- Loading State -->
+<div id="participants-loading" class="hidden">
+    <div class="flex items-center justify-center h-64">
+        <div class="text-center">
+            <i class='bx bx-loader-circle bx-spin text-4xl text-blue-500 mb-2'></i>
+            <p class="text-gray-400">Loading participants...</p>
         </div>
     </div>
 </div>
 
-        <div id="participants-page" class="page-container">
-            <h1>Participants Management</h1>
-            <p>Participants management content goes here...</p>
+<!-- Participants Content -->
+<div id="participants-content" class="hidden">
+    <!-- Content will be loaded dynamically by JavaScript -->
+</div>
+
+<!-- No Participants Message -->
+<div id="no-participants" class="hidden text-center py-10">
+    <i class='bx bx-user-x text-4xl text-gray-500 mb-3'></i>
+    <p class="text-gray-400">No approved participants found</p>
+    <p class="text-gray-500 text-sm">Participants will appear here once registrations are approved</p>
+</div>
+
+        <div id="bus" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
+            <h1 class="text-2xl font-bold text-white mb-6">Bus Assignment</h1>
+            <p class="text-gray-400">Bus assignment content goes here...</p>
         </div>
 
-        <div id="bus" class="page-container">
-            <h1>Bus Assignment</h1>
-            <p>Bus assignment content goes here...</p>
+        <div id="announcement" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
+            <h1 class="text-2xl font-bold text-white mb-6">Announcements</h1>
+            <p class="text-gray-400">Announcements content goes here...</p>
         </div>
 
-        <div id="announcement" class="page-container">
-            <h1>Announcements</h1>
-            <p>Announcements content goes here...</p>
-        </div>
-
-        <div id="certificate" class="page-container">
-            <h1>E-Certificates</h1>
-            <p>E-Certificates content goes here...</p>
+        <div id="certificate" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
+            <h1 class="text-2xl font-bold text-white mb-6">E-Certificates</h1>
+            <p class="text-gray-400">E-Certificates content goes here...</p>
         </div>
     </main>
-    <!-- File Viewing Modal -->
-<div id="file-modal" class="file-modal">
-    <div class="file-modal-content">
-        <div class="file-header">
-            <h3>Uploaded Documents</h3>
-            <span class="close" id="close-file-modal">&times;</span>
-        </div>
-        <div class="file-preview-container" id="file-preview-container">
-            <!-- File previews will be loaded here -->
-        </div>
-        <div class="file-actions">
-            <button class="btn btn-download" id="download-all-btn">
-                <i class='bx bx-download'></i> Download All
+<!-- File Viewer Modal -->
+<div id="file-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-900 border border-gray-800 rounded-xl w-11/12 max-w-4xl max-h-[90vh] overflow-auto">
+        <div class="sticky top-0 bg-gray-900 border-b border-gray-800 p-6 flex justify-between items-center z-10">
+            <h3 class="text-xl font-semibold text-white">Documents</h3>
+            <button id="close-file-modal" class="text-gray-400 hover:text-white text-2xl">
+                <i class='bx bx-x'></i>
             </button>
-            <button class="btn btn-secondary" id="close-modal-btn">Close</button>
+        </div>
+        
+        <div class="p-6">
+            <div id="file-preview-container" class="space-y-6">
+                <!-- File previews will be loaded here -->
+            </div>
+            
+            <div class="mt-8 pt-6 border-t border-gray-800 flex justify-between">
+                <button id="close-modal-btn" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors">
+                    Close
+                </button>
+                <button id="download-all-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                    <i class='bx bx-download mr-2'></i> Download All Files
+                </button>
+            </div>
         </div>
     </div>
 </div>
-<div id="edit-event-modal" class="edit-event-modal">
-    <div class="edit-event-modal-content">
-        <span class="close" id="close-edit-modal">&times;</span>
-        <h2>Edit Event</h2>
-        <form id="edit-event-form">
-            <input type="hidden" id="edit-event-id">
-            <div class="form-group">
-                <label for="edit-event-title">Event Title:</label>
-                <input type="text" id="edit-event-title" name="title" required>
-            </div>
-            <div class="form-group">
-                <label for="edit-event-description">Description:</label>
-                <textarea id="edit-event-description" name="description" rows="4" required></textarea>
-            </div>
-            <div class="form-group">
-                <label for="edit-event-date">Date:</label>
-                <input type="date" id="edit-event-date" name="date" required>
-            </div>
-            <div class="form-group">
-                <label for="edit-event-location">Location:</label>
-                <input type="text" id="edit-event-location" name="location" required>
-            </div>
-            <div class="form-group">
-                <label for="edit-event-status">Status:</label>
-                <select id="edit-event-status" name="status">
-                    <option value="active">Active</option>
-                    <option value="cancelled">Cancelled</option>
-                    <option value="completed">Completed</option>
-                </select>
-            </div>
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Save Changes</button>
-                <button type="button" class="btn btn-secondary" id="cancel-edit">Cancel</button>
-            </div>
-        </form>
+
+<!-- Edit Event Modal -->
+<div id="edit-event-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-900 border border-gray-800 rounded-xl w-11/12 max-w-2xl">
+        <div class="sticky top-0 bg-gray-900 border-b border-gray-800 p-6 flex justify-between items-center z-10">
+            <h3 class="text-xl font-semibold text-white">Edit Event</h3>
+            <button id="close-edit-modal" class="text-gray-400 hover:text-white text-2xl">
+                <i class='bx bx-x'></i>
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <form id="edit-event-form" class="space-y-5">
+                <input type="hidden" id="edit-event-id">
+                
+                <div>
+                    <label class="block text-gray-300 mb-2">Event Title</label>
+                    <input type="text" id="edit-event-title" required 
+                           class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-gray-300 mb-2">Description</label>
+                    <textarea id="edit-event-description" rows="4" required 
+                              class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"></textarea>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-300 mb-2">Date</label>
+                        <input type="date" id="edit-event-date" required 
+                               class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-300 mb-2">Location</label>
+                        <input type="text" id="edit-event-location" required 
+                               class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gray-300 mb-2">Status</label>
+                    <select id="edit-event-status" 
+                            class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                        <option value="active">Active</option>
+                        <option value="cancelled">Cancelled</option>
+                        <option value="completed">Completed</option>
+                        <option value="upcoming">Upcoming</option>
+                    </select>
+                </div>
+                
+                <div class="flex space-x-4 pt-4">
+                    <button type="submit" 
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Update Event
+                    </button>
+                    <button type="button" id="cancel-edit" 
+                            class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
     <script src="/adminpage.js"></script>
 </body>
-
 </html>

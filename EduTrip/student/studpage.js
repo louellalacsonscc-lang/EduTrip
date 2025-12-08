@@ -1,13 +1,4 @@
-const body = document.querySelector("body");
-const sidebar = body.querySelector(".sidebar");
-const toggle = body.querySelector(".toggle");
-
-// Toggle sidebar
-toggle.addEventListener("click", () => {
-    sidebar.classList.toggle("close");
-});
-
-// Global user variable
+// studpage.js - COMPLETE FIXED VERSION
 let currentUser = null;
 
 // Check authentication on page load
@@ -29,35 +20,111 @@ document.addEventListener('DOMContentLoaded', function() {
     
     currentUser = user;
     console.log('Student logged in:', user.name);
-    loadNotifications(); // Load notifications on startup
+    
+    // Initialize sidebar toggle
+    initSidebarToggle();
+    
+    // Initialize page
     initializePage();
+    
+    // Load initial data
+    loadNotifications();
 });
+
+// Clean sidebar toggle - keeps everything in place
+function initSidebarToggle() {
+    const toggle = document.querySelector('.toggle');
+    const sidebar = document.querySelector('.sidebar');
+    const headerText = document.querySelector('.header-text');
+    
+    if (toggle && sidebar) {
+        toggle.addEventListener('click', () => {
+            const isClosing = sidebar.classList.contains('w-64');
+            
+            if (isClosing) {
+                // Close sidebar
+                sidebar.classList.remove('w-64');
+                sidebar.classList.add('w-20');
+                document.querySelector('main')?.classList.remove('ml-64');
+                document.querySelector('main')?.classList.add('ml-20');
+                
+                // Hide header text (logo stays visible naturally)
+                if (headerText) headerText.classList.add('hidden');
+                
+                // Hide menu text but keep everything else in place
+                document.querySelectorAll('.sidebar-item .text').forEach(text => {
+                    text.classList.add('opacity-0', 'w-0', 'overflow-hidden');
+                });
+                
+                // Keep notification badge in place but hide text
+                document.querySelectorAll('.notification-badge').forEach(badge => {
+                    badge.classList.add('absolute', 'right-2');
+                });
+                
+                // Update toggle icon
+                toggle.classList.remove('bx-chevron-left');
+                toggle.classList.add('bx-chevron-right');
+                
+            } else {
+                // Open sidebar
+                sidebar.classList.remove('w-20');
+                sidebar.classList.add('w-64');
+                document.querySelector('main')?.classList.remove('ml-20');
+                document.querySelector('main')?.classList.add('ml-64');
+                
+                // Show header text
+                if (headerText) headerText.classList.remove('hidden');
+                
+                // Show menu text
+                document.querySelectorAll('.sidebar-item .text').forEach(text => {
+                    text.classList.remove('opacity-0', 'w-0', 'overflow-hidden');
+                });
+                
+                // Restore notification badge
+                document.querySelectorAll('.notification-badge').forEach(badge => {
+                    badge.classList.remove('absolute', 'right-2');
+                });
+                
+                // Update toggle icon
+                toggle.classList.remove('bx-chevron-right');
+                toggle.classList.add('bx-chevron-left');
+            }
+        });
+    }
+}
 
 function initializePage() {
     // Navigation functionality
-    const navLinks = document.querySelectorAll('.nav-link a');
+    const navLinks = document.querySelectorAll('.sidebar-item');
     const pages = document.querySelectorAll('.page-container');
 
     // Initialize profile as active
-    document.getElementById('profile').classList.add('active');
+    const profilePage = document.getElementById('profile');
+    if (profilePage) {
+        profilePage.classList.remove('hidden');
+        document.querySelectorAll('.page-container').forEach(p => {
+            if (p.id !== 'profile') p.classList.add('hidden');
+        });
+    }
+    
     loadUserProfile();
 
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             
-            // Remove active class from all links and pages
-            navLinks.forEach(l => l.classList.remove('active'));
-            pages.forEach(page => page.classList.remove('active'));
+            // Remove active class from all
+            navLinks.forEach(l => l.classList.remove('active', 'bg-blue-600'));
+            pages.forEach(page => page.classList.add('hidden'));
             
-            // Add active class to clicked link
-            link.classList.add('active');
+            // Add active class to clicked
+            link.classList.add('active', 'bg-blue-600');
             
             // Show corresponding page
             const pageId = link.getAttribute('data-page');
-            const targetPage = document.getElementById(pageId);
+            const targetPage = document.getElementById(pageId === 'participants' ? 'participants-page' : pageId);
             if (targetPage) {
-                targetPage.classList.add('active');
+                targetPage.classList.remove('hidden');
                 
                 // Load data based on page
                 switch(pageId) {
@@ -80,56 +147,62 @@ function initializePage() {
 
     // Modal functionality
     const modal = document.getElementById('registration-modal');
-    const closeBtn = document.querySelector('.close');
-    const cancelBtn = document.getElementById('cancel-registration');
+    if (modal) {
+        const closeBtn = modal.querySelector('.text-2xl');
+        const cancelBtn = modal.querySelector('button[type="button"]');
 
-    closeBtn.addEventListener('click', () => {
-        modal.style.display = 'none';
-    });
-
-    cancelBtn.addEventListener('click', () => {
-        modal.style.display = 'none';
-    });
-
-    window.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.style.display = 'none';
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                modal.classList.add('hidden');
+            });
         }
-    });
 
-    startNotificationPolling();
-    
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                modal.classList.add('hidden');
+            });
+        }
+
+        // Close modal when clicking outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+    }
+
     // Handle registration form submission
-    document.getElementById('registration-form').addEventListener('submit', handleRegistrationSubmit);
-}
-
-// Add real-time notification polling
-function startNotificationPolling() {
-    if (!currentUser || !currentUser.id) return;
-    
-    // Check for new notifications every 30 seconds
-    setInterval(() => {
-        loadNotifications();
-    }, 30000);
+    const registrationForm = document.getElementById('registration-form');
+    if (registrationForm) {
+        registrationForm.addEventListener('submit', handleRegistrationSubmit);
+    }
 }
 
 // Load user profile
 function loadUserProfile() {
     if (currentUser) {
-        document.getElementById('user-name').textContent = currentUser.name || 'Not available';
-        document.getElementById('user-student-number').textContent = currentUser.student_number || 'Not provided';
-        document.getElementById('user-email').textContent = currentUser.email || 'Not available';
+        const nameEl = document.getElementById('user-name');
+        const studentNumEl = document.getElementById('user-student-number');
+        const emailEl = document.getElementById('user-email');
+        
+        if (nameEl) nameEl.textContent = currentUser.name || 'Not available';
+        if (studentNumEl) studentNumEl.textContent = currentUser.student_number || 'Not provided';
+        if (emailEl) emailEl.textContent = currentUser.email || 'Not available';
     }
 }
 
-// Load events
+// Load events - UPDATED for Tailwind
 async function loadEvents() {
     try {
         const eventsList = document.getElementById('events-list');
+        if (!eventsList) return;
+        
         eventsList.innerHTML = `
-            <div class="no-data">
-                <i class='bx bx-loader-circle bx-spin'></i>
-                <p>Loading events...</p>
+            <div class="flex items-center justify-center h-64">
+                <div class="text-center">
+                    <i class='bx bx-loader-circle bx-spin text-4xl text-blue-500 mb-2'></i>
+                    <p class="text-gray-400">Loading events...</p>
+                </div>
             </div>
         `;
 
@@ -143,24 +216,37 @@ async function loadEvents() {
         
         if (events.length === 0) {
             eventsList.innerHTML = `
-                <div class="no-data">
-                    <i class='bx bx-calendar-x'></i>
-                    <p>No events available at the moment</p>
-                    <p>Check back later for upcoming events</p>
+                <div class="text-center py-10">
+                    <i class='bx bx-calendar-x text-4xl text-gray-500 mb-3'></i>
+                    <p class="text-gray-400">No events available at the moment</p>
+                    <p class="text-gray-500 text-sm">Check back later for upcoming events</p>
                 </div>
             `;
             return;
         }
         
+        // Create event cards with Tailwind classes
         eventsList.innerHTML = events.map(event => `
-            <div class="event-card">
-                <h3>${event.title || 'Untitled Event'}</h3>
-                <p>${event.description || 'No description available for this event.'}</p>
-                <div class="event-meta">
-                    <span><i class='bx bx-calendar'></i> ${event.date ? new Date(event.date).toLocaleDateString() : 'Date TBA'}</span>
-                    <span><i class='bx bx-map'></i> ${event.location || 'Location TBA'}</span>
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-blue-500/30 transition-all duration-300 hover:shadow-lg">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-lg font-semibold text-white">${event.title || 'Untitled Event'}</h3>
+                    <span class="px-2 py-1 bg-blue-900/30 text-blue-400 border border-blue-800 rounded text-xs font-medium">
+                        Upcoming
+                    </span>
                 </div>
-                <button class="btn btn-primary" onclick="openRegistrationModal(${event.id})">
+                <p class="text-gray-400 text-sm mb-4 line-clamp-2">${event.description || 'No description available for this event.'}</p>
+                <div class="space-y-3 mb-6">
+                    <div class="flex items-center text-gray-500 text-sm">
+                        <i class='bx bx-calendar mr-2'></i>
+                        ${event.date ? new Date(event.date).toLocaleDateString() : 'Date TBA'}
+                    </div>
+                    <div class="flex items-center text-gray-500 text-sm">
+                        <i class='bx bx-map mr-2'></i>
+                        ${event.location || 'Location TBA'}
+                    </div>
+                </div>
+                <button onclick="openRegistrationModal(${event.id})" 
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-300">
                     Register Now
                 </button>
             </div>
@@ -168,20 +254,24 @@ async function loadEvents() {
         
     } catch (error) {
         console.error('Error loading events:', error);
-        document.getElementById('events-list').innerHTML = `
-            <div class="no-data">
-                <i class='bx bx-error'></i>
-                <p>Error loading events</p>
-                <p>Please check your connection and try again</p>
-                <button class="btn btn-primary" onclick="loadEvents()" style="margin-top: 15px;">
-                    <i class='bx bx-refresh'></i> Try Again
-                </button>
-            </div>
-        `;
+        const eventsList = document.getElementById('events-list');
+        if (eventsList) {
+            eventsList.innerHTML = `
+                <div class="text-center py-10">
+                    <i class='bx bx-error text-4xl text-red-500 mb-3'></i>
+                    <p class="text-gray-400">Error loading events</p>
+                    <p class="text-gray-500 text-sm mb-4">Please check your connection and try again</p>
+                    <button onclick="loadEvents()" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                        <i class='bx bx-refresh mr-2'></i> Try Again
+                    </button>
+                </div>
+            `;
+        }
     }
 }
 
-// Open registration modal
+// Open registration modal - FIXED
 function openRegistrationModal(eventId) {
     if (!currentUser || !currentUser.id) {
         alert('Please login to register for events');
@@ -189,22 +279,83 @@ function openRegistrationModal(eventId) {
         return;
     }
     
-    document.getElementById('event-id').value = eventId;
-    document.getElementById('user-id').value = currentUser.id;
-    document.getElementById('registration-form').reset();
-    document.getElementById('registration-modal').style.display = 'block';
+    // Try multiple selectors to find the inputs
+    const eventIdInput = document.getElementById('event-id') || 
+                         document.querySelector('input[name="event_id"]') ||
+                         document.querySelector('[name="event_id"]');
+    
+    const userIdInput = document.getElementById('user-id') || 
+                       document.querySelector('input[name="user_id"]') ||
+                       document.querySelector('[name="user_id"]');
+    
+    const registrationForm = document.getElementById('registration-form');
+    const modal = document.getElementById('registration-modal');
+    
+    console.log('Opening modal for event:', eventId);
+    console.log('Found inputs:', { eventIdInput, userIdInput, registrationForm, modal });
+    
+    if (eventIdInput) {
+        eventIdInput.value = eventId;
+    } else {
+        // Create hidden input if it doesn't exist
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'event_id';
+        input.value = eventId;
+        if (registrationForm) {
+            registrationForm.appendChild(input);
+        }
+    }
+    
+    if (userIdInput) {
+        userIdInput.value = currentUser.id;
+    } else {
+        // Create hidden input if it doesn't exist
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'user_id';
+        input.value = currentUser.id;
+        if (registrationForm) {
+            registrationForm.appendChild(input);
+        }
+    }
+    
+    if (registrationForm) {
+        registrationForm.reset();
+        // Re-add the hidden values after reset
+        const eventInput = registrationForm.querySelector('[name="event_id"]');
+        const userInput = registrationForm.querySelector('[name="user_id"]');
+        if (eventInput) eventInput.value = eventId;
+        if (userInput) userInput.value = currentUser.id;
+    }
+    
+    if (modal) {
+        modal.classList.remove('hidden');
+    } else {
+        console.error('Registration modal not found!');
+    }
 }
 
-// Handle registration form submission
+// Handle registration form submission - FIXED
 async function handleRegistrationSubmit(e) {
     e.preventDefault();
     
-    const formData = new FormData(e.target);
-    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
     
     try {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="bx bx-loader-circle bx-spin"></i> Submitting...';
+        submitBtn.innerHTML = '<i class="bx bx-loader-circle bx-spin mr-2"></i> Submitting...';
+        
+        const formData = new FormData(form);
+        
+        // Log form data for debugging
+        console.log('Form data:', {
+            event_id: formData.get('event_id'),
+            user_id: formData.get('user_id'),
+            registration_form: formData.get('registration_form')?.name,
+            waiver_form: formData.get('waiver_form')?.name
+        });
         
         const response = await fetch('/api/registration-requests', {
             method: 'POST',
@@ -215,10 +366,11 @@ async function handleRegistrationSubmit(e) {
         
         if (result.success) {
             alert('✅ Registration submitted successfully! Your request is pending approval.');
-            document.getElementById('registration-modal').style.display = 'none';
+            const modal = document.getElementById('registration-modal');
+            if (modal) modal.classList.add('hidden');
             
             // Switch to My Registrations page
-            const registrationsLink = document.querySelector('a[data-page="my-registrations"]');
+            const registrationsLink = document.querySelector('[data-page="my-registrations"]');
             if (registrationsLink) {
                 registrationsLink.click();
             }
@@ -234,7 +386,7 @@ async function handleRegistrationSubmit(e) {
     }
 }
 
-// Load notifications
+// Load notifications - UPDATED for Tailwind
 async function loadNotifications() {
     if (!currentUser || !currentUser.id) return;
     
@@ -244,21 +396,19 @@ async function loadNotifications() {
         
         const notificationPage = document.getElementById('notification');
         if (notificationPage) {
-            const notificationsList = notificationPage.querySelector('.notifications-list') || 
-                                     (() => {
-                                         const div = document.createElement('div');
-                                         div.className = 'notifications-list';
-                                         notificationPage.innerHTML = '<h1>Notifications</h1>';
-                                         notificationPage.appendChild(div);
-                                         return div;
-                                     })();
+            let notificationsList = notificationPage.querySelector('.notifications-list');
+            if (!notificationsList) {
+                notificationsList = document.createElement('div');
+                notificationsList.className = 'notifications-list space-y-4';
+                notificationPage.appendChild(notificationsList);
+            }
             
             if (notifications.length === 0) {
                 notificationsList.innerHTML = `
-                    <div class="no-data">
-                        <i class='bx bx-bell'></i>
-                        <p>No notifications</p>
-                        <p>You'll see important updates here</p>
+                    <div class="text-center py-10">
+                        <i class='bx bx-bell text-4xl text-gray-500 mb-3'></i>
+                        <p class="text-gray-400">No notifications</p>
+                        <p class="text-gray-500 text-sm">You'll see important updates here</p>
                     </div>
                 `;
                 return;
@@ -270,23 +420,27 @@ async function loadNotifications() {
             if (badge) {
                 if (unreadCount > 0) {
                     badge.textContent = unreadCount;
-                    badge.style.display = 'flex';
+                    badge.classList.remove('hidden');
                 } else {
-                    badge.style.display = 'none';
+                    badge.classList.add('hidden');
                 }
             }
             
             notificationsList.innerHTML = notifications.map(notification => `
-                <div class="notification-item ${notification.is_read ? '' : 'unread'}" 
+                <div class="bg-gray-900 border ${notification.is_read ? 'border-gray-800' : 'border-blue-800/50'} rounded-xl p-5 cursor-pointer hover:bg-gray-800/50 transition-colors"
                      onclick="markNotificationAsRead(${notification.id})">
-                    <div class="notification-header">
-                        <h3 class="notification-title">${notification.title}</h3>
-                        <span class="notification-time">
+                    <div class="flex justify-between items-start mb-3">
+                        <h3 class="text-lg font-semibold text-white">${notification.title}</h3>
+                        <span class="text-gray-500 text-sm">
                             ${new Date(notification.created_at).toLocaleString()}
                         </span>
                     </div>
-                    <p class="notification-message">${notification.message}</p>
-                    <span class="notification-type type-${notification.type || 'info'}">
+                    <p class="text-gray-400">${notification.message}</p>
+                    <span class="inline-block mt-2 px-2 py-1 text-xs font-medium rounded ${
+                        notification.type === 'warning' ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-800' :
+                        notification.type === 'success' ? 'bg-green-900/30 text-green-400 border border-green-800' :
+                        'bg-blue-900/30 text-blue-400 border border-blue-800'
+                    }">
                         ${notification.type || 'info'}
                     </span>
                 </div>
@@ -301,33 +455,37 @@ async function markNotificationAsRead(notificationId) {
     try {
         await fetch(`/api/notifications/${notificationId}/read`, { method: 'PUT' });
         // Reload notifications
-        if (document.getElementById('notification').classList.contains('active')) {
-            loadNotifications();
-        }
+        loadNotifications();
     } catch (error) {
         console.error('Error marking notification as read:', error);
     }
 }
 
-// Load user's registrations
-// Load user's registrations - UPDATED VERSION
+// Load user's registrations - UPDATED for Tailwind
 async function loadMyRegistrations() {
     if (!currentUser || !currentUser.id) {
-        document.getElementById('registrations-list').innerHTML = `
-            <div class="no-data">
-                <i class='bx bx-user-x'></i>
-                <p>Please login to view your registrations</p>
-            </div>
-        `;
+        const registrationsList = document.getElementById('registrations-list');
+        if (registrationsList) {
+            registrationsList.innerHTML = `
+                <div class="text-center py-10">
+                    <i class='bx bx-user-x text-4xl text-gray-500 mb-3'></i>
+                    <p class="text-gray-400">Please login to view your registrations</p>
+                </div>
+            `;
+        }
         return;
     }
     
     try {
         const registrationsList = document.getElementById('registrations-list');
+        if (!registrationsList) return;
+        
         registrationsList.innerHTML = `
-            <div class="no-data">
-                <i class='bx bx-loader-circle bx-spin'></i>
-                <p>Loading your registrations...</p>
+            <div class="flex items-center justify-center h-64">
+                <div class="text-center">
+                    <i class='bx bx-loader-circle bx-spin text-4xl text-blue-500 mb-2'></i>
+                    <p class="text-gray-400">Loading your registrations...</p>
+                </div>
             </div>
         `;
 
@@ -341,12 +499,13 @@ async function loadMyRegistrations() {
         
         if (registrations.length === 0) {
             registrationsList.innerHTML = `
-                <div class="no-data">
-                    <i class='bx bx-inbox'></i>
-                    <p>No active registration requests found</p>
-                    <p>Register for events to see them here</p>
-                    <button class="btn btn-primary" onclick="document.querySelector('a[data-page=\\'events\\']').click()" style="margin-top: 15px;">
-                        <i class='bx bx-calendar'></i> Browse Events
+                <div class="text-center py-10">
+                    <i class='bx bx-inbox text-4xl text-gray-500 mb-3'></i>
+                    <p class="text-gray-400">No active registration requests found</p>
+                    <p class="text-gray-500 text-sm mb-4">Register for events to see them here</p>
+                    <button onclick="document.querySelector('[data-page=\\'events\\']')?.click()" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                        <i class='bx bx-calendar mr-2'></i> Browse Events
                     </button>
                 </div>
             `;
@@ -354,52 +513,67 @@ async function loadMyRegistrations() {
         }
         
         registrationsList.innerHTML = registrations.map(reg => {
-            // Check if event is cancelled (even though API filters them out, this is a safety check)
+            // Check if event is cancelled
             if (reg.event_status === 'cancelled') {
                 return `
-                    <div class="registration-item cancelled">
-                        <div class="registration-header">
-                            <div class="registration-info">
-                                <h3>${reg.event_title || 'Unknown Event'} <span class="cancelled-badge">CANCELLED</span></h3>
-                                <p><strong>Date:</strong> ${reg.event_date ? new Date(reg.event_date).toLocaleDateString() : 'TBA'}</p>
-                                <p><strong>Location:</strong> ${reg.event_location || 'TBA'}</p>
-                                <p><strong>Submitted:</strong> ${reg.created_at ? new Date(reg.created_at).toLocaleString() : 'Unknown'}</p>
-                                <p class="cancelled-notice"><i class='bx bx-error'></i> This event has been cancelled. Your registration is no longer valid.</p>
-                            </div>
-                            <div class="registration-status status-cancelled">
-                                EVENT CANCELLED
+                    <div class="bg-gray-900 border border-red-800/50 rounded-xl p-6 opacity-80">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-lg font-semibold text-white">${reg.event_title || 'Unknown Event'} 
+                                    <span class="ml-2 px-2 py-1 bg-red-900/30 text-red-400 border border-red-800 rounded text-xs font-medium">
+                                        CANCELLED
+                                    </span>
+                                </h3>
+                                <div class="flex items-center space-x-4 text-gray-400 text-sm mt-2">
+                                    <span>${reg.event_date ? new Date(reg.event_date).toLocaleDateString() : 'TBA'}</span>
+                                    <span>${reg.event_location || 'TBA'}</span>
+                                </div>
                             </div>
                         </div>
+                        <p class="text-red-400 text-sm bg-red-900/20 border border-red-800/30 rounded-lg p-3 mb-4">
+                            <i class='bx bx-error mr-2'></i>
+                            This event has been cancelled. Your registration is no longer valid.
+                        </p>
                     </div>
                 `;
             }
             
             return `
-                <div class="registration-item">
-                    <div class="registration-header">
-                        <div class="registration-info">
-                            <h3>${reg.event_title || 'Unknown Event'}</h3>
-                            <p><strong>Date:</strong> ${reg.event_date ? new Date(reg.event_date).toLocaleDateString() : 'TBA'}</p>
-                            <p><strong>Location:</strong> ${reg.event_location || 'TBA'}</p>
-                            <p><strong>Submitted:</strong> ${reg.created_at ? new Date(reg.created_at).toLocaleString() : 'Unknown'}</p>
-                            ${reg.registration_form ? `
-                                <p><strong>Registration Form:</strong> 
-                                    <a href="/uploads/${reg.registration_form}" target="_blank" title="View uploaded file">
-                                        <i class='bx bx-link-external'></i> View File
-                                    </a>
-                                </p>
-                            ` : ''}
-                            ${reg.waiver_form ? `
-                                <p><strong>Waiver Form:</strong> 
-                                    <a href="/uploads/${reg.waiver_form}" target="_blank" title="View uploaded file">
-                                        <i class='bx bx-link-external'></i> View File
-                                    </a>
-                                </p>
-                            ` : ''}
+                <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-blue-500/30 transition-colors">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-lg font-semibold text-white">${reg.event_title || 'Unknown Event'}</h3>
+                            <div class="flex items-center space-x-4 text-gray-400 text-sm mt-2">
+                                <span>${reg.event_date ? new Date(reg.event_date).toLocaleDateString() : 'TBA'}</span>
+                                <span>${reg.event_location || 'TBA'}</span>
+                            </div>
                         </div>
-                        <div class="registration-status status-${reg.status || 'pending'}">
+                        <span class="px-3 py-1 rounded-full text-sm font-medium ${
+                            reg.status === 'approved' ? 'bg-green-900/30 text-green-400 border border-green-800' :
+                            reg.status === 'rejected' ? 'bg-red-900/30 text-red-400 border border-red-800' :
+                            'bg-yellow-900/30 text-yellow-400 border border-yellow-800'
+                        }">
                             ${reg.status ? reg.status.toUpperCase() : 'PENDING'}
-                        </div>
+                        </span>
+                    </div>
+                    <div class="text-gray-400 text-sm mb-4">
+                        <p><strong>Submitted:</strong> ${reg.created_at ? new Date(reg.created_at).toLocaleString() : 'Unknown'}</p>
+                        ${reg.registration_form ? `
+                            <p class="mt-2">
+                                <a href="/uploads/${reg.registration_form}" target="_blank" 
+                                   class="text-blue-400 hover:text-blue-300 inline-flex items-center">
+                                    <i class='bx bx-link-external mr-1'></i> View Registration Form
+                                </a>
+                            </p>
+                        ` : ''}
+                        ${reg.waiver_form ? `
+                            <p class="mt-1">
+                                <a href="/uploads/${reg.waiver_form}" target="_blank" 
+                                   class="text-blue-400 hover:text-blue-300 inline-flex items-center">
+                                    <i class='bx bx-link-external mr-1'></i> View Waiver Form
+                                </a>
+                            </p>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -407,91 +581,21 @@ async function loadMyRegistrations() {
         
     } catch (error) {
         console.error('Error loading registrations:', error);
-        document.getElementById('registrations-list').innerHTML = `
-            <div class="no-data">
-                <i class='bx bx-error'></i>
-                <p>Error loading registrations</p>
-                <p>Please try again later</p>
-                <button class="btn btn-primary" onclick="loadMyRegistrations()" style="margin-top: 15px;">
-                    <i class='bx bx-refresh'></i> Try Again
-                </button>
-            </div>
-        `;
-    }
-}
-// After the existing registrationsList.innerHTML = ... mapping code:
-const registrationsListElement = document.getElementById('registrations-list');
-if (registrationsListElement) {
-    registrationsListElement.innerHTML += `
-        <div style="text-align: center; margin-top: 20px;">
-            <button class="btn btn-secondary" onclick="loadRegistrationHistory()">
-                <i class='bx bx-history'></i> View Registration History (Including Cancelled)
-            </button>
-        </div>
-    `;
-}
-// Add function to load registration history
-async function loadRegistrationHistory() {
-    if (!currentUser || !currentUser.id) return;
-    
-    try {
-        const response = await fetch(`/api/user/all-registration-requests?user_id=${currentUser.id}`);
-        const allRegistrations = await response.json();
-        
-        // Filter out active registrations (already shown)
-        const cancelledRegistrations = allRegistrations.filter(reg => reg.event_status === 'cancelled');
-        
-        if (cancelledRegistrations.length === 0) {
-            alert('No cancelled event registrations found.');
-            return;
+        const registrationsList = document.getElementById('registrations-list');
+        if (registrationsList) {
+            registrationsList.innerHTML = `
+                <div class="text-center py-10">
+                    <i class='bx bx-error text-4xl text-red-500 mb-3'></i>
+                    <p class="text-gray-400">Error loading registrations</p>
+                    <p class="text-gray-500 text-sm mb-4">Please try again later</p>
+                    <button onclick="loadMyRegistrations()" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                        <i class='bx bx-refresh mr-2'></i> Try Again
+                    </button>
+                </div>
+            `;
         }
-        
-        // Show cancelled registrations in a modal
-        showCancelledRegistrationsModal(cancelledRegistrations);
-        
-    } catch (error) {
-        console.error('Error loading registration history:', error);
-        alert('Error loading registration history');
     }
-}
-function showCancelledRegistrationsModal(cancelledRegistrations) {
-    const modalHTML = `
-        <div class="modal" id="history-modal">
-            <div class="modal-content">
-                <span class="close" onclick="document.getElementById('history-modal').style.display='none'">&times;</span>
-                <h2>Cancelled Event Registrations</h2>
-                <div class="cancelled-registrations-list">
-                    ${cancelledRegistrations.map(reg => `
-                        <div class="registration-item cancelled">
-                            <div class="registration-info">
-                                <h3>${reg.event_title}</h3>
-                                <p><strong>Date:</strong> ${reg.event_date ? new Date(reg.event_date).toLocaleDateString() : 'TBA'}</p>
-                                <p><strong>Location:</strong> ${reg.event_location || 'TBA'}</p>
-                                <p><strong>Submitted:</strong> ${new Date(reg.created_at).toLocaleString()}</p>
-                                <p><strong>Registration Status:</strong> ${reg.status.toUpperCase()}</p>
-                                <p class="cancelled-notice"><i class='bx bx-error'></i> This event has been cancelled.</p>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-                <div class="form-actions">
-                    <button class="btn btn-secondary" onclick="document.getElementById('history-modal').style.display='none'">Close</button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Remove existing modal if any
-    const existingModal = document.getElementById('history-modal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-    
-    // Add modal to page
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
-    // Show modal
-    document.getElementById('history-modal').style.display = 'block';
 }
 
 function logout() {

@@ -2,66 +2,241 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE-edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduTrip — Home</title>
-    <link rel="stylesheet" href="frontp.css">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Boxicons -->
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <title>EduTrip | Home</title>
+    <style>
+        /* Black theme with blue accents - matches other pages */
+        .black-bg {
+            background: #000000;
+        }
+        .glass-card {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* SLOWER, SMOOTHER TRANSITIONS */
+        .transition-slow-smooth {
+            transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Smooth and slower */
+        }
+        
+        /* Carousel positioning */
+        .carousel-track {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            height: 500px;
+            width: 100%;
+        }
+        
+        /* Card states with smooth transitions */
+        .card-left {
+            position: absolute;
+            left: 10%;
+            transform: scale(0.85);
+            opacity: 0.6;
+            z-index: 10;
+            transition: all 0.8s ease-in-out;
+        }
+        
+        .card-center {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%) scale(1.1);
+            opacity: 1;
+            z-index: 30;
+            box-shadow: 0 20px 60px rgba(59, 130, 246, 0.5);
+            border: 2px solid rgba(59, 130, 246, 0.8);
+            transition: all 0.8s ease-in-out;
+        }
+        
+        .card-right {
+            position: absolute;
+            right: 10%;
+            transform: scale(0.85);
+            opacity: 0.6;
+            z-index: 10;
+            transition: all 0.8s ease-in-out;
+        }
+        
+        .card-far-left {
+            position: absolute;
+            left: -15%;
+            transform: scale(0.7);
+            opacity: 0.3;
+            z-index: 5;
+            transition: all 0.8s ease-in-out;
+        }
+        
+        .card-far-right {
+            position: absolute;
+            right: -15%;
+            transform: scale(0.7);
+            opacity: 0.3;
+            z-index: 5;
+            transition: all 0.8s ease-in-out;
+        }
+        
+        .card-hidden {
+            opacity: 0;
+            transform: scale(0.6);
+            transition: all 0.8s ease-in-out;
+        }
+        
+        /* Card dimensions */
+        .card-base {
+            width: 300px;
+            min-height: 420px;
+            border-radius: 1rem;
+        }
+        
+        /* Center card is slightly larger */
+        .card-center-size {
+            width: 340px;
+            min-height: 480px;
+        }
+        
+        /* Hover effects */
+        .card-hover:hover {
+            transform: translateY(-5px);
+            transition: transform 0.3s ease;
+        }
+        
+        .arrow-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .arrow-hover:hover {
+            transform: scale(1.2);
+            color: #3b82f6;
+        }
+        
+        /* Gradient text */
+        .gradient-text {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* Pulse animation for active indicator */
+        @keyframes gentle-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .pulse-gentle {
+            animation: gentle-pulse 2s ease-in-out infinite;
+        }
+    </style>
 </head>
 
-<body>
-
+<body class="black-bg min-h-screen">
     <!-- NAVBAR -->
-    <nav class="navbar">
-        <div class="links">
-            <a href="#">ABOUT</a>
-            <a href="#">SERVICES</a>
-        </div>
-        <div class="auth-buttons">
-            <button class="btn small">SIGN IN</button>
-            <button class="btn small outline">SIGN OUT</button>
+    <nav class="navbar bg-black/90 backdrop-blur-md sticky top-0 z-50 border-b border-gray-800">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <!-- Logo -->
+            <div class="flex items-center space-x-2">
+                <img src="/img/logo.png.png" alt="EduTrip Logo" class="w-8 h-8">
+                <span class="text-xl font-bold gradient-text">EduTrip</span>
+            </div>
+            
+            <!-- Login Button -->
+            <div class="flex items-center space-x-4">
+                <a href="/login" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-300">
+                    Login / Register
+                </a>
+            </div>
         </div>
     </nav>
 
-    <!-- HERO SECTION -->
-    <section class="hero">
-        <h1>WELCOME TO EDUTRIP</h1>
-        <p class="short-desc">Your gateway to announcements, seminars, and educational tours.</p>
-    </section>
+    <!-- ANNOUNCEMENTS CAROUSEL SECTION -->
+    <main class="min-h-screen flex items-center justify-center px-4 py-8">
+        <div class="w-full max-w-6xl">
+            <h1 class="text-4xl md:text-5xl font-bold text-white text-center mb-12 gradient-text">
+                LATEST ANNOUNCEMENTS
+            </h1>
 
-    <!-- CAROUSEL TITLE -->
-    <h2 class="carousel-title" id="carouselTitle">NEW ANNOUNCEMENT</h2>
+            <!-- CAROUSEL -->
+            <div class="carousel-container">
+                <!-- Arrows -->
+                <div class="hidden md:flex">
+                    <button onclick="prevSlide()" class="arrow left arrow-hover absolute left-4 top-1/2 transform -translate-y-1/2 z-40 text-5xl text-gray-400 hover:text-blue-500 cursor-pointer p-2">
+                        <i class='bx bx-chevron-left'></i>
+                    </button>
+                    
+                    <button onclick="nextSlide()" class="arrow right arrow-hover absolute right-4 top-1/2 transform -translate-y-1/2 z-40 text-5xl text-gray-400 hover:text-blue-500 cursor-pointer p-2">
+                        <i class='bx bx-chevron-right'></i>
+                    </button>
+                </div>
 
-    <!-- CAROUSEL -->
-    <div class="carousel-container">
+                <!-- Carousel Cards Container -->
+                <div class="carousel-track" id="carouselTrack">
+                    <!-- Cards will be loaded dynamically here -->
+                </div>
 
-        <div class="arrow left" onclick="prevSlide()">&#8592;</div>
+                <!-- Mobile Navigation -->
+                <div class="flex md:hidden justify-center space-x-4 mt-8">
+                    <button onclick="prevSlide()" class="bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300">
+                        <i class='bx bx-chevron-left text-xl'></i>
+                    </button>
+                    <button onclick="nextSlide()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300">
+                        <i class='bx bx-chevron-right text-xl'></i>
+                    </button>
+                </div>
 
-        <div class="carousel">
-            <!-- LEFT CARD -->
-            <div class="card small" id="leftCard">
-                <img src="https://via.placeholder.com/250x150" class="card-img" id="leftImg">
-                <p class="card-title" id="leftTitle">Slide Title</p>
-                <p class="card-description" id="leftDesc">Slide description…</p>
-            </div>
+                <!-- Carousel Indicators -->
+                <div class="flex justify-center space-x-3 mt-8" id="carouselIndicators">
+                    <!-- Indicators will be loaded dynamically -->
+                </div>
 
-            <!-- CENTER CARD -->
-            <div class="card center" id="centerCard">
-                <img src="https://via.placeholder.com/350x200" class="card-img" id="centerImg">
-                <p class="card-title" id="centerTitle">Announcement</p>
-                <p class="card-description" id="centerDescription">Announcement description…</p>
-            </div>
+                <!-- Loading State -->
+                <div id="loadingState" class="text-center py-10">
+                    <div class="inline-block">
+                        <i class='bx bx-loader-circle bx-spin text-4xl text-blue-500 mb-4'></i>
+                        <p class="text-gray-400">Loading announcements...</p>
+                    </div>
+                </div>
 
-            <!-- RIGHT CARD -->
-            <div class="card small" id="rightCard">
-                <img src="https://via.placeholder.com/250x150" class="card-img" id="rightImg">
-                <p class="card-title" id="rightTitle">Slide Title</p>
-                <p class="card-description" id="rightDesc">Slide description…</p>
+                <!-- No Events State -->
+                <div id="noEventsState" class="text-center py-10 hidden">
+                    <div class="inline-block">
+                        <i class='bx bx-calendar-x text-4xl text-gray-500 mb-4'></i>
+                        <p class="text-gray-400">No events available yet</p>
+                        <p class="text-gray-500 text-sm">Check back later for announcements</p>
+                    </div>
+                </div>
             </div>
         </div>
+    </main>
 
-        <div class="arrow right" onclick="nextSlide()">&#8594;</div>
+    <!-- FOOTER -->
+    <footer class="bg-gray-900 py-8 px-4 border-t border-gray-800">
+        <div class="container mx-auto">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-6 md:mb-0">
+                    <div class="flex items-center space-x-2 mb-4">
+                        <img src="/img/logo.png.png" alt="EduTrip Logo" class="w-10 h-10">
+                        <span class="text-2xl font-bold gradient-text">EduTrip</span>
+                    </div>
+                    <p class="text-gray-400">Educational Trips & Events Platform</p>
+                </div>
+                <div class="text-center md:text-right">
+                    <p class="text-gray-500 text-sm">© 2025 EduTrip. All rights reserved.</p>
+                    <p class="text-gray-500 text-sm">Made with ❤️ for educational purposes</p>
+                </div>
+            </div>
+        </div>
+    </footer>
 
-    </div>
-
-<script src="frontp.js"></script>
+    <!-- JavaScript -->
+    <script src="/frontp/frontp.js"></script>
 </body>
 </html>
