@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <title>Verify Email - EduTrip</title>
+    <style>
+        .black-bg { background: #000000; }
+        .input-focus:focus { 
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3); 
+            border-color: #3b82f6; 
+        }
+    </style>
+</head>
+<body class="black-bg min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md">
+        <!-- Logo/Header -->
+        <div class="text-center mb-10">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-900 rounded-2xl mb-4 border border-gray-800">
+                <i class='bx bxs-envelope text-4xl text-blue-500'></i>
+            </div>
+            <h1 class="text-4xl font-bold text-white mb-2">Verify Email</h1>
+            <p class="text-gray-400">Check your email for verification code</p>
+        </div>
+
+        <!-- Verification Card -->
+        <div class="bg-gray-900 rounded-xl border border-gray-800 p-8">
+            <h2 class="text-2xl font-bold text-white mb-2">Enter Verification Code</h2>
+            <p class="text-gray-400 mb-6">
+                We've sent a 6-digit verification code to your email address.
+                Please enter it below to complete your registration.
+            </p>
+            
+            <form id="verification-form">
+                <div class="space-y-5">
+                    <div>
+                        <input type="hidden" id="user-id" value="">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Verification Code</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class='bx bx-key text-gray-500'></i>
+                            </div>
+                            <input type="text" id="verification-code" required maxlength="6"
+                                   class="pl-10 w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-600 input-focus transition-all text-center text-2xl tracking-widest"
+                                   placeholder="000000">
+                        </div>
+                    </div>
+                    
+                    <button type="submit" 
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300">
+                        <i class='bx bx-check-circle mr-2'></i>
+                        Verify Email
+                    </button>
+                    
+                    <div class="text-center">
+                        <p class="text-gray-500 text-sm">
+                            Didn't receive the code? 
+                            <button type="button" id="resend-code" class="text-blue-400 hover:text-blue-300">
+                                Resend Code
+                            </button>
+                        </p>
+                    </div>
+                </div>
+            </form>
+            
+            <div class="mt-6 p-4 bg-gray-800/50 rounded-lg">
+                <div class="flex items-start">
+                    <i class='bx bx-info-circle text-blue-400 mt-1 mr-2'></i>
+                    <div class="text-sm text-gray-400">
+                        <p class="font-medium text-gray-300 mb-1">Note:</p>
+                        <p>The verification code is valid for 24 hours. Check your spam folder if you don't see the email.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <p class="mt-8 text-center text-gray-600 text-sm">
+            © 2024 EduTrip. Educational platform for trips and events.
+        </p>
+    </div>
+
+    <script>
+        // Get user_id from URL or localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('user_id') || localStorage.getItem('verification_user_id');
+        
+        if (userId) {
+            document.getElementById('user-id').value = userId;
+            localStorage.setItem('verification_user_id', userId);
+        }
+        
+        // Handle form submission
+        document.getElementById('verification-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const user_id = document.getElementById('user-id').value;
+            const verification_code = document.getElementById('verification-code').value;
+            
+            if (!user_id || !verification_code || verification_code.length !== 6) {
+                alert('Please enter a valid 6-digit verification code');
+                return;
+            }
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="bx bx-loader-circle bx-spin mr-2"></i> Verifying...';
+            submitBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/verify-email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ user_id, verification_code })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Email verified successfully! You can now login.');
+                    localStorage.removeItem('verification_user_id');
+                    window.location.href = '/login';
+                } else {
+                    alert('❌ ' + (data.error || 'Verification failed'));
+                }
+            } catch (error) {
+                console.error('Verification error:', error);
+                alert('❌ Network error. Please try again.');
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+        
+        // Handle resend code
+        document.getElementById('resend-code').addEventListener('click', async () => {
+            const email = localStorage.getItem('verification_email');
+            if (!email) {
+                alert('Please register again to receive a new verification code');
+                window.location.href = '/';
+                return;
+            }
+            
+            const resendBtn = document.getElementById('resend-code');
+            const originalText = resendBtn.textContent;
+            resendBtn.textContent = 'Sending...';
+            resendBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/resend-verification', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ New verification code sent! Please check your email.');
+                } else {
+                    alert('❌ ' + (data.error || 'Failed to resend code'));
+                }
+            } catch (error) {
+                console.error('Resend error:', error);
+                alert('❌ Network error. Please try again.');
+            } finally {
+                resendBtn.textContent = originalText;
+                resendBtn.disabled = false;
+            }
+        });
+        
+        // Auto focus on code input
+        document.getElementById('verification-code').focus();
+    </script>
+</body>
+</html>

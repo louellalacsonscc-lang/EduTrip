@@ -4,6 +4,8 @@ const bcrypt = require('bcrypt');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const nodemailer = require('nodemailer');
+require('dotenv').config();
 
 const app = express();
 const PORT = 3000;
@@ -40,7 +42,68 @@ const upload = multer({
         }
     }
 });
+const transporter = nodemailer.createTransport({
+    service: 'gmail', // or use another service like Outlook, Yahoo, etc.
+    auth: {
+        user: process.env.EMAIL_USER || 'your-email@gmail.com',
+        pass: process.env.EMAIL_PASSWORD || 'your-app-password'
+    }
+});
+transporter.verify(function(error, success) {
+    if (error) {
+        console.log('❌ Email configuration error:', error);
+    } else {
+        console.log('✅ Email server is ready to send messages');
+    }
+});
+function generateVerificationCode() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
+async function sendVerificationEmail(email, verificationCode, userName) {
+    try {
+        const mailOptions = {
+            from: process.env.EMAIL_USER || 'edutrip@example.com',
+            to: email,
+            subject: 'Verify Your EduTrip Account',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <div style="background: #1f2937; padding: 20px; text-align: center;">
+                        <h1 style="color: #3b82f6; margin: 0;">EduTrip</h1>
+                        <p style="color: #9ca3af; margin: 5px 0;">Educational Trips & Events Platform</p>
+                    </div>
+                    <div style="padding: 30px; background: #111827; color: #e5e7eb;">
+                        <h2 style="color: white; margin-top: 0;">Email Verification Required</h2>
+                        <p>Hello ${userName},</p>
+                        <p>Thank you for registering with EduTrip! Please use the verification code below to complete your registration:</p>
+                        
+                        <div style="background: #1f2937; padding: 20px; margin: 30px 0; text-align: center; border-radius: 8px;">
+                            <div style="font-size: 32px; font-weight: bold; color: #3b82f6; letter-spacing: 10px;">
+                                ${verificationCode}
+                            </div>
+                            <p style="color: #9ca3af; margin-top: 10px;">This code will expire in 24 hours</p>
+                        </div>
+                        
+                        <p>If you didn't create an account with EduTrip, please ignore this email.</p>
+                        <p>Best regards,<br>The EduTrip Team</p>
+                    </div>
+                    <div style="background: #030712; padding: 20px; text-align: center; color: #6b7280; font-size: 12px;">
+                        <p>© 2024 EduTrip. Educational platform for trips and events.</p>
+                        <p>This is an automated email, please do not reply.</p>
+                    </div>
+                </div>
+            `,
+            text: `Hello ${userName},\n\nThank you for registering with EduTrip! Your verification code is: ${verificationCode}\n\nThis code will expire in 24 hours.\n\nBest regards,\nThe EduTrip Team`
+        };
+
+        await transporter.sendMail(mailOptions);
+        console.log(`✅ Verification email sent to: ${email}`);
+        return true;
+    } catch (error) {
+        console.error('❌ Error sending verification email:', error);
+        return false;
+    }
+}
 // Middleware - Serve static files from correct directories
 app.use(express.json());
 app.use(express.static('.')); // Serve from main folder
@@ -86,6 +149,49 @@ const db = new sqlite3.Database('./edutrip.db', (err) => {
 
 // Create tables
 db.serialize(() => {
+    db.run(`CREATE TABLE IF NOT EXISTS email_verifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    verification_code TEXT NOT NULL,
+    expires_at DATETIME NOT NULL,
+    verified BOOLEAN DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users (id)
+)`, (err) => {
+    if (err) console.error('Error creating email_verifications table:', err);
+    else console.log('Email verifications table ready');
+});
+
+// Add verified column to users table
+db.all("PRAGMA table_info(users)", [], (err, columns) => {
+    if (err) {
+        console.error('Error checking users table:', err);
+        return;
+    }
+    
+    // Check if columns is defined and is an array
+    if (!columns || !Array.isArray(columns)) {
+        console.log('⚠️ Users table might not exist yet, creating with verified column...');
+        return;
+    }
+    
+    const hasVerifiedColumn = columns.some(col => col && col.name === 'verified');
+    if (!hasVerifiedColumn) {
+        db.run("ALTER TABLE users ADD COLUMN verified BOOLEAN DEFAULT 0", (err) => {
+            if (err) {
+                console.error('Error adding verified column:', err);
+                // If column already exists, that's fine
+                if (err.message && err.message.includes('duplicate column name')) {
+                    console.log('✅ verified column already exists');
+                }
+            } else {
+                console.log('✅ Added verified column to users table');
+            }
+        });
+    } else {
+        console.log('✅ verified column already exists');
+    }
+});
     // Users table
     db.run(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -98,7 +204,19 @@ db.serialize(() => {
         if (err) console.error('Error creating users table:', err);
         else console.log('Users table ready');
     });
-    
+    // Add this with other CREATE TABLE statements
+db.run(`CREATE TABLE IF NOT EXISTS password_resets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    reset_token TEXT NOT NULL,
+    expires_at DATETIME NOT NULL,
+    used BOOLEAN DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users (id)
+)`, (err) => {
+    if (err) console.error('Error creating password_resets table:', err);
+    else console.log('Password resets table ready');
+});
     // Events table
     db.run(`CREATE TABLE IF NOT EXISTS events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -201,7 +319,16 @@ app.post('/api/login', (req, res) => {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
         
-        console.log('User found:', user.email, 'Role:', user.role);
+        console.log('User found:', user.email, 'Role:', user.role, 'Verified:', user.verified);
+        
+        // Check if email is verified
+        if (!user.verified) {
+            return res.status(403).json({ 
+                error: 'Email not verified', 
+                requires_verification: true,
+                user_id: user.id 
+            });
+        }
         
         if (bcrypt.compareSync(password, user.password)) {
             console.log('Login successful for:', user.email);
@@ -222,7 +349,8 @@ app.post('/api/login', (req, res) => {
     });
 });
 
-app.post('/api/register', (req, res) => {
+// Update the /api/register endpoint
+app.post('/api/register', async (req, res) => {
     const { name, studentNumber, email, password } = req.body;
     
     if (!name || !email || !password) {
@@ -233,22 +361,213 @@ app.post('/api/register', (req, res) => {
         return res.status(400).json({ error: 'Password must be at least 6 characters long' });
     }
     
-    const hashedPassword = bcrypt.hashSync(password, 10);
-    
-    db.run("INSERT INTO users (name, student_number, email, password) VALUES (?, ?, ?, ?)", 
-        [name, studentNumber, email, hashedPassword], 
-        function(err) {
-            if (err) {
-                console.error('Registration error:', err);
-                if (err.message.includes('UNIQUE constraint failed')) {
-                    res.status(400).json({ error: 'Email already exists' });
-                } else {
-                    res.status(500).json({ error: 'Registration failed' });
-                }
-            } else {
-                res.json({ success: true, message: 'Registration successful' });
+    // Check if email already exists
+    db.get("SELECT * FROM users WHERE email = ?", [email], async (err, existingUser) => {
+        if (err) {
+            console.error('Registration error:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        
+        if (existingUser) {
+            // If user exists but is not verified, allow resending verification
+            if (!existingUser.verified) {
+                // Generate new verification code
+                const verificationCode = generateVerificationCode();
+                const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
+                
+                // Delete old verification codes
+                db.run("DELETE FROM email_verifications WHERE user_id = ?", [existingUser.id], function(err) {
+                    if (err) {
+                        console.error('Error clearing old verifications:', err);
+                    }
+                    
+                    // Store new verification code
+                    db.run("INSERT INTO email_verifications (user_id, verification_code, expires_at) VALUES (?, ?, ?)",
+                        [existingUser.id, verificationCode, expiresAt.toISOString()],
+                        async function(err) {
+                            if (err) {
+                                console.error('Error storing verification code:', err);
+                                return res.status(500).json({ error: 'Failed to create verification code' });
+                            }
+                            
+                            // Send verification email
+                            const emailSent = await sendVerificationEmail(email, verificationCode, existingUser.name);
+                            
+                            if (emailSent) {
+                                res.json({ 
+                                    success: true, 
+                                    message: 'Verification code resent! Please check your email.',
+                                    requires_verification: true,
+                                    user_id: existingUser.id
+                                });
+                            } else {
+                                res.status(500).json({ 
+                                    error: 'Failed to send verification email. Please try again later.' 
+                                });
+                            }
+                        }
+                    );
+                });
+                return;
             }
+            
+            // If user exists and is verified, show error
+            return res.status(400).json({ error: 'Email already exists and is verified. Please login instead.' });
+        }
+        
+        // Create new user (new email)
+        const hashedPassword = bcrypt.hashSync(password, 10);
+        
+        db.run("INSERT INTO users (name, student_number, email, password, verified) VALUES (?, ?, ?, ?, 0)", 
+            [name, studentNumber, email, hashedPassword], 
+            async function(err) {
+                if (err) {
+                    console.error('Registration error:', err);
+                    if (err.message.includes('UNIQUE constraint failed')) {
+                        return res.status(400).json({ error: 'Email already exists' });
+                    }
+                    return res.status(500).json({ error: 'Registration failed' });
+                }
+                
+                const userId = this.lastID;
+                const verificationCode = generateVerificationCode();
+                const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
+                
+                // Store verification code
+                db.run("INSERT INTO email_verifications (user_id, verification_code, expires_at) VALUES (?, ?, ?)",
+                    [userId, verificationCode, expiresAt.toISOString()],
+                    async function(err) {
+                        if (err) {
+                            console.error('Error storing verification code:', err);
+                            return res.status(500).json({ error: 'Failed to create verification code' });
+                        }
+                        
+                        // Send verification email
+                        const emailSent = await sendVerificationEmail(email, verificationCode, name);
+                        
+                        if (emailSent) {
+                            res.json({ 
+                                success: true, 
+                                message: 'Registration successful! Please check your email for verification code.',
+                                requires_verification: true,
+                                user_id: userId
+                            });
+                        } else {
+                            res.status(500).json({ 
+                                error: 'Registration completed but failed to send verification email. Please contact support.' 
+                            });
+                        }
+                    }
+                );
+            });
+    });
+});
+// Email verification endpoint
+app.post('/api/verify-email', (req, res) => {
+    const { user_id, verification_code } = req.body;
+    
+    if (!user_id || !verification_code) {
+        return res.status(400).json({ error: 'User ID and verification code are required' });
+    }
+    
+    const now = new Date().toISOString();
+    
+    db.get(`
+        SELECT * FROM email_verifications 
+        WHERE user_id = ? 
+        AND verification_code = ?
+        AND expires_at > ?
+        AND verified = 0
+    `, [user_id, verification_code, now], (err, verification) => {
+        if (err) {
+            console.error('Verification error:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        
+        if (!verification) {
+            return res.status(400).json({ error: 'Invalid or expired verification code' });
+        }
+        
+        // Update verification as used
+        db.run("UPDATE email_verifications SET verified = 1 WHERE id = ?", [verification.id], function(err) {
+            if (err) {
+                console.error('Error updating verification:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            // Update user as verified
+            db.run("UPDATE users SET verified = 1 WHERE id = ?", [user_id], function(err) {
+                if (err) {
+                    console.error('Error updating user:', err);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+                
+                res.json({ 
+                    success: true, 
+                    message: 'Email verified successfully! You can now login.' 
+                });
+            });
         });
+    });
+});
+
+// Resend verification code endpoint
+app.post('/api/resend-verification', async (req, res) => {
+    const { email } = req.body;
+    
+    if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+    }
+    
+    db.get("SELECT * FROM users WHERE email = ?", [email], async (err, user) => {
+        if (err) {
+            console.error('Error finding user:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        if (user.verified) {
+            return res.status(400).json({ error: 'Email already verified' });
+        }
+        
+        const verificationCode = generateVerificationCode();
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        
+        // Delete old verification codes
+        db.run("DELETE FROM email_verifications WHERE user_id = ?", [user.id], function(err) {
+            if (err) {
+                console.error('Error clearing old verifications:', err);
+            }
+            
+            // Store new verification code
+            db.run("INSERT INTO email_verifications (user_id, verification_code, expires_at) VALUES (?, ?, ?)",
+                [user.id, verificationCode, expiresAt.toISOString()],
+                async function(err) {
+                    if (err) {
+                        console.error('Error storing verification code:', err);
+                        return res.status(500).json({ error: 'Failed to create verification code' });
+                    }
+                    
+                    // Send verification email
+                    const emailSent = await sendVerificationEmail(email, verificationCode, user.name);
+                    
+                    if (emailSent) {
+                        res.json({ 
+                            success: true, 
+                            message: 'Verification code resent successfully! Please check your email.' 
+                        });
+                    } else {
+                        res.status(500).json({ 
+                            error: 'Failed to send verification email. Please try again later.' 
+                        });
+                    }
+                }
+            );
+        });
+    });
 });
 
 // Get events for front page (limited to 5 most recent)
@@ -313,7 +632,228 @@ app.get('/api/user/registration-requests', (req, res) => {
         res.json(rows);
     });
 });
+// Password Reset Endpoints
 
+// Forgot password - send reset email
+app.post('/api/forgot-password', async (req, res) => {
+    const { email } = req.body;
+    
+    if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+    }
+    
+    db.get("SELECT * FROM users WHERE email = ?", [email], async (err, user) => {
+        if (err) {
+            console.error('Error finding user:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Generate reset token (6-digit code)
+        const resetToken = generateVerificationCode();
+        const expiresAt = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 hour from now
+        
+        // Store reset token
+        db.run("INSERT INTO password_resets (user_id, reset_token, expires_at) VALUES (?, ?, ?)",
+            [user.id, resetToken, expiresAt.toISOString()],
+            async function(err) {
+                if (err) {
+                    console.error('Error storing reset token:', err);
+                    return res.status(500).json({ error: 'Failed to create reset token' });
+                }
+                
+                // Send reset email
+                try {
+                    const mailOptions = {
+                        from: process.env.EMAIL_USER || 'edutrip@example.com',
+                        to: email,
+                        subject: 'Reset Your EduTrip Password',
+                        html: `
+                            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                                <div style="background: #1f2937; padding: 20px; text-align: center;">
+                                    <h1 style="color: #3b82f6; margin: 0;">EduTrip</h1>
+                                    <p style="color: #9ca3af; margin: 5px 0;">Password Reset Request</p>
+                                </div>
+                                <div style="padding: 30px; background: #111827; color: #e5e7eb;">
+                                    <h2 style="color: white; margin-top: 0;">Password Reset</h2>
+                                    <p>Hello ${user.name},</p>
+                                    <p>We received a request to reset your password. Use the code below to set a new password:</p>
+                                    
+                                    <div style="background: #1f2937; padding: 20px; margin: 30px 0; text-align: center; border-radius: 8px;">
+                                        <div style="font-size: 32px; font-weight: bold; color: #3b82f6; letter-spacing: 10px;">
+                                            ${resetToken}
+                                        </div>
+                                        <p style="color: #9ca3af; margin-top: 10px;">This code will expire in 1 hour</p>
+                                    </div>
+                                    
+                                    <p style="color: #ef4444; font-weight: bold;">
+                                        ⚠️ Important: After resetting your password, you will need to verify your email again.
+                                    </p>
+                                    
+                                    <p>If you didn't request a password reset, please ignore this email.</p>
+                                    <p>Best regards,<br>The EduTrip Team</p>
+                                </div>
+                                <div style="background: #030712; padding: 20px; text-align: center; color: #6b7280; font-size: 12px;">
+                                    <p>© 2024 EduTrip. Educational platform for trips and events.</p>
+                                    <p>This is an automated email, please do not reply.</p>
+                                </div>
+                            </div>
+                        `,
+                        text: `Hello ${user.name},\n\nWe received a request to reset your password. Use this code: ${resetToken}\n\nThis code will expire in 1 hour.\n\nImportant: After resetting your password, you will need to verify your email again.\n\nIf you didn't request a password reset, please ignore this email.\n\nBest regards,\nThe EduTrip Team`
+                    };
+
+                    await transporter.sendMail(mailOptions);
+                    console.log(`✅ Password reset email sent to: ${email}`);
+                    
+                    res.json({ 
+                        success: true, 
+                        message: 'Password reset instructions sent to your email.',
+                        email: email
+                    });
+                    
+                } catch (error) {
+                    console.error('❌ Error sending reset email:', error);
+                    res.status(500).json({ error: 'Failed to send reset email' });
+                }
+            }
+        );
+    });
+});
+
+// Verify reset token
+// Verify reset token - FLEXIBLE version (accepts either user_id or email)
+app.post('/api/verify-reset-token', (req, res) => {
+    const { email, user_id, reset_token } = req.body;
+    
+    if (!reset_token) {
+        return res.status(400).json({ error: 'Reset token is required' });
+    }
+    
+    if (!email && !user_id) {
+        return res.status(400).json({ error: 'Either email or user ID is required' });
+    }
+    
+    const now = new Date().toISOString();
+    
+    const verifyToken = (userId) => {
+        db.get(`
+            SELECT * FROM password_resets 
+            WHERE user_id = ? 
+            AND reset_token = ?
+            AND expires_at > ?
+            AND used = 0
+        `, [userId, reset_token, now], (err, reset) => {
+            if (err) {
+                console.error('Token verification error:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            if (!reset) {
+                return res.status(400).json({ error: 'Invalid or expired reset token' });
+            }
+            
+            res.json({ 
+                success: true, 
+                message: 'Reset token verified',
+                user_id: userId
+            });
+        });
+    };
+    
+    if (user_id) {
+        // If user_id is provided directly
+        verifyToken(user_id);
+    } else if (email) {
+        // If email is provided, find user first
+        db.get("SELECT id FROM users WHERE email = ?", [email], (err, user) => {
+            if (err) {
+                console.error('Verify token error:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            if (!user) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+            
+            verifyToken(user.id);
+        });
+    }
+});
+
+// Reset password
+app.post('/api/reset-password', (req, res) => {
+    const { email, reset_token, new_password } = req.body;
+    
+    if (!email || !reset_token || !new_password) {
+        return res.status(400).json({ error: 'All fields are required' });
+    }
+    
+    if (new_password.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    }
+    
+    const now = new Date().toISOString();
+    
+    // First find user by email
+    db.get("SELECT id, name, verified FROM users WHERE email = ?", [email], (err, user) => {
+        if (err) {
+            console.error('Reset error:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Check reset token
+        db.get(`
+            SELECT * FROM password_resets 
+            WHERE user_id = ? 
+            AND reset_token = ?
+            AND expires_at > ?
+            AND used = 0
+        `, [user.id, reset_token, now], (err, reset) => {
+            if (err) {
+                console.error('Token verification error:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            if (!reset) {
+                return res.status(400).json({ error: 'Invalid or expired reset token' });
+            }
+            
+            const hashedPassword = bcrypt.hashSync(new_password, 10);
+            
+            // Update password ONLY (DO NOT change verified status)
+            db.run("UPDATE users SET password = ? WHERE id = ?", 
+                [hashedPassword, user.id], function(err) {
+                    if (err) {
+                        console.error('Error updating password:', err);
+                        return res.status(500).json({ error: 'Database error' });
+                    }
+                    
+                    // Mark reset token as used
+                    db.run("UPDATE password_resets SET used = 1 WHERE id = ?", [reset.id], function(err) {
+                        if (err) {
+                            console.error('Error marking token as used:', err);
+                        }
+                        
+                        // User can now login with new password
+                        // Keep their verified status as is
+                        res.json({ 
+                            success: true, 
+                            message: 'Password reset successfully! You can now login with your new password.',
+                            user_id: user.id,
+                            was_verified: user.verified === 1 // Track if user was already verified
+                        });
+                    });
+                });
+        });
+    });
+});
 // Create new registration request with file upload
 app.post('/api/registration-requests', upload.fields([
     { name: 'registration_form', maxCount: 1 },
@@ -482,6 +1022,10 @@ app.get('/api/user/all-registration-requests', (req, res) => {
         }
         res.json(rows);
     });
+});
+// Verify route
+app.get('/verify-email.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'main/verify-email.html'));
 });
 // With authentication checks
 app.get('/admin', requireAuth, (req, res) => {
@@ -745,87 +1289,423 @@ app.delete('/api/buses/:id', (req, res) => {
 });
 
 // Assign participant to bus
+// Assign participant to bus - UPDATED with better logging
 app.post('/api/bus-assignments', (req, res) => {
     const { user_id, event_id, bus_id, notes } = req.body;
     
+    console.log('\n=== 🚌 BUS ASSIGNMENT REQUEST ===');
+    console.log('📦 Request body:', JSON.stringify(req.body, null, 2));
+    console.log('📊 Types:', {
+        user_id: typeof user_id,
+        event_id: typeof event_id,
+        bus_id: typeof bus_id
+    });
+    
     if (!user_id || !event_id || !bus_id) {
-        return res.status(400).json({ error: 'User ID, Event ID, and Bus ID are required' });
+        console.log('❌ Missing required fields');
+        return res.status(400).json({ 
+            error: 'User ID, Event ID, and Bus ID are required',
+            received: { user_id, event_id, bus_id }
+        });
     }
+    
+    // Convert to numbers to ensure proper comparison
+    const userId = parseInt(user_id);
+    const eventId = parseInt(event_id);
+    const busId = parseInt(bus_id);
+    
+    console.log(`🎯 Parsed IDs: user=${userId}, event=${eventId}, bus=${busId}`);
     
     const createAssignment = async () => {
         try {
-            // Check if bus exists
+            // 1. Check if bus exists
+            console.log(`🔍 Checking bus ${busId}...`);
             const bus = await new Promise((resolve, reject) => {
-                db.get("SELECT * FROM buses WHERE id = ?", [bus_id], (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
+                db.get("SELECT * FROM buses WHERE id = ?", [busId], (err, row) => {
+                    if (err) {
+                        console.error('❌ Error fetching bus:', err.message);
+                        reject(err);
+                    } else if (!row) {
+                        console.log(`❌ Bus ${busId} not found`);
+                        resolve(null);
+                    } else {
+                        console.log(`✅ Bus found: ${row.bus_number} (Capacity: ${row.capacity}, Current: ${row.current_passengers})`);
+                        resolve(row);
+                    }
                 });
             });
             
             if (!bus) {
-                return res.status(404).json({ error: 'Bus not found' });
+                return res.status(404).json({ error: `Bus ${busId} not found` });
             }
             
-            // Check bus capacity
-            const busCount = await new Promise((resolve, reject) => {
-                db.get("SELECT COUNT(*) as count FROM bus_assignments WHERE bus_id = ?", 
-                    [bus_id], (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row.count);
-                });
-            });
-            
-            if (busCount >= bus.capacity) {
-                return res.status(400).json({ error: 'Bus is at full capacity' });
-            }
-            
-            // Check if user is already assigned
+            // 2. Check if user already assigned to ANY bus for this event
+            console.log(`🔍 Checking if user ${userId} already assigned to event ${eventId}...`);
             const existing = await new Promise((resolve, reject) => {
                 db.get("SELECT * FROM bus_assignments WHERE user_id = ? AND event_id = ?", 
-                    [user_id, event_id], (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
+                    [userId, eventId], (err, row) => {
+                    if (err) {
+                        console.error('❌ Error checking existing assignment:', err.message);
+                        reject(err);
+                    } else if (row) {
+                        console.log(`❌ User already assigned to bus ${row.bus_id}`);
+                        resolve(row);
+                    } else {
+                        console.log('✅ User not yet assigned');
+                        resolve(null);
+                    }
                 });
             });
             
             if (existing) {
-                return res.status(400).json({ error: 'User is already assigned to a bus for this event' });
+                return res.status(400).json({ 
+                    error: 'User is already assigned to a bus for this event',
+                    existing_assignment: existing 
+                });
             }
             
-            // Create assignment
+            // 3. Check bus capacity
+            console.log(`🔍 Checking bus ${busId} capacity...`);
+            const busCount = await new Promise((resolve, reject) => {
+                db.get("SELECT COUNT(*) as count FROM bus_assignments WHERE bus_id = ?", 
+                    [busId], (err, row) => {
+                    if (err) {
+                        console.error('❌ Error checking bus capacity:', err.message);
+                        reject(err);
+                    } else {
+                        const count = row ? row.count : 0;
+                        console.log(`📊 Bus ${busId} has ${count}/${bus.capacity} assignments`);
+                        resolve(count);
+                    }
+                });
+            });
+            
+            if (busCount >= bus.capacity) {
+                console.log(`❌ Bus ${bus.bus_number} is FULL: ${busCount}/${bus.capacity}`);
+                return res.status(400).json({ 
+                    error: `Bus ${bus.bus_number} is at full capacity (${busCount}/${bus.capacity})` 
+                });
+            }
+            
+            // 4. Check if user has approved registration for this event
+            console.log(`🔍 Checking if user ${userId} has approved registration for event ${eventId}...`);
+            const approvedRegistration = await new Promise((resolve, reject) => {
+                db.get(`
+                    SELECT * FROM registration_requests 
+                    WHERE user_id = ? AND event_id = ? AND status = 'approved'
+                `, [userId, eventId], (err, row) => {
+                    if (err) {
+                        console.error('❌ Error checking registration:', err.message);
+                        reject(err);
+                    } else if (!row) {
+                        console.log('❌ User does not have approved registration for this event');
+                        resolve(null);
+                    } else {
+                        console.log('✅ User has approved registration');
+                        resolve(row);
+                    }
+                });
+            });
+            
+            if (!approvedRegistration) {
+                return res.status(400).json({ 
+                    error: 'User does not have an approved registration for this event' 
+                });
+            }
+            
+            // 5. Create the assignment
+            console.log('📝 Creating bus assignment...');
             const result = await new Promise((resolve, reject) => {
                 db.run("INSERT INTO bus_assignments (user_id, event_id, bus_id, notes) VALUES (?, ?, ?, ?)", 
-                    [user_id, event_id, bus_id, notes || ''], 
+                    [userId, eventId, busId, notes || ''], 
                     function(err) {
-                        if (err) reject(err);
-                        else resolve(this);
+                        if (err) {
+                            console.error('❌ Error creating assignment:', err.message);
+                            console.error('Full error:', err);
+                            reject(err);
+                        } else {
+                            console.log(`✅ Assignment created with ID: ${this.lastID}`);
+                            resolve(this);
+                        }
                     });
             });
             
-            // Update bus passenger count
+            // 6. Update bus passenger count
+            console.log(`🔄 Updating bus ${busId} passenger count...`);
             await new Promise((resolve, reject) => {
                 db.run("UPDATE buses SET current_passengers = current_passengers + 1 WHERE id = ?", 
-                    [bus_id], function(err) {
-                        if (err) reject(err);
-                        else resolve(this);
+                    [busId], function(err) {
+                        if (err) {
+                            console.error('❌ Error updating bus passenger count:', err.message);
+                            reject(err);
+                        } else {
+                            console.log(`✅ Bus ${busId} passenger count updated (changed: ${this.changes})`);
+                            resolve(this);
+                        }
                     });
             });
             
+            console.log('🎉 BUS ASSIGNMENT SUCCESSFUL!');
             res.json({ 
                 success: true, 
                 message: 'Bus assignment created successfully',
-                assignmentId: result.lastID
+                assignmentId: result.lastID,
+                bus: {
+                    id: busId,
+                    number: bus.bus_number,
+                    capacity: bus.capacity,
+                    newPassengerCount: busCount + 1
+                }
             });
             
         } catch (error) {
-            console.error('Error creating bus assignment:', error);
-            res.status(500).json({ error: 'Database error: ' + error.message });
+            console.error('\n❌❌❌ CRITICAL ERROR IN BUS ASSIGNMENT ❌❌❌');
+            console.error('Error message:', error.message);
+            console.error('Stack trace:', error.stack);
+            
+            res.status(500).json({ 
+                error: 'Database error: ' + error.message,
+                details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            });
         }
     };
     
     createAssignment();
 });
+// Debug bus assignment data
+app.get('/api/debug/assignment/:user_id/:event_id', (req, res) => {
+    const { user_id, event_id } = req.params;
+    
+    console.log(`Debugging user ${user_id} for event ${event_id}`);
+    
+    const userId = parseInt(user_id);
+    const eventId = parseInt(event_id);
+    
+    // Check multiple things
+    const checks = {};
+    
+    // 1. Check if user exists
+    db.get("SELECT id, name, email FROM users WHERE id = ?", [userId], (err, user) => {
+        checks.user = { exists: !!user, data: user, error: err };
+        
+        // 2. Check if event exists
+        db.get("SELECT id, title FROM events WHERE id = ?", [eventId], (err, event) => {
+            checks.event = { exists: !!event, data: event, error: err };
+            
+            // 3. Check if user has approved registration
+            db.get(`
+                SELECT * FROM registration_requests 
+                WHERE user_id = ? AND event_id = ? AND status = 'approved'
+            `, [userId, eventId], (err, registration) => {
+                checks.registration = { 
+                    approved: !!registration, 
+                    data: registration, 
+                    error: err 
+                };
+                
+                // 4. Check if user already has bus assignment
+                db.get(`
+                    SELECT ba.*, b.bus_number 
+                    FROM bus_assignments ba
+                    JOIN buses b ON ba.bus_id = b.id
+                    WHERE ba.user_id = ? AND ba.event_id = ?
+                `, [userId, eventId], (err, assignment) => {
+                    checks.assignment = { exists: !!assignment, data: assignment, error: err };
+                    
+                    res.json({
+                        userId,
+                        eventId,
+                        checks,
+                        summary: {
+                            userExists: checks.user.exists,
+                            eventExists: checks.event.exists,
+                            hasApprovedRegistration: checks.registration.approved,
+                            hasExistingAssignment: checks.assignment.exists,
+                            canAssign: checks.user.exists && 
+                                      checks.event.exists && 
+                                      checks.registration.approved && 
+                                      !checks.assignment.exists
+                        }
+                    });
+                });
+            });
+        });
+    });
+});
+// Debug endpoint to check bus data
+app.get('/api/debug/bus/:bus_id', (req, res) => {
+    const { bus_id } = req.params;
+    
+    console.log(`Debugging bus ${bus_id}`);
+    
+    // Get bus info
+    db.get("SELECT * FROM buses WHERE id = ?", [bus_id], (err, bus) => {
+        if (err) {
+            console.error('Error fetching bus:', err);
+            return res.status(500).json({ error: err.message });
+        }
+        
+        if (!bus) {
+            return res.status(404).json({ error: 'Bus not found' });
+        }
+        
+        // Get assignments count
+        db.get("SELECT COUNT(*) as assignment_count FROM bus_assignments WHERE bus_id = ?", 
+            [bus_id], (err, countRow) => {
+            if (err) {
+                console.error('Error counting assignments:', err);
+                return res.status(500).json({ error: err.message });
+            }
+            
+            res.json({
+                bus,
+                assignment_count: countRow.assignment_count,
+                current_passengers: bus.current_passengers,
+                discrepancy: bus.current_passengers !== countRow.assignment_count
+            });
+        });
+    });
+});
+// Test bus assignment endpoint
+app.get('/api/test-bus-assignment', (req, res) => {
+    // Create a test bus
+    db.run("INSERT OR IGNORE INTO buses (bus_number, capacity) VALUES ('TEST-BUS', 50)", function(err) {
+        if (err) {
+            console.error('Error creating test bus:', err);
+            return res.status(500).json({ error: err.message });
+        }
+        
+        // Get a user
+        db.get("SELECT id FROM users WHERE role = 'student' LIMIT 1", (err, user) => {
+            if (err) {
+                console.error('Error getting user:', err);
+                return res.status(500).json({ error: err.message });
+            }
+            
+            // Get an event
+            db.get("SELECT id FROM events LIMIT 1", (err, event) => {
+                if (err) {
+                    console.error('Error getting event:', err);
+                    return res.status(500).json({ error: err.message });
+                }
+                
+                const testData = {
+                    user_id: user.id,
+                    event_id: event.id,
+                    bus_id: this.lastID || 1,
+                    notes: 'Test assignment'
+                };
+                
+                console.log('Test data:', testData);
+                res.json(testData);
+            });
+        });
+    });
+});
+// Add this function to run database migrations
+// Add this function to run database migrations
+function runMigrations() {
+    console.log('Checking database migrations...');
+    
+    // Check if buses table has current_passengers column
+    db.all("PRAGMA table_info(buses)", [], (err, columns) => {  // Changed from db.get to db.all
+        if (err) {
+            console.error('Error checking table schema:', err);
+            return;
+        }
+        
+        console.log('Columns in buses table:', columns);
+        
+        if (!columns || columns.length === 0) {
+            console.log('No columns found or table might not exist');
+            return;
+        }
+        
+        const hasCurrentPassengers = columns.some(col => col.name === 'current_passengers');
+        console.log('Buses table has current_passengers column?', hasCurrentPassengers);
+        
+        if (!hasCurrentPassengers) {
+            console.log('Adding current_passengers column to buses table...');
+            db.run("ALTER TABLE buses ADD COLUMN current_passengers INTEGER DEFAULT 0", (err) => {
+                if (err) {
+                    console.error('Error adding column:', err);
+                    // If column already exists, ignore the error
+                    if (err.message.includes('duplicate column name')) {
+                        console.log('Column already exists, ignoring...');
+                    }
+                } else {
+                    console.log('✅ Added current_passengers column');
+                    
+                    // Update all buses to have correct current_passengers count
+                    db.all("SELECT id FROM buses", [], (err, buses) => {
+                        if (err) {
+                            console.error('Error fetching buses:', err);
+                            return;
+                        }
+                        
+                        if (!buses || buses.length === 0) {
+                            console.log('No buses found to update');
+                            return;
+                        }
+                        
+                        let completed = 0;
+                        buses.forEach(bus => {
+                            db.get("SELECT COUNT(*) as count FROM bus_assignments WHERE bus_id = ?", 
+                                [bus.id], (err, row) => {
+                                if (err) {
+                                    console.error(`Error counting assignments for bus ${bus.id}:`, err);
+                                } else {
+                                    db.run("UPDATE buses SET current_passengers = ? WHERE id = ?", 
+                                        [row.count, bus.id], (updateErr) => {
+                                        if (updateErr) {
+                                            console.error(`Error updating bus ${bus.id}:`, updateErr);
+                                        } else {
+                                            console.log(`✅ Updated bus ${bus.id} to ${row.count} passengers`);
+                                        }
+                                    });
+                                }
+                                
+                                completed++;
+                                if (completed === buses.length) {
+                                    console.log('✅ All buses updated');
+                                }
+                            });
+                        });
+                    });
+                }
+            });
+        } else {
+            console.log('current_passengers column already exists');
+            
+            // Verify and fix passenger counts
+            db.all("SELECT id FROM buses", [], (err, buses) => {
+                if (err || !buses) {
+                    console.error('Error fetching buses:', err);
+                    return;
+                }
+                
+                buses.forEach(bus => {
+                    db.get("SELECT COUNT(*) as count FROM bus_assignments WHERE bus_id = ?", 
+                        [bus.id], (err, row) => {
+                        if (!err && row) {
+                            db.get("SELECT current_passengers FROM buses WHERE id = ?", 
+                                [bus.id], (err, busData) => {
+                                if (!err && busData && busData.current_passengers !== row.count) {
+                                    console.log(`⚠️ Fixing bus ${bus.id} passenger count: ${busData.current_passengers} → ${row.count}`);
+                                    db.run("UPDATE buses SET current_passengers = ? WHERE id = ?", 
+                                        [row.count, bus.id]);
+                                }
+                            });
+                        }
+                    });
+                });
+            });
+        }
+    });
+}
 
+// Call this after creating tables
+runMigrations();
 // Get bus assignments for an event
 app.get('/api/events/:event_id/bus-assignments', (req, res) => {
     const { event_id } = req.params;
@@ -1026,29 +1906,127 @@ app.delete('/api/bus-assignments/:assignment_id', (req, res) => {
 });
 
 // Get participants eligible for bus assignment (approved registrations not yet assigned)
+// Get participants eligible for bus assignment (approved registrations not yet assigned)
 app.get('/api/events/:event_id/eligible-participants', (req, res) => {
     const { event_id } = req.params;
     
+    console.log(`\n=== Fetching eligible participants for event ${event_id} ===`);
+    
+    // BETTER QUERY: Use NOT EXISTS instead of LEFT JOIN
     const query = `
-        SELECT u.id, u.name, u.student_number, u.email,
-               rr.status, rr.created_at as registration_date,
-               e.title as event_title
+        SELECT 
+            u.id, 
+            u.name, 
+            u.student_number, 
+            u.email,
+            rr.status, 
+            rr.created_at as registration_date,
+            e.title as event_title
         FROM users u
         JOIN registration_requests rr ON u.id = rr.user_id
         JOIN events e ON rr.event_id = e.id
-        LEFT JOIN bus_assignments ba ON u.id = ba.user_id AND e.id = ba.event_id
         WHERE e.id = ? 
           AND rr.status = 'approved'
-          AND ba.id IS NULL
-        ORDER BY rr.created_at
+          AND e.status != 'cancelled'
+          AND NOT EXISTS (
+              SELECT 1 
+              FROM bus_assignments ba 
+              WHERE ba.user_id = u.id 
+                AND ba.event_id = e.id
+          )
+        ORDER BY u.name
     `;
+    
+    console.log('SQL Query:', query.replace(/\s+/g, ' '));
     
     db.all(query, [event_id], (err, participants) => {
         if (err) {
-            console.error('Error fetching eligible participants:', err);
-            return res.status(500).json({ error: 'Database error' });
+            console.error('❌ Error fetching eligible participants:', err);
+            return res.status(500).json({ error: 'Database error: ' + err.message });
         }
-        res.json(participants);
+        
+        console.log(`✅ Found ${participants.length} eligible participants`);
+        
+        // DEBUG: Also show who has assignments
+        const debugQuery = `
+            SELECT 
+                u.id,
+                u.name,
+                ba.id as assignment_id,
+                b.bus_number
+            FROM users u
+            JOIN registration_requests rr ON u.id = rr.user_id
+            LEFT JOIN bus_assignments ba ON u.id = ba.user_id AND rr.event_id = ba.event_id
+            LEFT JOIN buses b ON ba.bus_id = b.id
+            WHERE rr.event_id = ? 
+              AND rr.status = 'approved'
+            ORDER BY u.name
+        `;
+        
+        db.all(debugQuery, [event_id], (debugErr, allUsers) => {
+            if (!debugErr && allUsers) {
+                console.log('\n📊 ALL APPROVED USERS FOR THIS EVENT:');
+                allUsers.forEach(user => {
+                    const status = user.assignment_id 
+                        ? `🚌 Assigned to Bus ${user.bus_number} (ID: ${user.assignment_id})` 
+                        : '✅ Eligible (no assignment)';
+                    console.log(`  - ${user.name} (ID: ${user.id}): ${status}`);
+                });
+            }
+            
+            console.log('\n📋 RETURNING ELIGIBLE PARTICIPANTS:');
+            participants.forEach(p => {
+                console.log(`  - ${p.name} (ID: ${p.id})`);
+            });
+            
+            res.json(participants);
+        });
+    });
+});
+// Clean up inconsistent data
+app.get('/api/fix-bus-data', (req, res) => {
+    console.log('Fixing bus assignment data inconsistencies...');
+    
+    // Fix 1: Update bus passenger counts
+    db.run(`
+        UPDATE buses 
+        SET current_passengers = (
+            SELECT COUNT(*) 
+            FROM bus_assignments 
+            WHERE bus_id = buses.id
+        )
+    `, (err) => {
+        if (err) {
+            console.error('Error fixing passenger counts:', err);
+            return res.status(500).json({ error: err.message });
+        }
+        
+        console.log('✅ Bus passenger counts updated');
+        
+        // Fix 2: Find and log any users with multiple assignments (shouldn't happen)
+        db.all(`
+            SELECT user_id, event_id, COUNT(*) as assignment_count
+            FROM bus_assignments
+            GROUP BY user_id, event_id
+            HAVING assignment_count > 1
+        `, [], (err, duplicates) => {
+            if (err) {
+                console.error('Error checking duplicates:', err);
+                return res.status(500).json({ error: err.message });
+            }
+            
+            if (duplicates.length > 0) {
+                console.log('⚠️ Found duplicate assignments:', duplicates);
+            } else {
+                console.log('✅ No duplicate assignments found');
+            }
+            
+            res.json({ 
+                success: true, 
+                message: 'Data fixed',
+                duplicates_found: duplicates.length
+            });
+        });
     });
 });
 app.listen(PORT, () => {

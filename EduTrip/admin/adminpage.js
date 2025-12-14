@@ -27,6 +27,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize page navigation
     initializePage();
+
+    // Start auto-refresh for dashboard stats
+    startDashboardAutoRefresh();
 });
 
 // Clean sidebar toggle - matches studpage.js
@@ -86,6 +89,7 @@ function initSidebarToggle() {
 function initializePage() {
     initParticipantsFilters();
     initializeModalListeners();
+    initializeDashboardRefreshButton();
     // Navigation functionality
     const navLinks = document.querySelectorAll('.sidebar-item');
     const pages = document.querySelectorAll('.page-container');
@@ -270,7 +274,549 @@ function initializePage() {
         eventStatusFilter.addEventListener('change', loadRegistrationRequests);
     }
 }
+// Add this function to update dashboard stats
+// Update the updateDashboardStats function to handle spinner animation
+async function updateDashboardStats() {
+    try {
+        console.log('Updating dashboard stats...');
+        
+        // Get the refresh button
+        const refreshBtn = document.getElementById('refresh-dashboard-btn');
+        const refreshIcon = refreshBtn?.querySelector('i.bx-refresh');
+        
+        // Add spinning animation to refresh button
+        if (refreshIcon) {
+            refreshIcon.classList.add('bx-spin');
+            refreshBtn.classList.add('refreshing');
+            refreshBtn.disabled = true;
+        }
+        
+        // 1. Get registration request count (pending only)
+        const regRequestsResponse = await fetch('/api/registration-requests');
+        if (regRequestsResponse.ok) {
+            const allRequests = await regRequestsResponse.json();
+            const pendingRequests = allRequests.filter(req => 
+                req.status === 'pending' && req.event_status !== 'cancelled'
+            );
+            
+            const regRequestElement = document.querySelector('#reg-request .text-3xl');
+            if (regRequestElement) {
+                regRequestElement.textContent = pendingRequests.length;
+            }
+            
+            // Also update the text below
+            const regRequestText = document.querySelector('#reg-request .text-gray-500');
+            if (regRequestText && pendingRequests.length === 1) {
+                regRequestText.textContent = 'pending request';
+            } else if (regRequestText) {
+                regRequestText.textContent = 'pending requests';
+            }
+        }
+        
+        // 2. Get bus assignment request count
+        // This counts participants who are approved but not assigned to any bus
+        let busRequestCount = 0;
+        try {
+            // Get all events
+            const eventsResponse = await fetch('/api/events');
+            if (eventsResponse.ok) {
+                const events = await eventsResponse.json();
+                const activeEvents = events.filter(event => 
+                    event.status === 'active' || event.status === 'upcoming'
+                );
+                
+                // For each event, count eligible participants (approved but not assigned)
+                for (const event of activeEvents) {
+                    try {
+                        const eligibleResponse = await fetch(`/api/events/${event.id}/eligible-participants`);
+                        if (eligibleResponse.ok) {
+                            const eligibleParticipants = await eligibleResponse.json();
+                            busRequestCount += eligibleParticipants.length;
+                        }
+                    } catch (error) {
+                        console.error(`Error fetching eligible participants for event ${event.id}:`, error);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error calculating bus request count:', error);
+        }
+        
+        const busRequestElement = document.querySelector('#bus-request .text-3xl');
+        if (busRequestElement) {
+            busRequestElement.textContent = busRequestCount;
+        }
+        
+        // Update bus request text
+        const busRequestText = document.querySelector('#bus-request .text-gray-500');
+        if (busRequestText && busRequestCount === 1) {
+            busRequestText.textContent = 'request';
+        } else if (busRequestText) {
+            busRequestText.textContent = 'requests';
+        }
+        
+        // 3. Get total participants count (approved registrations across all events)
+        let totalParticipants = 0;
+        try {
+            const requestsResponse = await fetch('/api/registration-requests');
+            if (requestsResponse.ok) {
+                const allRequests = await requestsResponse.json();
+                const approvedRequests = allRequests.filter(req => 
+                    req.status === 'approved' && req.event_status !== 'cancelled'
+                );
+                totalParticipants = approvedRequests.length;
+            }
+        } catch (error) {
+            console.error('Error calculating total participants:', error);
+        }
+        
+        const participantsElement = document.querySelector('#participants .text-3xl');
+        if (participantsElement) {
+            participantsElement.textContent = totalParticipants;
+        }
+        
+        // Update participants text
+        const participantsText = document.querySelector('#participants .text-gray-500');
+        if (participantsText && totalParticipants === 1) {
+            participantsText.textContent = 'participant';
+        } else if (participantsText) {
+            participantsText.textContent = 'participants';
+        }
+        
+        console.log('Dashboard stats updated:', {
+            pendingRequests: document.querySelector('#reg-request .text-3xl')?.textContent,
+            busRequests: document.querySelector('#bus-request .text-3xl')?.textContent,
+            totalParticipants: document.querySelector('#participants .text-3xl')?.textContent
+        });
+        
+    } catch (error) {
+        console.error('Error updating dashboard stats:', error);
+    } finally {
+        // Always remove spinning animation regardless of success/failure
+        const refreshBtn = document.getElementById('refresh-dashboard-btn');
+        const refreshIcon = refreshBtn?.querySelector('i.bx-refresh');
+        
+        if (refreshIcon) {
+            // Wait a moment before removing the spin (makes it feel more natural)
+            setTimeout(() => {
+                refreshIcon.classList.remove('bx-spin');
+                refreshBtn.classList.remove('refreshing');
+                refreshBtn.disabled = false;
+            }, 500);
+        }
+    }
+}
 
+// Add event listener for the refresh button
+function initializeDashboardRefreshButton() {
+    const refreshBtn = document.getElementById('refresh-dashboard-btn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            updateDashboardStats();
+        });
+    }
+}
+function animateNumberUpdate(element) {
+    if (element) {
+        element.classList.add('number-update');
+        setTimeout(() => {
+            element.classList.remove('number-update');
+        }, 500);
+    }
+}
+
+// Then update each number update section like this:
+// In the updateDashboardStats function, update each counter like this:
+
+// For registration requests:
+if (regRequestElement) {
+    const oldValue = parseInt(regRequestElement.textContent) || 0;
+    const newValue = pendingRequests.length;
+    regRequestElement.textContent = newValue;
+    if (oldValue !== newValue) {
+        animateNumberUpdate(regRequestElement);
+    }
+}
+
+// For bus requests:
+if (busRequestElement) {
+    const oldValue = parseInt(busRequestElement.textContent) || 0;
+    const newValue = busRequestCount;
+    busRequestElement.textContent = newValue;
+    if (oldValue !== newValue) {
+        animateNumberUpdate(busRequestElement);
+    }
+}
+
+// For participants:
+if (participantsElement) {
+    const oldValue = parseInt(participantsElement.textContent) || 0;
+    const newValue = totalParticipants;
+    participantsElement.textContent = newValue;
+    if (oldValue !== newValue) {
+        animateNumberUpdate(participantsElement);
+    }
+}
+
+// Update the initializePage function to call updateDashboardStats
+function initializePage() {
+    initParticipantsFilters();
+    initializeModalListeners();
+    // Navigation functionality
+    const navLinks = document.querySelectorAll('.sidebar-item');
+    const pages = document.querySelectorAll('.page-container');
+
+    // Initialize dashboard as active
+    const dashboardPage = document.getElementById('dashboard');
+    if (dashboardPage) {
+        dashboardPage.classList.remove('hidden');
+        document.querySelectorAll('.page-container').forEach(p => {
+            if (p.id !== 'dashboard') p.classList.add('hidden');
+        });
+        
+        // Update dashboard stats when dashboard is shown
+        updateDashboardStats();
+    }
+    
+    // Remove active class from all links first
+    navLinks.forEach(link => link.classList.remove('active', 'bg-blue-600'));
+    // Set dashboard as active
+    const dashboardLink = document.querySelector('[data-page="dashboard"]');
+    if (dashboardLink) dashboardLink.classList.add('active', 'bg-blue-600');
+
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            
+            // Remove active class from all
+            navLinks.forEach(l => l.classList.remove('active', 'bg-blue-600'));
+            pages.forEach(page => page.classList.add('hidden'));
+            
+            // Add active class to clicked
+            link.classList.add('active', 'bg-blue-600');
+            
+            // Show corresponding page
+            const pageId = link.getAttribute('data-page');
+            const targetPage = document.getElementById(pageId === 'participants' ? 'participants-page' : pageId);
+            if (targetPage) {
+                targetPage.classList.remove('hidden');
+                
+                // Load data based on page
+                switch(pageId) {
+                    case 'dashboard':
+                        updateDashboardStats(); // Update stats when returning to dashboard
+                        break;
+                    case 'requests':
+                        loadRegistrationRequests();
+                        break;
+                    case 'events':
+                        loadAdminEvents();
+                        break;
+                    case 'participants':
+                        loadParticipants();
+                        break;
+                    case 'bus':
+                        // Reset the bus filter initialization flag when coming back to bus page
+                        busFilterInitialized = false;
+                        // Initialize bus assignment when page is shown
+                        initializeBusAssignment();
+                        break;
+                }
+            }
+        });
+    });
+
+    // Dashboard item click handlers - ONLY IF ELEMENTS EXIST
+    const regRequestEl = document.getElementById('reg-request');
+    const busRequestEl = document.getElementById('bus-request');
+    const participantsEl = document.getElementById('participants');
+    
+    if (regRequestEl) {
+        regRequestEl.addEventListener('click', () => {
+            const requestLink = Array.from(navLinks).find(link => link.getAttribute('data-page') === 'requests');
+            if (requestLink) requestLink.click();
+        });
+    }
+    
+    if (busRequestEl) {
+        busRequestEl.addEventListener('click', () => {
+            const requestLink = Array.from(navLinks).find(link => link.getAttribute('data-page') === 'bus');
+            if (requestLink) requestLink.click();
+        });
+    }
+    
+    if (participantsEl) {
+        participantsEl.addEventListener('click', () => {
+            const participantsLink = Array.from(navLinks).find(link => link.getAttribute('data-page') === 'participants');
+            if (participantsLink) participantsLink.click();
+        });
+    }
+
+    // Handle create event form submission
+    const createEventForm = document.getElementById('create-event-form');
+    if (createEventForm) {
+        createEventForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const eventData = {
+                title: document.getElementById('event-title').value,
+                description: document.getElementById('event-description').value,
+                date: document.getElementById('event-date').value,
+                location: document.getElementById('event-location').value
+            };
+            
+            createEvent(eventData);
+        });
+    }
+
+    // Handle edit event form submission
+    const editEventForm = document.getElementById('edit-event-form');
+    if (editEventForm) {
+        editEventForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const eventData = {
+                title: document.getElementById('edit-event-title').value,
+                description: document.getElementById('edit-event-description').value,
+                date: document.getElementById('edit-event-date').value,
+                location: document.getElementById('edit-event-location').value,
+                status: document.getElementById('edit-event-status').value
+            };
+            
+            if (editingEventId) {
+                updateEvent(editingEventId, eventData);
+            }
+        });
+    }
+
+    // Close edit modal buttons
+    const closeEditModal = document.getElementById('close-edit-modal');
+    const cancelEdit = document.getElementById('cancel-edit');
+    
+    if (closeEditModal) {
+        closeEditModal.addEventListener('click', () => {
+            document.getElementById('edit-event-modal').classList.add('hidden');
+        });
+    }
+    
+    if (cancelEdit) {
+        cancelEdit.addEventListener('click', () => {
+            document.getElementById('edit-event-modal').classList.add('hidden');
+        });
+    }
+
+    // File modal setup
+    const fileModal = document.getElementById('file-modal');
+    const closeFileModal = document.getElementById('close-file-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const downloadAllBtn = document.getElementById('download-all-btn');
+
+    if (closeFileModal) {
+        closeFileModal.addEventListener('click', () => {
+            fileModal.classList.add('hidden');
+        });
+    }
+
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', () => {
+            fileModal.classList.add('hidden');
+        });
+    }
+
+    if (downloadAllBtn) {
+        downloadAllBtn.addEventListener('click', downloadAllFiles);
+    }
+
+    // Close modals when clicking outside
+    window.addEventListener('click', (e) => {
+        const fileModal = document.getElementById('file-modal');
+        const editModal = document.getElementById('edit-event-modal');
+        
+        if (e.target === fileModal) {
+            fileModal.classList.add('hidden');
+        }
+        if (e.target === editModal) {
+            editModal.classList.add('hidden');
+        }
+    });
+
+    // Status filter change handlers
+    const statusFilter = document.getElementById('status-filter');
+    const eventStatusFilter = document.getElementById('event-status-filter');
+    
+    if (statusFilter) {
+        statusFilter.addEventListener('change', loadRegistrationRequests);
+    }
+    
+    if (eventStatusFilter) {
+        eventStatusFilter.addEventListener('change', loadRegistrationRequests);
+    }
+}
+
+// Update the loadRegistrationRequests function to refresh dashboard stats when requests are updated
+async function updateRequestStatus(requestId, status) {
+    if (!confirm(`Are you sure you want to ${status} this registration request?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/registration-requests/${requestId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ status })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Request status updated successfully!');
+            loadRegistrationRequests();
+            updateDashboardStats(); // Refresh dashboard stats
+        } else {
+            alert('Error updating request status: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Error updating request status:', error);
+        alert('Error updating request status: ' + error.message);
+    }
+}
+
+// Update the createEvent function to refresh dashboard
+async function createEvent(eventData) {
+    try {
+        const response = await fetch('/api/events', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(eventData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Event created successfully!');
+            document.getElementById('create-event-form').reset();
+            loadAdminEvents();
+            updateDashboardStats(); // Refresh dashboard after creating event
+        } else {
+            alert('Error creating event: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Error creating event:', error);
+        alert('Error creating event: ' + error.message);
+    }
+}
+
+// Update the deleteEvent function
+async function deleteEvent(eventId) {
+    if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/events/${eventId}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Event deleted successfully!');
+            loadAdminEvents();
+            updateDashboardStats(); // Refresh dashboard after deleting event
+        } else {
+            alert('Error deleting event: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Error deleting event:', error);
+        alert('Error deleting event: ' + error.message);
+    }
+}
+
+// Update the assignToBus function to refresh dashboard
+async function assignToBus(assignmentData) {
+    try {
+        // Validate bus selection
+        if (!assignmentData.bus_id) {
+            alert('Please select a bus');
+            return;
+        }
+        
+        const response = await fetch('/api/bus-assignments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(assignmentData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ Participant assigned to bus successfully!');
+            document.getElementById('assign-bus-form').reset();
+            document.getElementById('assign-bus-modal').classList.add('hidden');
+            
+            // Refresh data
+            const eventId = document.getElementById('bus-event-filter').value;
+            if (eventId) {
+                loadEventBusAssignments(eventId);
+                loadEligibleParticipants(eventId);
+            }
+            loadBuses();
+            updateDashboardStats(); // Refresh dashboard stats
+        } else {
+            alert('❌ Error: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Error assigning to bus:', error);
+        alert('❌ Error assigning to bus: ' + error.message);
+    }
+}
+
+// Update the removeBusAssignment function
+async function removeBusAssignment(assignmentId, userName) {
+    if (!confirm(`Are you sure you want to remove ${userName} from their bus assignment?\n\nThis will free up their seat on the bus.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/bus-assignments/${assignmentId}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ Bus assignment removed successfully!');
+            
+            // Refresh data
+            const eventId = document.getElementById('bus-event-filter').value;
+            if (eventId) {
+                loadEventBusAssignments(eventId);
+                loadEligibleParticipants(eventId);
+            }
+            loadBuses();
+            updateDashboardStats(); // Refresh dashboard stats
+        } else {
+            alert('❌ Error: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Error removing bus assignment:', error);
+        alert('❌ Error removing bus assignment: ' + error.message);
+    }
+}
+
+// Add this function to periodically update dashboard stats
+function startDashboardAutoRefresh() {
+    // Update stats immediately
+    updateDashboardStats();
+    
+    // Update every 30 seconds
+    setInterval(updateDashboardStats, 30000);
+}
 // Event Management Functions
 async function loadAdminEvents() {
     try {
@@ -1031,7 +1577,17 @@ async function loadParticipants() {
         }
     }
 }
-
+async function checkExistingBusAssignment(userId, eventId) {
+    try {
+        const response = await fetch(`/api/events/${eventId}/bus-assignments`);
+        const assignments = await response.json();
+        
+        return assignments.find(assignment => assignment.user_id == userId);
+    } catch (error) {
+        console.error('Error checking existing assignment:', error);
+        return null;
+    }
+}
 function checkEventFilterOptions() {
     const eventFilter = document.getElementById('participants-event-filter');
     if (!eventFilter) {
@@ -1252,9 +1808,20 @@ async function initBusEventFilter() {
             const option = document.createElement('option');
             option.value = event.id;
             const eventDate = event.date ? new Date(event.date).toLocaleDateString() : 'TBA';
-            option.textContent = `${event.title} (${eventDate})`;
+            
+            // Truncate long event titles (max 50 characters)
+            let displayTitle = event.title;
+            if (displayTitle.length > 50) {
+                displayTitle = displayTitle.substring(0, 47) + '...';
+            }
+            
+            option.textContent = `${displayTitle} (${eventDate})`;
+            option.title = `${event.title} (${eventDate})`; // Full title as tooltip
             freshEventFilter.appendChild(option);
         });
+        
+        // Add CSS class to control dropdown width
+        freshEventFilter.classList.add('max-w-xs', 'truncate');
         
         // Add event listener for filter change
         freshEventFilter.addEventListener('change', function() {
@@ -1346,7 +1913,16 @@ async function updateEventTitle(eventId) {
         const pageTitle = document.querySelector('#bus h1');
         if (pageTitle && event) {
             const eventDate = event.date ? new Date(event.date).toLocaleDateString() : 'TBA';
-            pageTitle.textContent = `Bus Assignment Management - ${event.title} (${eventDate})`;
+            
+            // Truncate long titles with CSS instead of JavaScript
+            pageTitle.innerHTML = `
+                <div class="flex flex-col">
+                    <span class="text-2xl font-bold text-white truncate" title="${event.title} (${eventDate})">
+                        Bus Assignment Management - ${event.title}
+                    </span>
+                    <span class="text-gray-400 text-sm mt-1">${eventDate}</span>
+                </div>
+            `;
         }
     } catch (error) {
         console.error('Error updating event title:', error);
@@ -1500,22 +2076,26 @@ async function loadEventBusAssignments(eventId) {
         });
         
         // Show event info
-        const eventDate = event.date ? new Date(event.date).toLocaleDateString() : 'TBA';
-        container.innerHTML = `
-            <div class="mb-6 p-4 bg-gray-900/50 rounded-lg border border-gray-800">
-                <h3 class="text-lg font-semibold text-white mb-2">${event.title}</h3>
-                <div class="flex flex-wrap gap-4 text-gray-400 text-sm">
-                    <span class="flex items-center">
-                        <i class='bx bx-calendar mr-2'></i>${eventDate}
-                    </span>
-                    <span class="flex items-center">
-                        <i class='bx bx-map mr-2'></i>${event.location || 'Location TBA'}
-                    </span>
-                    <span class="flex items-center">
-                        <i class='bx bx-group mr-2'></i>${assignments.length} participants assigned
-                    </span>
-                </div>
+const eventDate = event.date ? new Date(event.date).toLocaleDateString() : 'TBA';
+container.innerHTML = `
+    <div class="mb-6 p-4 bg-gray-900/50 rounded-lg border border-gray-800">
+        <div class="flex flex-col">
+            <h3 class="text-lg font-semibold text-white mb-1 truncate" title="${event.title}">
+                ${event.title}
+            </h3>
+            <div class="flex flex-wrap gap-4 text-gray-400 text-sm">
+                <span class="flex items-center">
+                    <i class='bx bx-calendar mr-2'></i>${eventDate}
+                </span>
+                <span class="flex items-center">
+                    <i class='bx bx-map mr-2'></i>${event.location || 'Location TBA'}
+                </span>
+                <span class="flex items-center">
+                    <i class='bx bx-group mr-2'></i>${assignments.length} participants assigned
+                </span>
             </div>
+        </div>
+    </div>
             
             <div class="space-y-6">
                 ${Object.values(assignmentsByBus).map(bus => `
@@ -1644,20 +2224,67 @@ async function loadEligibleParticipants(eventId) {
 
 async function openAssignBusModal(userId, eventId, userName, studentNumber, userEmail) {
     try {
+        console.log('Opening assign modal for:', { userId, eventId, userName });
+        
+        // First verify the user can be assigned
+        console.log('Verifying assignment eligibility...');
+        
+        const verifyResponse = await fetch(`/api/debug/assignment/${userId}/${eventId}`);
+        const verification = await verifyResponse.json();
+        
+        console.log('Verification result:', verification);
+        
+        if (!verification.summary.canAssign) {
+            let errorMessage = `Cannot assign ${userName} to a bus:\n\n`;
+            
+            if (!verification.summary.userExists) {
+                errorMessage += "• User does not exist\n";
+            }
+            if (!verification.summary.eventExists) {
+                errorMessage += "• Event does not exist\n";
+            }
+            if (!verification.summary.hasApprovedRegistration) {
+                errorMessage += "• User does not have approved registration for this event\n";
+            }
+            if (verification.summary.hasExistingAssignment) {
+                const assignment = verification.checks.assignment.data;
+                errorMessage += `• User is already assigned to Bus ${assignment.bus_number}\n`;
+            }
+            
+            alert(errorMessage);
+            return;
+        }
+        
         // Load available buses
+        console.log('Loading available buses...');
         const response = await fetch('/api/buses');
         const buses = await response.json();
         
         const select = document.getElementById('assign-bus-select');
         select.innerHTML = '<option value="">Select a bus</option>';
         
-        buses.forEach(bus => {
-            const option = document.createElement('option');
-            option.value = bus.id;
+        // Filter buses with available capacity
+        const availableBuses = buses.filter(bus => {
             const available = bus.capacity - bus.current_passengers;
-            option.textContent = `${bus.bus_number} (${available} seats available)`;
-            select.appendChild(option);
+            console.log(`Bus ${bus.bus_number}: ${bus.current_passengers}/${bus.capacity} (${available} available)`);
+            return available > 0;
         });
+        
+        console.log(`Found ${availableBuses.length} available buses`);
+        
+        if (availableBuses.length === 0) {
+            select.innerHTML = '<option value="">No available buses</option>';
+            select.disabled = true;
+        } else {
+            availableBuses.forEach(bus => {
+                const option = document.createElement('option');
+                option.value = bus.id;
+                const available = bus.capacity - bus.current_passengers;
+                option.textContent = `${bus.bus_number} (${available} seats available)`;
+                select.appendChild(option);
+            });
+            select.disabled = false;
+        }
         
         // Set participant info
         document.getElementById('assign-user-id').value = userId;
@@ -1665,17 +2292,28 @@ async function openAssignBusModal(userId, eventId, userName, studentNumber, user
         
         const infoDiv = document.getElementById('assign-participant-info');
         infoDiv.innerHTML = `
-            <p class="text-white font-medium">${userName}</p>
-            <p class="text-gray-400 text-sm">${studentNumber} • ${userEmail}</p>
+            <div class="flex items-center mb-2">
+                <i class='bx bx-user-circle text-blue-400 text-xl mr-3'></i>
+                <div>
+                    <p class="text-white font-medium">${userName}</p>
+                    <p class="text-gray-400 text-sm">${studentNumber} • ${userEmail}</p>
+                    <p class="text-gray-500 text-xs mt-1">✅ Verified eligible</p>
+                </div>
+            </div>
         `;
         
-        // Show capacity info
+        // Show capacity info when bus is selected
         const capacityInfo = document.getElementById('bus-capacity-info');
         select.addEventListener('change', function() {
             const selectedBus = buses.find(bus => bus.id == this.value);
             if (selectedBus) {
                 const available = selectedBus.capacity - selectedBus.current_passengers;
-                capacityInfo.textContent = `Capacity: ${selectedBus.current_passengers}/${selectedBus.capacity} (${available} seats available)`;
+                capacityInfo.innerHTML = `
+                    <div class="mt-2 p-2 bg-blue-900/20 border border-blue-800 rounded text-sm">
+                        <p class="text-blue-300">Capacity: ${selectedBus.current_passengers}/${selectedBus.capacity}</p>
+                        <p class="text-green-300">Available: ${available} seats</p>
+                    </div>
+                `;
             } else {
                 capacityInfo.textContent = '';
             }
@@ -1686,7 +2324,7 @@ async function openAssignBusModal(userId, eventId, userName, studentNumber, user
         
     } catch (error) {
         console.error('Error opening assign bus modal:', error);
-        alert('Error loading bus information');
+        alert('Error: ' + error.message + '\n\nCheck console for details.');
     }
 }
 
@@ -1760,34 +2398,15 @@ async function assignToBus(assignmentData) {
             return;
         }
         
-        // Validate all required fields
-        if (!assignmentData.user_id || !assignmentData.event_id) {
-            alert('Missing required information. Please try again.');
-            return;
-        }
+        console.log('Sending assignment to simple endpoint:', assignmentData);
         
-        console.log('Sending assignment data:', assignmentData);
-        
-        const response = await fetch('/api/bus-assignments', {
+        const response = await fetch('/api/bus-assignments-simple', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(assignmentData)
         });
         
-        // Log response details for debugging
-        console.log('Response status:', response.status);
-        console.log('Response status text:', response.statusText);
-        
-        // Check if response is JSON
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-            const text = await response.text();
-            console.error('Non-JSON response:', text);
-            throw new Error(`Server returned non-JSON response: ${text}`);
-        }
-        
         const result = await response.json();
-        console.log('Response result:', result);
         
         if (result.success) {
             alert('✅ Participant assigned to bus successfully!');
@@ -1802,12 +2421,11 @@ async function assignToBus(assignmentData) {
             }
             loadBuses();
         } else {
-            alert('❌ Error: ' + (result.error || 'Unknown error'));
-            console.error('API Error details:', result);
+            alert('❌ Error: ' + result.error);
         }
     } catch (error) {
         console.error('Error assigning to bus:', error);
-        alert('❌ Error assigning to bus: ' + error.message + '\n\nPlease check console for details.');
+        alert('❌ Error assigning to bus: ' + error.message);
     }
 }
 
@@ -2311,8 +2929,11 @@ async function loadEventBusAssignments(eventId) {
 // Load eligible participants (approved but not assigned)
 async function loadEligibleParticipants(eventId) {
     try {
+        console.log(`Loading eligible participants for event ${eventId}...`);
+        
         const list = document.getElementById('eligible-participants-list');
         const section = document.getElementById('eligible-participants-section');
+        
         if (!list || !section) return;
         
         list.innerHTML = `
@@ -2322,8 +2943,16 @@ async function loadEligibleParticipants(eventId) {
             </div>
         `;
 
+        // Load participants
         const response = await fetch(`/api/events/${eventId}/eligible-participants`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const participants = await response.json();
+        
+        console.log(`Received ${participants.length} participants from server`);
         
         if (participants.length === 0) {
             list.innerHTML = `
@@ -2331,37 +2960,65 @@ async function loadEligibleParticipants(eventId) {
                     <i class='bx bx-check-circle text-2xl text-green-500 mb-2'></i>
                     <p class="text-gray-400">All approved participants have been assigned to buses!</p>
                     <p class="text-gray-500 text-sm mt-1">No eligible participants remaining.</p>
+                    <button onclick="refreshEligibleList()" 
+                            class="mt-3 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors">
+                        <i class='bx bx-refresh mr-1'></i> Refresh List
+                    </button>
                 </div>
             `;
             return;
         }
         
-        list.innerHTML = participants.map(participant => `
-            <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 flex justify-between items-center hover:bg-gray-800/50 transition-colors">
-                <div class="flex-1">
-                    <h4 class="text-white font-medium">${participant.name}</h4>
-                    <p class="text-gray-400 text-sm">${participant.student_number} • ${participant.email}</p>
-                    <p class="text-gray-500 text-xs mt-1">
-                        <i class='bx bx-calendar-check'></i> Approved: ${new Date(participant.registration_date).toLocaleDateString()}
-                    </p>
+        // Render participants
+        list.innerHTML = participants.map(participant => {
+            // Safety check: Log each participant
+            console.log(`Rendering participant: ${participant.name} (ID: ${participant.id})`);
+            
+            return `
+                <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 flex justify-between items-center hover:bg-gray-800/50 transition-colors mb-3">
+                    <div class="flex-1">
+                        <h4 class="text-white font-medium">${participant.name}</h4>
+                        <p class="text-gray-400 text-sm">${participant.student_number} • ${participant.email}</p>
+                        <div class="flex items-center mt-2">
+                            <span class="inline-block px-2 py-1 bg-green-900/30 text-green-400 border border-green-800 rounded text-xs mr-2">
+                                Approved
+                            </span>
+                            <span class="text-gray-500 text-xs">
+                                <i class='bx bx-calendar mr-1'></i>
+                                ${new Date(participant.registration_date).toLocaleDateString()}
+                            </span>
+                        </div>
+                    </div>
+                    <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+                            onclick="openAssignBusModal(${participant.id}, ${eventId}, '${participant.name.replace(/'/g, "\\'")}', '${participant.student_number}', '${participant.email.replace(/'/g, "\\'")}')">
+                        <i class='bx bx-bus mr-1'></i> Assign to Bus
+                    </button>
                 </div>
-                <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
-                        onclick="openAssignBusModal(${participant.id}, ${eventId}, '${participant.name.replace(/'/g, "\\'")}', '${participant.student_number}', '${participant.email.replace(/'/g, "\\'")}')">
-                    <i class='bx bx-bus mr-1'></i> Assign to Bus
+            `;
+        }).join('');
+        
+        // Add refresh button at bottom
+        list.innerHTML += `
+            <div class="text-center mt-4">
+                <button onclick="refreshEligibleList()" 
+                        class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors">
+                    <i class='bx bx-refresh mr-2'></i> Refresh List
                 </button>
             </div>
-        `).join('');
+        `;
         
         section.classList.remove('hidden');
+        console.log('Eligible participants list rendered successfully');
         
     } catch (error) {
-        console.error('Error loading eligible participants:', error);
+        console.error('❌ Error loading eligible participants:', error);
         const list = document.getElementById('eligible-participants-list');
         if (list) {
             list.innerHTML = `
                 <div class="text-center py-6">
                     <i class='bx bx-error text-2xl text-red-500 mb-2'></i>
                     <p class="text-gray-400">Error loading participants</p>
+                    <p class="text-gray-500 text-sm mb-3">${error.message}</p>
                     <button onclick="loadEligibleParticipants(${eventId})" 
                             class="mt-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors">
                         Try Again
@@ -2372,10 +3029,36 @@ async function loadEligibleParticipants(eventId) {
     }
 }
 
+// Add refresh function
+function refreshEligibleList() {
+    const eventId = document.getElementById('bus-event-filter').value;
+    if (eventId) {
+        console.log('Refreshing eligible list for event:', eventId);
+        loadEligibleParticipants(eventId);
+    }
+}
+
 // Open modal to assign participant to bus
 async function openAssignBusModal(userId, eventId, userName, studentNumber, userEmail) {
     try {
         console.log('Opening assign modal for:', { userId, eventId, userName });
+        
+        // First check if user already has a bus assignment for this event
+        try {
+            const checkResponse = await fetch(`/api/events/${eventId}/bus-assignments`);
+            const assignments = await checkResponse.json();
+            
+            const existingAssignment = assignments.find(assignment => 
+                assignment.user_id == userId
+            );
+            
+            if (existingAssignment) {
+                alert(`⚠️ ${userName} is already assigned to Bus ${existingAssignment.bus_number}.\n\nUse the "Move" option instead.`);
+                return;
+            }
+        } catch (checkError) {
+            console.warn('Could not check existing assignments:', checkError);
+        }
         
         // Load available buses
         const response = await fetch('/api/buses');
@@ -2401,19 +3084,9 @@ async function openAssignBusModal(userId, eventId, userName, studentNumber, user
             select.disabled = false;
         }
         
-        // Validate IDs are numbers
-        const userIdNum = parseInt(userId);
-        const eventIdNum = parseInt(eventId);
-        
-        if (isNaN(userIdNum) || isNaN(eventIdNum)) {
-            console.error('Invalid IDs:', { userId, eventId });
-            alert('Invalid user or event ID. Please refresh the page and try again.');
-            return;
-        }
-        
         // Set participant info
-        document.getElementById('assign-user-id').value = userIdNum;
-        document.getElementById('assign-event-id').value = eventIdNum;
+        document.getElementById('assign-user-id').value = userId;
+        document.getElementById('assign-event-id').value = eventId;
         
         const infoDiv = document.getElementById('assign-participant-info');
         infoDiv.innerHTML = `
@@ -2422,31 +3095,9 @@ async function openAssignBusModal(userId, eventId, userName, studentNumber, user
                 <div>
                     <p class="text-white font-medium">${userName}</p>
                     <p class="text-gray-400 text-sm">${studentNumber} • ${userEmail}</p>
-                    <p class="text-gray-400 text-xs mt-1">User ID: ${userIdNum} | Event ID: ${eventIdNum}</p>
                 </div>
             </div>
         `;
-        
-        // Show capacity info when bus is selected
-        const capacityInfo = document.getElementById('bus-capacity-info');
-        select.addEventListener('change', function() {
-            const selectedBus = buses.find(bus => bus.id == this.value);
-            if (selectedBus) {
-                const available = selectedBus.capacity - selectedBus.current_passengers;
-                capacityInfo.innerHTML = `
-                    <div class="flex items-center space-x-4">
-                        <span class="text-green-400">Available: ${available} seats</span>
-                        <span class="text-gray-400">Capacity: ${selectedBus.capacity}</span>
-                        <span class="text-blue-400">Current: ${selectedBus.current_passengers}</span>
-                    </div>
-                `;
-            } else {
-                capacityInfo.textContent = '';
-            }
-        });
-        
-        // Reset form
-        document.getElementById('assign-notes').value = '';
         
         // Show modal
         document.getElementById('assign-bus-modal').classList.remove('hidden');

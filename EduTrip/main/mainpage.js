@@ -47,7 +47,7 @@ document.querySelector('#login-form form').addEventListener('submit', async (e) 
     const password = e.target.querySelector('input[type="password"]').value;
     
     try {
-        const response = await fetch('http://localhost:3000/api/login', {
+        const response = await fetch('/api/login', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -61,7 +61,7 @@ document.querySelector('#login-form form').addEventListener('submit', async (e) 
             alert('Login successful!');
             // Store user data in localStorage
             localStorage.setItem('user', JSON.stringify(data.user));
-            localStorage.setItem('token', 'logged-in'); // Simple token for demo
+            localStorage.setItem('token', 'logged-in');
             
             console.log('User logged in:', data.user);
             
@@ -71,6 +71,12 @@ document.querySelector('#login-form form').addEventListener('submit', async (e) 
             } else {
                 window.location.href = '/student';
             }
+        } else if (data.requires_verification) {
+            // Email not verified - redirect to verification page
+            alert('⚠️ Email not verified. Please check your email for verification code.');
+            localStorage.setItem('verification_user_id', data.user_id);
+            localStorage.setItem('verification_email', email);
+            window.location.href = '/verify-email.html?user_id=' + data.user_id;
         } else {
             alert(data.error || 'Login failed');
         }
@@ -100,8 +106,13 @@ document.querySelector('#register-form form').addEventListener('submit', async (
         return;
     }
     
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="bx bx-loader-circle bx-spin mr-2"></i> Creating Account...';
+    submitBtn.disabled = true;
+    
     try {
-        const response = await fetch('http://localhost:3000/api/register', {
+        const response = await fetch('/api/register', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -112,19 +123,361 @@ document.querySelector('#register-form form').addEventListener('submit', async (
         const data = await response.json();
         
         if (data.success) {
-            alert('Registration successful! Please login.');
-            loginToggle.click(); // Switch to login form
-            // Clear form
-            e.target.reset();
+            if (data.requires_verification) {
+                // Store user_id for verification page
+                localStorage.setItem('verification_user_id', data.user_id);
+                localStorage.setItem('verification_email', email);
+                
+                alert('✅ ' + data.message);
+                window.location.href = '/verify-email.html?user_id=' + data.user_id;
+            } else {
+                alert('✅ ' + (data.message || 'Registration successful! Please login.'));
+                document.getElementById('login-toggle').click();
+                e.target.reset();
+            }
         } else {
-            alert(data.error || 'Registration failed');
+            alert('❌ ' + (data.error || 'Registration failed'));
         }
     } catch (error) {
         console.error('Registration error:', error);
-        alert('Server not running. Please start the server first.');
+        alert('❌ Network error. Please check your connection and try again.');
+    } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
     }
 });
-
+// Add resend verification functionality
+document.getElementById('resend-verification')?.addEventListener('click', async () => {
+    const email = prompt('Please enter your email address to resend verification code:');
+    
+    if (!email) return;
+    
+    if (!email.includes('@') || !email.includes('.')) {
+        alert('Please enter a valid email address');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/resend-verification', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Verification code sent! Please check your email.');
+        } else {
+            alert('❌ ' + (data.error || 'Failed to resend verification code'));
+        }
+    } catch (error) {
+        console.error('Resend error:', error);
+        alert('❌ Network error. Please try again.');
+    }
+});
+// Forgot Password Functionality
+// Forgot Password Flow - Modal Sequence
+document.addEventListener('DOMContentLoaded', function() {
+    const forgotPasswordLink = document.getElementById('forgot-password');
+    const forgotPasswordModal = document.getElementById('forgot-password-modal');
+    const closeForgotModal = document.getElementById('close-forgot-modal');
+    
+    // Step elements
+    const step1 = document.getElementById('step-1');
+    const step2 = document.getElementById('step-2');
+    const step3 = document.getElementById('step-3');
+    const step4 = document.getElementById('step-4');
+    
+    // Email variable to track
+    let currentResetEmail = '';
+    let currentResetToken = '';
+    
+    // Open modal
+    if (forgotPasswordLink) {
+        forgotPasswordLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            resetModalToStep1();
+            forgotPasswordModal.classList.remove('hidden');
+        });
+    }
+    
+    // Reset modal to step 1
+    function resetModalToStep1() {
+        step1.classList.remove('hidden');
+        step2.classList.add('hidden');
+        step3.classList.add('hidden');
+        step4.classList.add('hidden');
+        document.getElementById('forgot-password-form').reset();
+        document.getElementById('enter-code-form').reset();
+        document.getElementById('new-password-form').reset();
+        currentResetEmail = '';
+        currentResetToken = '';
+    }
+    
+    // Close modal
+    function closeModal() {
+        forgotPasswordModal.classList.add('hidden');
+        resetModalToStep1();
+    }
+    
+    if (closeForgotModal) closeForgotModal.addEventListener('click', closeModal);
+    if (document.getElementById('cancel-forgot')) {
+        document.getElementById('cancel-forgot').addEventListener('click', closeModal);
+    }
+    
+    // Close when clicking outside
+    forgotPasswordModal.addEventListener('click', (e) => {
+        if (e.target === forgotPasswordModal) closeModal();
+    });
+    
+    // Step 1: Send verification code
+    document.getElementById('forgot-password-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const email = document.getElementById('reset-email').value;
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        
+        submitBtn.innerHTML = '<i class="bx bx-loader-circle bx-spin mr-2"></i> Sending...';
+        submitBtn.disabled = true;
+        
+        try {
+            const response = await fetch('/api/forgot-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                currentResetEmail = email;
+                document.getElementById('sent-to-email').textContent = email;
+                document.getElementById('enter-code-email').value = email;
+                
+                // Move to step 2
+                step1.classList.add('hidden');
+                step2.classList.remove('hidden');
+                
+                // Auto-focus on code input
+                setTimeout(() => {
+                    document.getElementById('reset-code-input').focus();
+                }, 100);
+            } else {
+                showModalAlert('error', data.error || 'Failed to send verification code');
+            }
+        } catch (error) {
+            console.error('Forgot password error:', error);
+            showModalAlert('error', 'Network error. Please try again.');
+        } finally {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }
+    });
+    
+    // Back to step 1
+    document.getElementById('back-to-step1')?.addEventListener('click', () => {
+        step2.classList.add('hidden');
+        step1.classList.remove('hidden');
+    });
+    
+    // Resend code
+    document.getElementById('resend-code-btn')?.addEventListener('click', async () => {
+        if (!currentResetEmail) return;
+        
+        const resendBtn = document.getElementById('resend-code-btn');
+        const originalText = resendBtn.textContent;
+        resendBtn.textContent = 'Sending...';
+        resendBtn.disabled = true;
+        
+        try {
+            const response = await fetch('/api/forgot-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: currentResetEmail })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showModalAlert('success', 'New verification code sent!');
+            } else {
+                showModalAlert('error', data.error || 'Failed to resend code');
+            }
+        } catch (error) {
+            console.error('Resend error:', error);
+            showModalAlert('error', 'Network error. Please try again.');
+        } finally {
+            resendBtn.textContent = originalText;
+            resendBtn.disabled = false;
+        }
+    });
+    
+    // Step 2: Verify code
+document.getElementById('enter-code-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const email = document.getElementById('enter-code-email').value;
+    const resetToken = document.getElementById('reset-code-input').value;
+    
+    if (!resetToken || resetToken.length !== 6) {
+        showModalAlert('error', 'Please enter a valid 6-digit verification code');
+        return;
+    }
+    
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    submitBtn.innerHTML = '<i class="bx bx-loader-circle bx-spin mr-2"></i> Verifying...';
+    submitBtn.disabled = true;
+    
+    try {
+        // Verify the reset token - USING EMAIL
+        const response = await fetch('/api/verify-reset-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                email: email, // We're sending email, not user_id
+                reset_token: resetToken
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            currentResetToken = resetToken;
+            document.getElementById('newpass-email').value = email;
+            document.getElementById('newpass-reset-token').value = resetToken;
+            
+            // Move to step 3
+            step2.classList.add('hidden');
+            step3.classList.remove('hidden');
+            
+            // Auto-focus on password input
+            setTimeout(() => {
+                document.getElementById('new-pass').focus();
+            }, 100);
+        } else {
+            showModalAlert('error', data.error || 'Invalid or expired verification code');
+        }
+    } catch (error) {
+        console.error('Code verification error:', error);
+        showModalAlert('error', 'Network error. Please try again.');
+    } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
+});
+    
+    // Back to step 2
+    document.getElementById('back-to-step2')?.addEventListener('click', () => {
+        step3.classList.add('hidden');
+        step2.classList.remove('hidden');
+    });
+    
+    // Step 3: Reset password
+    document.getElementById('new-password-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const email = document.getElementById('newpass-email').value;
+        const resetToken = document.getElementById('newpass-reset-token').value;
+        const newPassword = document.getElementById('new-pass').value;
+        const confirmPassword = document.getElementById('confirm-new-pass').value;
+        
+        // Validation
+        const passwordError = document.getElementById('password-error');
+        passwordError.classList.add('hidden');
+        
+        if (newPassword !== confirmPassword) {
+            passwordError.textContent = 'Passwords do not match!';
+            passwordError.classList.remove('hidden');
+            return;
+        }
+        
+        if (newPassword.length < 6) {
+            passwordError.textContent = 'Password must be at least 6 characters long!';
+            passwordError.classList.remove('hidden');
+            return;
+        }
+        
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        
+        submitBtn.innerHTML = '<i class="bx bx-loader-circle bx-spin mr-2"></i> Resetting...';
+        submitBtn.disabled = true;
+        
+        try {
+            const response = await fetch('/api/reset-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    email: email,
+                    reset_token: resetToken, 
+                    new_password: newPassword 
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Move to step 4 (success)
+                step3.classList.add('hidden');
+                step4.classList.remove('hidden');
+                
+                // Auto-fill the email in login form
+                const loginEmailInput = document.querySelector('#login-form input[type="email"]');
+                if (loginEmailInput) {
+                    loginEmailInput.value = email;
+                }
+            } else {
+                showModalAlert('error', data.error || 'Failed to reset password');
+            }
+        } catch (error) {
+            console.error('Reset password error:', error);
+            showModalAlert('error', 'Network error. Please try again.');
+        } finally {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }
+    });
+    
+    // Step 4: Success actions
+    document.getElementById('go-to-login')?.addEventListener('click', () => {
+        closeModal();
+        // Switch to login tab
+        document.getElementById('login-toggle').click();
+    });
+    
+    document.getElementById('close-success')?.addEventListener('click', closeModal);
+    
+    // Helper function to show alerts in modal
+    function showModalAlert(type, message) {
+        // Create alert element
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `mb-4 p-4 rounded-lg ${
+            type === 'success' ? 'bg-green-900/30 text-green-400 border border-green-800' : 
+            'bg-red-900/30 text-red-400 border border-red-800'
+        }`;
+        alertDiv.innerHTML = `
+            <div class="flex items-center">
+                <i class='bx ${type === 'success' ? 'bx-check-circle' : 'bx-error-circle'} mr-2'></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        // Insert at top of current step
+        const currentStep = document.querySelector('#forgot-password-modal div:not(.hidden)');
+        currentStep.insertBefore(alertDiv, currentStep.firstChild);
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 5000);
+    }
+});
 // Check if user is already logged in
 document.addEventListener('DOMContentLoaded', function() {
     const user = localStorage.getItem('user');
