@@ -263,7 +263,7 @@ async function sendVerificationEmail(email, verificationCode, userName) {
                         <p>Best regards,<br>The EduTrip Team</p>
                     </div>
                     <div style="background: #030712; padding: 20px; text-align: center; color: #6b7280; font-size: 12px;">
-                        <p>© 2024 EduTrip. Educational platform for trips and events.</p>
+                        <p>© 2025 EduTrip. Educational Seminars & Tours Platform.</p>
                         <p>This is an automated email, please do not reply.</p>
                     </div>
                 </div>
