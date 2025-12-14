@@ -1,5 +1,5 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
+const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
 const path = require('path');
 const fs = require('fs');
@@ -8,7 +8,179 @@ const nodemailer = require('nodemailer');
 require('dotenv').config();
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+
+// MySQL Connection
+const db = mysql.createConnection({
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 3306,
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'edutrip',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+});
+
+// Connect to MySQL
+db.connect((err) => {
+    if (err) {
+        console.error('❌ Error connecting to MySQL:', err);
+        process.exit(1);
+    }
+    console.log('✅ Connected to MySQL database');
+    createTables();
+});
+
+// Function to create tables if they don't exist
+function createTables() {
+    const tables = [
+        `CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            student_number VARCHAR(50),
+            email VARCHAR(255) UNIQUE NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            role VARCHAR(50) DEFAULT 'student',
+            verified BOOLEAN DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`,
+        
+        `CREATE TABLE IF NOT EXISTS email_verifications (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            verification_code VARCHAR(10) NOT NULL,
+            expires_at DATETIME NOT NULL,
+            verified BOOLEAN DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )`,
+        
+        `CREATE TABLE IF NOT EXISTS password_resets (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            reset_token VARCHAR(10) NOT NULL,
+            expires_at DATETIME NOT NULL,
+            used BOOLEAN DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )`,
+        
+        `CREATE TABLE IF NOT EXISTS events (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            date DATE,
+            location VARCHAR(255),
+            max_participants INT,
+            current_participants INT DEFAULT 0,
+            status VARCHAR(50) DEFAULT 'active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`,
+        
+        `CREATE TABLE IF NOT EXISTS registration_requests (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            event_id INT NOT NULL,
+            status VARCHAR(50) DEFAULT 'pending',
+            registration_form VARCHAR(255),
+            waiver_form VARCHAR(255),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+        )`,
+        
+        `CREATE TABLE IF NOT EXISTS buses (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            bus_number VARCHAR(50) UNIQUE NOT NULL,
+            capacity INT NOT NULL,
+            current_passengers INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`,
+        
+        `CREATE TABLE IF NOT EXISTS bus_assignments (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            event_id INT NOT NULL,
+            bus_id INT NOT NULL,
+            assignment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            notes TEXT,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+            FOREIGN KEY (bus_id) REFERENCES buses(id) ON DELETE CASCADE,
+            UNIQUE KEY unique_user_event (user_id, event_id)
+        )`,
+        
+        `CREATE TABLE IF NOT EXISTS notifications (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            message TEXT NOT NULL,
+            type VARCHAR(50) DEFAULT 'info',
+            is_read BOOLEAN DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )`
+    ];
+
+    tables.forEach((sql, index) => {
+        db.query(sql, (err) => {
+            if (err) {
+                console.error(`Error creating table ${index + 1}:`, err);
+            } else {
+                console.log(`Table ${index + 1} ready`);
+            }
+        });
+    });
+
+    // Hash passwords and insert users
+    const adminPassword = 'admin123';
+    const studentPassword = 'student123';
+    
+    // Hash admin password
+    bcrypt.hash(adminPassword, 10, (err, adminHash) => {
+        if (err) {
+            console.error('Error hashing admin password:', err);
+            return;
+        }
+        
+        // Insert admin
+        db.query(`INSERT IGNORE INTO users (name, email, password, role, verified) VALUES (?, ?, ?, ?, 1)`, 
+            ['Admin', 'admin@edutrip.com', adminHash, 'admin'], (err) => {
+                if (err) {
+                    if (err.code === 'ER_DUP_ENTRY') {
+                        console.log('✅ Admin user already exists');
+                    } else {
+                        console.error('Error inserting admin:', err);
+                    }
+                } else {
+                    console.log('✅ Admin user created with password: admin123');
+                }
+            });
+    });
+    
+    // Hash student password
+    bcrypt.hash(studentPassword, 10, (err, studentHash) => {
+        if (err) {
+            console.error('Error hashing student password:', err);
+            return;
+        }
+        
+        // Insert student
+        db.query(`INSERT IGNORE INTO users (name, student_number, email, password, role, verified) VALUES (?, ?, ?, ?, ?, 1)`, 
+            ['John Student', 'S123456', 'student@edutrip.com', studentHash, 'student'], (err) => {
+                if (err) {
+                    if (err.code === 'ER_DUP_ENTRY') {
+                        console.log('✅ Student user already exists');
+                    } else {
+                        console.error('Error inserting student:', err);
+                    }
+                } else {
+                    console.log('✅ Student user created with password: student123');
+                }
+            });
+    });
+}
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -42,13 +214,15 @@ const upload = multer({
         }
     }
 });
+
 const transporter = nodemailer.createTransport({
-    service: 'gmail', // or use another service like Outlook, Yahoo, etc.
+    service: 'gmail',
     auth: {
         user: process.env.EMAIL_USER || 'your-email@gmail.com',
         pass: process.env.EMAIL_PASSWORD || 'your-app-password'
     }
 });
+
 transporter.verify(function(error, success) {
     if (error) {
         console.log('❌ Email configuration error:', error);
@@ -56,6 +230,7 @@ transporter.verify(function(error, success) {
         console.log('✅ Email server is ready to send messages');
     }
 });
+
 function generateVerificationCode() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
@@ -104,14 +279,15 @@ async function sendVerificationEmail(email, verificationCode, userName) {
         return false;
     }
 }
-// Middleware - Serve static files from correct directories
+
+// Middleware - Serve static files
 app.use(express.json());
-app.use(express.static('.')); // Serve from main folder
-app.use('/main', express.static('main')); // Serve main folder files
-app.use('/student', express.static('student')); // Serve student folder files
-app.use('/img', express.static('img')); // Serve image folder
-app.use('/uploads', express.static('uploads')); // Serve uploaded files
-app.use('/frontp', express.static('frontp')); // Serve frontp folder files
+app.use(express.static('.'));
+app.use('/main', express.static('main'));
+app.use('/student', express.static('student'));
+app.use('/img', express.static('img'));
+app.use('/uploads', express.static('uploads'));
+app.use('/frontp', express.static('frontp'));
 
 // Fix for missing JS and CSS files
 app.get('/mainpage.js', (req, res) => {
@@ -138,200 +314,49 @@ app.get('/adminpage.css', (req, res) => {
     res.sendFile(path.join(__dirname, 'admin/adminpage.css'));
 });
 
-// Database setup
-const db = new sqlite3.Database('./edutrip.db', (err) => {
-    if (err) {
-        console.error('Error opening database:', err);
-    } else {
-        console.log('Connected to SQLite database');
-    }
-});
-
-// Create tables
-db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS email_verifications (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    verification_code TEXT NOT NULL,
-    expires_at DATETIME NOT NULL,
-    verified BOOLEAN DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users (id)
-)`, (err) => {
-    if (err) console.error('Error creating email_verifications table:', err);
-    else console.log('Email verifications table ready');
-});
-
-// Add verified column to users table
-db.all("PRAGMA table_info(users)", [], (err, columns) => {
-    if (err) {
-        console.error('Error checking users table:', err);
-        return;
-    }
-    
-    // Check if columns is defined and is an array
-    if (!columns || !Array.isArray(columns)) {
-        console.log('⚠️ Users table might not exist yet, creating with verified column...');
-        return;
-    }
-    
-    const hasVerifiedColumn = columns.some(col => col && col.name === 'verified');
-    if (!hasVerifiedColumn) {
-        db.run("ALTER TABLE users ADD COLUMN verified BOOLEAN DEFAULT 0", (err) => {
-            if (err) {
-                console.error('Error adding verified column:', err);
-                // If column already exists, that's fine
-                if (err.message && err.message.includes('duplicate column name')) {
-                    console.log('✅ verified column already exists');
-                }
-            } else {
-                console.log('✅ Added verified column to users table');
-            }
-        });
-    } else {
-        console.log('✅ verified column already exists');
-    }
-});
-    // Users table
-    db.run(`CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        student_number TEXT,
-        email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        role TEXT DEFAULT 'student'
-    )`, (err) => {
-        if (err) console.error('Error creating users table:', err);
-        else console.log('Users table ready');
-    });
-    // Add this with other CREATE TABLE statements
-db.run(`CREATE TABLE IF NOT EXISTS password_resets (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    reset_token TEXT NOT NULL,
-    expires_at DATETIME NOT NULL,
-    used BOOLEAN DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users (id)
-)`, (err) => {
-    if (err) console.error('Error creating password_resets table:', err);
-    else console.log('Password resets table ready');
-});
-    // Events table
-    db.run(`CREATE TABLE IF NOT EXISTS events (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        description TEXT,
-        date TEXT,
-        location TEXT,
-        max_participants INTEGER,
-        current_participants INTEGER DEFAULT 0,
-        status TEXT DEFAULT 'active'
-    )`, (err) => {
-        if (err) console.error('Error creating events table:', err);
-        else console.log('Events table ready');
-    });
-    
-    // Registration requests table
-    db.run(`CREATE TABLE IF NOT EXISTS registration_requests (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        event_id INTEGER NOT NULL,
-        status TEXT DEFAULT 'pending',
-        registration_form TEXT,
-        waiver_form TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users (id),
-        FOREIGN KEY (event_id) REFERENCES events (id)
-    )`, (err) => {
-        if (err) console.error('Error creating registration_requests table:', err);
-        else console.log('Registration requests table ready');
-    });
-    // Add this to the CREATE TABLES section in server.js
-db.run(`CREATE TABLE IF NOT EXISTS buses (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    bus_number TEXT UNIQUE NOT NULL,
-    capacity INTEGER NOT NULL,
-    current_passengers INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-)`, (err) => {
-    if (err) console.error('Error creating buses table:', err);
-    else console.log('Buses table ready');
-});
-
-db.run(`CREATE TABLE IF NOT EXISTS bus_assignments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    event_id INTEGER NOT NULL,
-    bus_id INTEGER NOT NULL,
-    assignment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-    notes TEXT,
-    FOREIGN KEY (user_id) REFERENCES users (id),
-    FOREIGN KEY (event_id) REFERENCES events (id),
-    FOREIGN KEY (bus_id) REFERENCES buses (id),
-    UNIQUE(user_id, event_id)  -- One user per event
-)`, (err) => {
-    if (err) console.error('Error creating bus_assignments table:', err);
-    else console.log('Bus assignments table ready');
-});
-    
-    // Insert default admin user
-    const adminPassword = bcrypt.hashSync('admin123', 10);
-    db.run(`INSERT OR IGNORE INTO users (name, email, password, role) 
-            VALUES (?, ?, ?, ?)`, 
-            ['Admin', 'admin@edutrip.com', adminPassword, 'admin'],
-            function(err) {
-                if (err) console.error('Error inserting admin user:', err);
-                else console.log('Admin user ready');
-            });
-    
-    // Insert sample student user
-    const studentPassword = bcrypt.hashSync('student123', 10);
-    db.run(`INSERT OR IGNORE INTO users (name, student_number, email, password, role) 
-            VALUES (?, ?, ?, ?, ?)`, 
-            ['John Student', 'S123456', 'student@edutrip.com', studentPassword, 'student'],
-            function(err) {
-                if (err) console.error('Error inserting student user:', err);
-                else console.log('Student user ready');
-            });
-
-const requireAuth = (req, res, next) => {
-    next();
-};
-
 // Routes
+
+// Login endpoint
 app.post('/api/login', (req, res) => {
     const { email, password } = req.body;
     
-    console.log('Login attempt for:', email);
+    console.log('🔐 Login attempt for:', email);
     
     if (!email || !password) {
         return res.status(400).json({ error: 'Email and password are required' });
     }
     
-    db.get("SELECT * FROM users WHERE email = ?", [email], (err, user) => {
+    db.query("SELECT * FROM users WHERE email = ?", [email], (err, results) => {
         if (err) {
             console.log('Database error:', err);
             return res.status(500).json({ error: 'Database error' });
         }
-        if (!user) {
+        if (results.length === 0) {
             console.log('User not found:', email);
             return res.status(401).json({ error: 'Invalid email or password' });
         }
         
-        console.log('User found:', user.email, 'Role:', user.role, 'Verified:', user.verified);
+        const user = results[0];
+        console.log('✅ User found:', {
+            email: user.email,
+            role: user.role,
+            verified: user.verified,
+            id: user.id
+        });
         
-        // Check if email is verified
-        if (!user.verified) {
+        const isVerified = user.verified === 1 || user.verified === true;
+        
+        if (!isVerified) {
+            console.log('❌ User not verified. verified value:', user.verified);
             return res.status(403).json({ 
-                error: 'Email not verified', 
+                error: 'Email not verified. Please check your email for verification code.',
                 requires_verification: true,
                 user_id: user.id 
             });
         }
         
         if (bcrypt.compareSync(password, user.password)) {
-            console.log('Login successful for:', user.email);
+            console.log('✅ Login successful for:', user.email);
             res.json({ 
                 success: true, 
                 user: { 
@@ -343,13 +368,13 @@ app.post('/api/login', (req, res) => {
                 } 
             });
         } else {
-            console.log('Invalid password for:', email);
+            console.log('❌ Invalid password for:', email);
             res.status(401).json({ error: 'Invalid email or password' });
         }
     });
 });
 
-// Update the /api/register endpoint
+// Register endpoint
 app.post('/api/register', async (req, res) => {
     const { name, studentNumber, email, password } = req.body;
     
@@ -361,36 +386,31 @@ app.post('/api/register', async (req, res) => {
         return res.status(400).json({ error: 'Password must be at least 6 characters long' });
     }
     
-    // Check if email already exists
-    db.get("SELECT * FROM users WHERE email = ?", [email], async (err, existingUser) => {
+    db.query("SELECT * FROM users WHERE email = ?", [email], async (err, results) => {
         if (err) {
             console.error('Registration error:', err);
             return res.status(500).json({ error: 'Database error' });
         }
         
-        if (existingUser) {
-            // If user exists but is not verified, allow resending verification
+        if (results.length > 0) {
+            const existingUser = results[0];
+            
             if (!existingUser.verified) {
-                // Generate new verification code
                 const verificationCode = generateVerificationCode();
-                const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
+                const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
                 
-                // Delete old verification codes
-                db.run("DELETE FROM email_verifications WHERE user_id = ?", [existingUser.id], function(err) {
+                db.query("DELETE FROM email_verifications WHERE user_id = ?", [existingUser.id], (err) => {
                     if (err) {
                         console.error('Error clearing old verifications:', err);
                     }
                     
-                    // Store new verification code
-                    db.run("INSERT INTO email_verifications (user_id, verification_code, expires_at) VALUES (?, ?, ?)",
-                        [existingUser.id, verificationCode, expiresAt.toISOString()],
-                        async function(err) {
+                    db.query("INSERT INTO email_verifications (user_id, verification_code, expires_at) VALUES (?, ?, ?)",
+                        [existingUser.id, verificationCode, expiresAt], async (err) => {
                             if (err) {
                                 console.error('Error storing verification code:', err);
                                 return res.status(500).json({ error: 'Failed to create verification code' });
                             }
                             
-                            // Send verification email
                             const emailSent = await sendVerificationEmail(email, verificationCode, existingUser.name);
                             
                             if (emailSent) {
@@ -411,38 +431,32 @@ app.post('/api/register', async (req, res) => {
                 return;
             }
             
-            // If user exists and is verified, show error
             return res.status(400).json({ error: 'Email already exists and is verified. Please login instead.' });
         }
         
-        // Create new user (new email)
         const hashedPassword = bcrypt.hashSync(password, 10);
         
-        db.run("INSERT INTO users (name, student_number, email, password, verified) VALUES (?, ?, ?, ?, 0)", 
-            [name, studentNumber, email, hashedPassword], 
-            async function(err) {
+        db.query("INSERT INTO users (name, student_number, email, password, verified) VALUES (?, ?, ?, ?, 0)", 
+            [name, studentNumber, email, hashedPassword], async (err, result) => {
                 if (err) {
                     console.error('Registration error:', err);
-                    if (err.message.includes('UNIQUE constraint failed')) {
+                    if (err.code === 'ER_DUP_ENTRY') {
                         return res.status(400).json({ error: 'Email already exists' });
                     }
                     return res.status(500).json({ error: 'Registration failed' });
                 }
                 
-                const userId = this.lastID;
+                const userId = result.insertId;
                 const verificationCode = generateVerificationCode();
-                const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
+                const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
                 
-                // Store verification code
-                db.run("INSERT INTO email_verifications (user_id, verification_code, expires_at) VALUES (?, ?, ?)",
-                    [userId, verificationCode, expiresAt.toISOString()],
-                    async function(err) {
+                db.query("INSERT INTO email_verifications (user_id, verification_code, expires_at) VALUES (?, ?, ?)",
+                    [userId, verificationCode, expiresAt], async (err) => {
                         if (err) {
                             console.error('Error storing verification code:', err);
                             return res.status(500).json({ error: 'Failed to create verification code' });
                         }
                         
-                        // Send verification email
                         const emailSent = await sendVerificationEmail(email, verificationCode, name);
                         
                         if (emailSent) {
@@ -462,7 +476,8 @@ app.post('/api/register', async (req, res) => {
             });
     });
 });
-// Email verification endpoint
+
+// Verify email endpoint
 app.post('/api/verify-email', (req, res) => {
     const { user_id, verification_code } = req.body;
     
@@ -470,124 +485,66 @@ app.post('/api/verify-email', (req, res) => {
         return res.status(400).json({ error: 'User ID and verification code are required' });
     }
     
-    const now = new Date().toISOString();
+    const now = new Date();
     
-    db.get(`
-        SELECT * FROM email_verifications 
-        WHERE user_id = ? 
-        AND verification_code = ?
-        AND expires_at > ?
-        AND verified = 0
-    `, [user_id, verification_code, now], (err, verification) => {
-        if (err) {
-            console.error('Verification error:', err);
-            return res.status(500).json({ error: 'Database error' });
-        }
-        
-        if (!verification) {
-            return res.status(400).json({ error: 'Invalid or expired verification code' });
-        }
-        
-        // Update verification as used
-        db.run("UPDATE email_verifications SET verified = 1 WHERE id = ?", [verification.id], function(err) {
+    db.query(
+        `SELECT * FROM email_verifications 
+         WHERE user_id = ? 
+         AND verification_code = ?
+         AND expires_at > ?
+         AND verified = 0`,
+        [user_id, verification_code, now], (err, results) => {
             if (err) {
-                console.error('Error updating verification:', err);
+                console.error('Verification error:', err);
                 return res.status(500).json({ error: 'Database error' });
             }
             
-            // Update user as verified
-            db.run("UPDATE users SET verified = 1 WHERE id = ?", [user_id], function(err) {
+            if (results.length === 0) {
+                return res.status(400).json({ error: 'Invalid or expired verification code' });
+            }
+            
+            const verification = results[0];
+            
+            db.query("UPDATE email_verifications SET verified = 1 WHERE id = ?", [verification.id], (err) => {
                 if (err) {
-                    console.error('Error updating user:', err);
+                    console.error('Error updating verification:', err);
                     return res.status(500).json({ error: 'Database error' });
                 }
                 
-                res.json({ 
-                    success: true, 
-                    message: 'Email verified successfully! You can now login.' 
+                db.query("UPDATE users SET verified = 1 WHERE id = ?", [user_id], (err) => {
+                    if (err) {
+                        console.error('Error updating user:', err);
+                        return res.status(500).json({ error: 'Database error' });
+                    }
+                    
+                    res.json({ 
+                        success: true, 
+                        message: 'Email verified successfully! You can now login.' 
+                    });
                 });
             });
         });
-    });
 });
 
-// Resend verification code endpoint
-app.post('/api/resend-verification', async (req, res) => {
-    const { email } = req.body;
-    
-    if (!email) {
-        return res.status(400).json({ error: 'Email is required' });
-    }
-    
-    db.get("SELECT * FROM users WHERE email = ?", [email], async (err, user) => {
-        if (err) {
-            console.error('Error finding user:', err);
-            return res.status(500).json({ error: 'Database error' });
-        }
-        
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        
-        if (user.verified) {
-            return res.status(400).json({ error: 'Email already verified' });
-        }
-        
-        const verificationCode = generateVerificationCode();
-        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        
-        // Delete old verification codes
-        db.run("DELETE FROM email_verifications WHERE user_id = ?", [user.id], function(err) {
-            if (err) {
-                console.error('Error clearing old verifications:', err);
-            }
-            
-            // Store new verification code
-            db.run("INSERT INTO email_verifications (user_id, verification_code, expires_at) VALUES (?, ?, ?)",
-                [user.id, verificationCode, expiresAt.toISOString()],
-                async function(err) {
-                    if (err) {
-                        console.error('Error storing verification code:', err);
-                        return res.status(500).json({ error: 'Failed to create verification code' });
-                    }
-                    
-                    // Send verification email
-                    const emailSent = await sendVerificationEmail(email, verificationCode, user.name);
-                    
-                    if (emailSent) {
-                        res.json({ 
-                            success: true, 
-                            message: 'Verification code resent successfully! Please check your email.' 
-                        });
-                    } else {
-                        res.status(500).json({ 
-                            error: 'Failed to send verification email. Please try again later.' 
-                        });
-                    }
-                }
-            );
-        });
-    });
-});
-
-// Get events for front page (limited to 5 most recent)
+// Get events for front page
 app.get('/api/frontpage-events', (req, res) => {
-    db.all("SELECT * FROM events WHERE status = 'active' ORDER BY date DESC LIMIT 5", [], (err, rows) => {
+    db.query("SELECT * FROM events WHERE status = 'active' ORDER BY date DESC LIMIT 5", (err, results) => {
         if (err) {
             console.log('Database error:', err);
             return res.status(500).json({ error: 'Database error' });
         }
-        res.json(rows);
+        res.json(results);
     });
 });
+
 // Get all events
 app.get('/api/events', (req, res) => {
-    db.all("SELECT * FROM events WHERE status = 'active' ORDER BY date", [], (err, rows) => {
+    db.query("SELECT * FROM events WHERE status = 'active' ORDER BY date", (err, results) => {
         if (err) {
             console.log('Database error:', err);
             return res.status(500).json({ error: 'Database error' });
         }
-        res.json(rows);
+        res.json(results);
     });
 });
 
@@ -595,20 +552,19 @@ app.get('/api/events', (req, res) => {
 app.get('/api/events/:id', (req, res) => {
     const { id } = req.params;
     
-    db.get("SELECT * FROM events WHERE id = ?", [id], (err, row) => {
+    db.query("SELECT * FROM events WHERE id = ?", [id], (err, results) => {
         if (err) {
             console.log('Database error:', err);
             return res.status(500).json({ error: 'Database error' });
         }
-        if (!row) {
+        if (results.length === 0) {
             return res.status(404).json({ error: 'Event not found' });
         }
-        res.json(row);
+        res.json(results[0]);
     });
 });
 
 // Get user's registration requests
-// Get user's registration requests - UPDATED VERSION
 app.get('/api/user/registration-requests', (req, res) => {
     const userId = req.query.user_id;
     
@@ -624,17 +580,16 @@ app.get('/api/user/registration-requests', (req, res) => {
         ORDER BY rr.created_at DESC
     `;
     
-    db.all(query, [userId], (err, rows) => {
+    db.query(query, [userId], (err, results) => {
         if (err) {
             console.log('Database error:', err);
             return res.status(500).json({ error: 'Database error' });
         }
-        res.json(rows);
+        res.json(results);
     });
 });
-// Password Reset Endpoints
 
-// Forgot password - send reset email
+// Forgot password
 app.post('/api/forgot-password', async (req, res) => {
     const { email } = req.body;
     
@@ -642,30 +597,27 @@ app.post('/api/forgot-password', async (req, res) => {
         return res.status(400).json({ error: 'Email is required' });
     }
     
-    db.get("SELECT * FROM users WHERE email = ?", [email], async (err, user) => {
+    db.query("SELECT * FROM users WHERE email = ?", [email], async (err, results) => {
         if (err) {
             console.error('Error finding user:', err);
             return res.status(500).json({ error: 'Database error' });
         }
         
-        if (!user) {
+        if (results.length === 0) {
             return res.status(404).json({ error: 'User not found' });
         }
         
-        // Generate reset token (6-digit code)
+        const user = results[0];
         const resetToken = generateVerificationCode();
-        const expiresAt = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 hour from now
+        const expiresAt = new Date(Date.now() + 1 * 60 * 60 * 1000);
         
-        // Store reset token
-        db.run("INSERT INTO password_resets (user_id, reset_token, expires_at) VALUES (?, ?, ?)",
-            [user.id, resetToken, expiresAt.toISOString()],
-            async function(err) {
+        db.query("INSERT INTO password_resets (user_id, reset_token, expires_at) VALUES (?, ?, ?)",
+            [user.id, resetToken, expiresAt], async (err) => {
                 if (err) {
                     console.error('Error storing reset token:', err);
                     return res.status(500).json({ error: 'Failed to create reset token' });
                 }
                 
-                // Send reset email
                 try {
                     const mailOptions = {
                         from: process.env.EMAIL_USER || 'edutrip@example.com',
@@ -724,7 +676,6 @@ app.post('/api/forgot-password', async (req, res) => {
 });
 
 // Verify reset token
-// Verify reset token - FLEXIBLE version (accepts either user_id or email)
 app.post('/api/verify-reset-token', (req, res) => {
     const { email, user_id, reset_token } = req.body;
     
@@ -736,49 +687,47 @@ app.post('/api/verify-reset-token', (req, res) => {
         return res.status(400).json({ error: 'Either email or user ID is required' });
     }
     
-    const now = new Date().toISOString();
+    const now = new Date();
     
     const verifyToken = (userId) => {
-        db.get(`
-            SELECT * FROM password_resets 
-            WHERE user_id = ? 
-            AND reset_token = ?
-            AND expires_at > ?
-            AND used = 0
-        `, [userId, reset_token, now], (err, reset) => {
-            if (err) {
-                console.error('Token verification error:', err);
-                return res.status(500).json({ error: 'Database error' });
-            }
-            
-            if (!reset) {
-                return res.status(400).json({ error: 'Invalid or expired reset token' });
-            }
-            
-            res.json({ 
-                success: true, 
-                message: 'Reset token verified',
-                user_id: userId
+        db.query(
+            `SELECT * FROM password_resets 
+             WHERE user_id = ? 
+             AND reset_token = ?
+             AND expires_at > ?
+             AND used = 0`,
+            [userId, reset_token, now], (err, results) => {
+                if (err) {
+                    console.error('Token verification error:', err);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+                
+                if (results.length === 0) {
+                    return res.status(400).json({ error: 'Invalid or expired reset token' });
+                }
+                
+                res.json({ 
+                    success: true, 
+                    message: 'Reset token verified',
+                    user_id: userId
+                });
             });
-        });
     };
     
     if (user_id) {
-        // If user_id is provided directly
         verifyToken(user_id);
     } else if (email) {
-        // If email is provided, find user first
-        db.get("SELECT id FROM users WHERE email = ?", [email], (err, user) => {
+        db.query("SELECT id FROM users WHERE email = ?", [email], (err, results) => {
             if (err) {
                 console.error('Verify token error:', err);
                 return res.status(500).json({ error: 'Database error' });
             }
             
-            if (!user) {
+            if (results.length === 0) {
                 return res.status(404).json({ error: 'User not found' });
             }
             
-            verifyToken(user.id);
+            verifyToken(results[0].id);
         });
     }
 });
@@ -795,66 +744,64 @@ app.post('/api/reset-password', (req, res) => {
         return res.status(400).json({ error: 'Password must be at least 6 characters long' });
     }
     
-    const now = new Date().toISOString();
+    const now = new Date();
     
-    // First find user by email
-    db.get("SELECT id, name, verified FROM users WHERE email = ?", [email], (err, user) => {
+    db.query("SELECT id, name, verified FROM users WHERE email = ?", [email], (err, userResults) => {
         if (err) {
             console.error('Reset error:', err);
             return res.status(500).json({ error: 'Database error' });
         }
         
-        if (!user) {
+        if (userResults.length === 0) {
             return res.status(404).json({ error: 'User not found' });
         }
         
-        // Check reset token
-        db.get(`
-            SELECT * FROM password_resets 
-            WHERE user_id = ? 
-            AND reset_token = ?
-            AND expires_at > ?
-            AND used = 0
-        `, [user.id, reset_token, now], (err, reset) => {
-            if (err) {
-                console.error('Token verification error:', err);
-                return res.status(500).json({ error: 'Database error' });
-            }
-            
-            if (!reset) {
-                return res.status(400).json({ error: 'Invalid or expired reset token' });
-            }
-            
-            const hashedPassword = bcrypt.hashSync(new_password, 10);
-            
-            // Update password ONLY (DO NOT change verified status)
-            db.run("UPDATE users SET password = ? WHERE id = ?", 
-                [hashedPassword, user.id], function(err) {
-                    if (err) {
-                        console.error('Error updating password:', err);
-                        return res.status(500).json({ error: 'Database error' });
-                    }
-                    
-                    // Mark reset token as used
-                    db.run("UPDATE password_resets SET used = 1 WHERE id = ?", [reset.id], function(err) {
+        const user = userResults[0];
+        
+        db.query(
+            `SELECT * FROM password_resets 
+             WHERE user_id = ? 
+             AND reset_token = ?
+             AND expires_at > ?
+             AND used = 0`,
+            [user.id, reset_token, now], (err, resetResults) => {
+                if (err) {
+                    console.error('Token verification error:', err);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+                
+                if (resetResults.length === 0) {
+                    return res.status(400).json({ error: 'Invalid or expired reset token' });
+                }
+                
+                const reset = resetResults[0];
+                const hashedPassword = bcrypt.hashSync(new_password, 10);
+                
+                db.query("UPDATE users SET password = ? WHERE id = ?", 
+                    [hashedPassword, user.id], (err) => {
                         if (err) {
-                            console.error('Error marking token as used:', err);
+                            console.error('Error updating password:', err);
+                            return res.status(500).json({ error: 'Database error' });
                         }
                         
-                        // User can now login with new password
-                        // Keep their verified status as is
-                        res.json({ 
-                            success: true, 
-                            message: 'Password reset successfully! You can now login with your new password.',
-                            user_id: user.id,
-                            was_verified: user.verified === 1 // Track if user was already verified
+                        db.query("UPDATE password_resets SET used = 1 WHERE id = ?", [reset.id], (err) => {
+                            if (err) {
+                                console.error('Error marking token as used:', err);
+                            }
+                            
+                            res.json({ 
+                                success: true, 
+                                message: 'Password reset successfully! You can now login with your new password.',
+                                user_id: user.id,
+                                was_verified: user.verified === 1
+                            });
                         });
                     });
-                });
-        });
+            });
     });
 });
-// Create new registration request with file upload
+
+// Create registration request with file upload
 app.post('/api/registration-requests', upload.fields([
     { name: 'registration_form', maxCount: 1 },
     { name: 'waiver_form', maxCount: 1 }
@@ -870,30 +817,29 @@ app.post('/api/registration-requests', upload.fields([
     
     console.log('Creating registration request:', { user_id, event_id, registrationForm, waiverForm });
     
-    // Check if request already exists
-    db.get("SELECT * FROM registration_requests WHERE user_id = ? AND event_id = ?", 
-        [user_id, event_id], (err, existing) => {
-        if (err) {
-            console.error('Error checking existing request:', err);
-            return res.status(500).json({ error: 'Database error' });
-        }
-        if (existing) {
-            return res.status(400).json({ error: 'Already registered for this event' });
-        }
-        
-        db.run("INSERT INTO registration_requests (user_id, event_id, registration_form, waiver_form) VALUES (?, ?, ?, ?)", 
-            [user_id, event_id, registrationForm, waiverForm], 
-            function(err) {
-                if (err) {
-                    console.log('Database error creating request:', err);
-                    return res.status(500).json({ error: 'Database error' });
-                }
-                res.json({ success: true, message: 'Registration request submitted successfully' });
-            });
-    });
+    db.query("SELECT * FROM registration_requests WHERE user_id = ? AND event_id = ?", 
+        [user_id, event_id], (err, results) => {
+            if (err) {
+                console.error('Error checking existing request:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            if (results.length > 0) {
+                return res.status(400).json({ error: 'Already registered for this event' });
+            }
+            
+            db.query("INSERT INTO registration_requests (user_id, event_id, registration_form, waiver_form) VALUES (?, ?, ?, ?)", 
+                [user_id, event_id, registrationForm, waiverForm], (err, result) => {
+                    if (err) {
+                        console.log('Database error creating request:', err);
+                        return res.status(500).json({ error: 'Database error' });
+                    }
+                    res.json({ success: true, message: 'Registration request submitted successfully' });
+                });
+        });
 });
 
-// Get all registration requests (admin) - UPDATED VERSION
+// Get all registration requests (admin) - UPDATED with file URLs
 app.get('/api/registration-requests', (req, res) => {
     console.log('Fetching registration requests...');
     
@@ -907,16 +853,33 @@ app.get('/api/registration-requests', (req, res) => {
         ORDER BY rr.created_at DESC
     `;
     
-    db.all(query, [], (err, rows) => {
+    db.query(query, (err, results) => {
         if (err) {
             console.log('Database error fetching requests:', err);
             return res.status(500).json({ error: 'Database error: ' + err.message });
         }
-        console.log(`Found ${rows.length} registration requests`);
-        res.json(rows);
+        
+        // Add full file URLs to each request
+        const requestsWithFileUrls = results.map(request => {
+            return {
+                ...request,
+                registration_form_url: request.registration_form ? 
+                    `/api/uploads/${request.registration_form}` : null,
+                waiver_form_url: request.waiver_form ? 
+                    `/api/uploads/${request.waiver_form}` : null,
+                registration_form_direct: request.registration_form ? 
+                    `/uploads/${request.registration_form}` : null,
+                waiver_form_direct: request.waiver_form ? 
+                    `/uploads/${request.waiver_form}` : null
+            };
+        });
+        
+        console.log(`Found ${results.length} registration requests`);
+        res.json(requestsWithFileUrls);
     });
 });
-// Create new event (admin only)
+
+// Create new event
 app.post('/api/events', (req, res) => {
     const { title, description, date, location } = req.body;
     
@@ -924,33 +887,31 @@ app.post('/api/events', (req, res) => {
         return res.status(400).json({ error: 'All fields are required' });
     }
     
-    db.run("INSERT INTO events (title, description, date, location) VALUES (?, ?, ?, ?)", 
-        [title, description, date, location], 
-        function(err) {
+    db.query("INSERT INTO events (title, description, date, location) VALUES (?, ?, ?, ?)", 
+        [title, description, date, location], (err, result) => {
             if (err) {
                 console.log('Database error creating event:', err);
                 return res.status(500).json({ error: 'Database error' });
             }
-            res.json({ success: true, message: 'Event created successfully', eventId: this.lastID });
+            res.json({ success: true, message: 'Event created successfully', eventId: result.insertId });
         });
 });
 
-// Delete event (admin only)
+// Delete event
 app.delete('/api/events/:id', (req, res) => {
     const { id } = req.params;
     
-    // Check if there are any registration requests for this event
-    db.get("SELECT COUNT(*) as count FROM registration_requests WHERE event_id = ?", [id], (err, row) => {
+    db.query("SELECT COUNT(*) as count FROM registration_requests WHERE event_id = ?", [id], (err, results) => {
         if (err) {
             console.log('Database error checking registrations:', err);
             return res.status(500).json({ error: 'Database error' });
         }
         
-        if (row.count > 0) {
+        if (results[0].count > 0) {
             return res.status(400).json({ error: 'Cannot delete event with existing registrations' });
         }
         
-        db.run("DELETE FROM events WHERE id = ?", [id], function(err) {
+        db.query("DELETE FROM events WHERE id = ?", [id], (err, result) => {
             if (err) {
                 console.log('Database error deleting event:', err);
                 return res.status(500).json({ error: 'Database error' });
@@ -959,6 +920,7 @@ app.delete('/api/events/:id', (req, res) => {
         });
     });
 });
+
 // Update registration request status
 app.put('/api/registration-requests/:id', (req, res) => {
     const { id } = req.params;
@@ -970,9 +932,8 @@ app.put('/api/registration-requests/:id', (req, res) => {
         return res.status(400).json({ error: 'Invalid status' });
     }
     
-    db.run("UPDATE registration_requests SET status = ? WHERE id = ?", 
-        [status, id], 
-        function(err) {
+    db.query("UPDATE registration_requests SET status = ? WHERE id = ?", 
+        [status, id], (err, result) => {
             if (err) {
                 console.log('Database error updating request:', err);
                 return res.status(500).json({ error: 'Database error' });
@@ -981,167 +942,7 @@ app.put('/api/registration-requests/:id', (req, res) => {
         });
 });
 
-// Debug endpoint to check database state
-app.get('/api/debug/db-state', (req, res) => {
-    const tables = ['users', 'events', 'registration_requests'];
-    const results = {};
-    let completed = 0;
-    
-    tables.forEach(table => {
-        db.all(`SELECT * FROM ${table}`, [], (err, rows) => {
-            results[table] = { error: err, data: rows };
-            completed++;
-            
-            if (completed === tables.length) {
-                res.json(results);
-            }
-        });
-    });
-});
-// Get ALL user's registration requests (including cancelled events)
-app.get('/api/user/all-registration-requests', (req, res) => {
-    const userId = req.query.user_id;
-    
-    if (!userId) {
-        return res.status(400).json({ error: 'User ID is required' });
-    }
-    
-    const query = `
-        SELECT rr.*, e.title as event_title, e.date as event_date, 
-               e.location as event_location, e.status as event_status
-        FROM registration_requests rr
-        JOIN events e ON rr.event_id = e.id
-        WHERE rr.user_id = ?
-        ORDER BY rr.created_at DESC
-    `;
-    
-    db.all(query, [userId], (err, rows) => {
-        if (err) {
-            console.log('Database error:', err);
-            return res.status(500).json({ error: 'Database error' });
-        }
-        res.json(rows);
-    });
-});
-// Verify route
-app.get('/verify-email.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'main/verify-email.html'));
-});
-// With authentication checks
-app.get('/admin', requireAuth, (req, res) => {
-    res.sendFile(path.join(__dirname, 'admin/adminpage.html'));
-});
-
-app.get('/student', requireAuth, (req, res) => {
-    res.sendFile(path.join(__dirname, 'student/studpage.html'));
-});
-
-// Correct paths
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'frontp/frontp.html'));
-});
-app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'main/mainpage.html'));
-});
-
-// Logout route
-app.post('/api/logout', (req, res) => {
-    res.json({ success: true, message: 'Logged out successfully' });
-});
-// Add this route in server.js after the existing routes
-
-// Serve uploaded files with proper headers
-app.get('/api/uploads/:filename', (req, res) => {
-    const { filename } = req.params;
-    const filePath = path.join(__dirname, 'uploads', filename);
-    
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ error: 'File not found' });
-    }
-    
-    // Set appropriate headers
-    const ext = path.extname(filename).toLowerCase();
-    let contentType = 'application/octet-stream';
-    
-    if (ext === '.pdf') contentType = 'application/pdf';
-    else if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
-    else if (ext === '.png') contentType = 'image/png';
-    else if (ext === '.gif') contentType = 'image/gif';
-    else if (ext === '.doc') contentType = 'application/msword';
-    else if (ext === '.docx') contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
-    
-    res.sendFile(filePath);
-});
-
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'OK', timestamp: new Date().toISOString() });
-});
-// Add this to the CREATE TABLES section in server.js
-db.run(`CREATE TABLE IF NOT EXISTS notifications (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    title TEXT NOT NULL,
-    message TEXT NOT NULL,
-    type TEXT DEFAULT 'info',
-    is_read BOOLEAN DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users (id)
-)`, (err) => {
-    if (err) console.error('Error creating notifications table:', err);
-    else console.log('Notifications table ready');
-});
-
-// Create notification
-app.post('/api/notifications', (req, res) => {
-    const { user_id, title, message, type } = req.body;
-    
-    if (!user_id || !title || !message) {
-        return res.status(400).json({ error: 'Missing required fields' });
-    }
-    
-    db.run("INSERT INTO notifications (user_id, title, message, type) VALUES (?, ?, ?, ?)",
-        [user_id, title, message, type || 'info'],
-        function(err) {
-            if (err) {
-                console.error('Error creating notification:', err);
-                return res.status(500).json({ error: 'Database error' });
-            }
-            res.json({ success: true, notificationId: this.lastID });
-        });
-});
-
-// Get user notifications
-app.get('/api/notifications/:user_id', (req, res) => {
-    const { user_id } = req.params;
-    
-    db.all("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC", 
-        [user_id], (err, notifications) => {
-            if (err) {
-                console.error('Error fetching user notifications:', err);
-                return res.status(500).json({ error: 'Database error' });
-            }
-            res.json(notifications);
-        });
-});
-
-// Mark notification as read
-app.put('/api/notifications/:id/read', (req, res) => {
-    const { id } = req.params;
-    
-    db.run("UPDATE notifications SET is_read = 1 WHERE id = ?", [id], function(err) {
-        if (err) {
-            console.error('Error marking notification as read:', err);
-            return res.status(500).json({ error: 'Database error' });
-        }
-        res.json({ success: true });
-    });
-});
-// Update event (admin only)
+// Update event
 app.put('/api/events/:id', (req, res) => {
     const { id } = req.params;
     const { title, description, date, location, status } = req.body;
@@ -1153,12 +954,12 @@ app.put('/api/events/:id', (req, res) => {
     const validStatuses = ['active', 'cancelled', 'completed', 'upcoming'];
     const eventStatus = status && validStatuses.includes(status) ? status : 'active';
     
-    db.run(
+    db.query(
         `UPDATE events 
          SET title = ?, description = ?, date = ?, location = ?, status = ?
          WHERE id = ?`,
         [title, description, date, location, eventStatus, id],
-        function(err) {
+        (err, result) => {
             if (err) {
                 console.log('Database error updating event:', err);
                 return res.status(500).json({ error: 'Database error' });
@@ -1167,22 +968,8 @@ app.put('/api/events/:id', (req, res) => {
         }
     );
 });
-// Get notifications by user ID
-app.get('/api/notifications/user/:user_id', (req, res) => {
-    const { user_id } = req.params;
-    
-    db.all("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC", 
-        [user_id], (err, notifications) => {
-            if (err) {
-                console.error('Error fetching user notifications:', err);
-                return res.status(500).json({ error: 'Database error' });
-            }
-            res.json(notifications);
-        });
-});
-// Add these routes after the existing routes
 
-// Bus Management API Endpoints
+// Bus Management Endpoints
 
 // Create new bus
 app.post('/api/buses', (req, res) => {
@@ -1196,28 +983,27 @@ app.post('/api/buses', (req, res) => {
         return res.status(400).json({ error: 'Capacity must be greater than 0' });
     }
     
-    db.run("INSERT INTO buses (bus_number, capacity) VALUES (?, ?)", 
-        [bus_number, capacity], 
-        function(err) {
+    db.query("INSERT INTO buses (bus_number, capacity) VALUES (?, ?)", 
+        [bus_number, capacity], (err, result) => {
             if (err) {
                 console.error('Error creating bus:', err);
-                if (err.message.includes('UNIQUE constraint failed')) {
+                if (err.code === 'ER_DUP_ENTRY') {
                     return res.status(400).json({ error: 'Bus number already exists' });
                 }
                 return res.status(500).json({ error: 'Database error' });
             }
-            res.json({ success: true, message: 'Bus created successfully', busId: this.lastID });
+            res.json({ success: true, message: 'Bus created successfully', busId: result.insertId });
         });
 });
 
 // Get all buses
 app.get('/api/buses', (req, res) => {
-    db.all("SELECT * FROM buses ORDER BY bus_number", [], (err, buses) => {
+    db.query("SELECT * FROM buses ORDER BY bus_number", (err, results) => {
         if (err) {
             console.error('Error fetching buses:', err);
             return res.status(500).json({ error: 'Database error' });
         }
-        res.json(buses);
+        res.json(results);
     });
 });
 
@@ -1225,81 +1011,24 @@ app.get('/api/buses', (req, res) => {
 app.get('/api/buses/:id', (req, res) => {
     const { id } = req.params;
     
-    db.get("SELECT * FROM buses WHERE id = ?", [id], (err, bus) => {
+    db.query("SELECT * FROM buses WHERE id = ?", [id], (err, results) => {
         if (err) {
             console.error('Error fetching bus:', err);
             return res.status(500).json({ error: 'Database error' });
         }
-        if (!bus) {
+        if (results.length === 0) {
             return res.status(404).json({ error: 'Bus not found' });
         }
-        res.json(bus);
-    });
-});
-
-// Update bus
-app.put('/api/buses/:id', (req, res) => {
-    const { id } = req.params;
-    const { bus_number, capacity } = req.body;
-    
-    if (!bus_number || !capacity) {
-        return res.status(400).json({ error: 'Bus number and capacity are required' });
-    }
-    
-    db.run("UPDATE buses SET bus_number = ?, capacity = ? WHERE id = ?", 
-        [bus_number, capacity, id], 
-        function(err) {
-            if (err) {
-                console.error('Error updating bus:', err);
-                return res.status(500).json({ error: 'Database error' });
-            }
-            if (this.changes === 0) {
-                return res.status(404).json({ error: 'Bus not found' });
-            }
-            res.json({ success: true, message: 'Bus updated successfully' });
-        });
-});
-
-// Delete bus (only if no assignments)
-app.delete('/api/buses/:id', (req, res) => {
-    const { id } = req.params;
-    
-    // Check if there are any assignments for this bus
-    db.get("SELECT COUNT(*) as count FROM bus_assignments WHERE bus_id = ?", [id], (err, row) => {
-        if (err) {
-            console.error('Error checking bus assignments:', err);
-            return res.status(500).json({ error: 'Database error' });
-        }
-        
-        if (row.count > 0) {
-            return res.status(400).json({ error: 'Cannot delete bus with existing assignments' });
-        }
-        
-        db.run("DELETE FROM buses WHERE id = ?", [id], function(err) {
-            if (err) {
-                console.error('Error deleting bus:', err);
-                return res.status(500).json({ error: 'Database error' });
-            }
-            if (this.changes === 0) {
-                return res.status(404).json({ error: 'Bus not found' });
-            }
-            res.json({ success: true, message: 'Bus deleted successfully' });
-        });
+        res.json(results[0]);
     });
 });
 
 // Assign participant to bus
-// Assign participant to bus - UPDATED with better logging
 app.post('/api/bus-assignments', (req, res) => {
     const { user_id, event_id, bus_id, notes } = req.body;
     
     console.log('\n=== 🚌 BUS ASSIGNMENT REQUEST ===');
     console.log('📦 Request body:', JSON.stringify(req.body, null, 2));
-    console.log('📊 Types:', {
-        user_id: typeof user_id,
-        event_id: typeof event_id,
-        bus_id: typeof bus_id
-    });
     
     if (!user_id || !event_id || !bus_id) {
         console.log('❌ Missing required fields');
@@ -1309,7 +1038,6 @@ app.post('/api/bus-assignments', (req, res) => {
         });
     }
     
-    // Convert to numbers to ensure proper comparison
     const userId = parseInt(user_id);
     const eventId = parseInt(event_id);
     const busId = parseInt(bus_id);
@@ -1320,141 +1048,93 @@ app.post('/api/bus-assignments', (req, res) => {
         try {
             // 1. Check if bus exists
             console.log(`🔍 Checking bus ${busId}...`);
-            const bus = await new Promise((resolve, reject) => {
-                db.get("SELECT * FROM buses WHERE id = ?", [busId], (err, row) => {
-                    if (err) {
-                        console.error('❌ Error fetching bus:', err.message);
-                        reject(err);
-                    } else if (!row) {
-                        console.log(`❌ Bus ${busId} not found`);
-                        resolve(null);
-                    } else {
-                        console.log(`✅ Bus found: ${row.bus_number} (Capacity: ${row.capacity}, Current: ${row.current_passengers})`);
-                        resolve(row);
-                    }
-                });
-            });
+            const [bus] = await db.promise().query("SELECT * FROM buses WHERE id = ?", [busId]);
             
-            if (!bus) {
+            if (bus.length === 0) {
+                console.log(`❌ Bus ${busId} not found`);
                 return res.status(404).json({ error: `Bus ${busId} not found` });
             }
             
-            // 2. Check if user already assigned to ANY bus for this event
-            console.log(`🔍 Checking if user ${userId} already assigned to event ${eventId}...`);
-            const existing = await new Promise((resolve, reject) => {
-                db.get("SELECT * FROM bus_assignments WHERE user_id = ? AND event_id = ?", 
-                    [userId, eventId], (err, row) => {
-                    if (err) {
-                        console.error('❌ Error checking existing assignment:', err.message);
-                        reject(err);
-                    } else if (row) {
-                        console.log(`❌ User already assigned to bus ${row.bus_id}`);
-                        resolve(row);
-                    } else {
-                        console.log('✅ User not yet assigned');
-                        resolve(null);
-                    }
-                });
-            });
+            const busData = bus[0];
+            console.log(`✅ Bus found: ${busData.bus_number} (Capacity: ${busData.capacity}, Current: ${busData.current_passengers})`);
             
-            if (existing) {
+            // 2. Check if user already assigned
+            console.log(`🔍 Checking if user ${userId} already assigned to event ${eventId}...`);
+            const [existing] = await db.promise().query(
+                "SELECT * FROM bus_assignments WHERE user_id = ? AND event_id = ?", 
+                [userId, eventId]
+            );
+            
+            if (existing.length > 0) {
+                console.log(`❌ User already assigned to bus ${existing[0].bus_id}`);
                 return res.status(400).json({ 
                     error: 'User is already assigned to a bus for this event',
-                    existing_assignment: existing 
+                    existing_assignment: existing[0] 
                 });
             }
             
             // 3. Check bus capacity
             console.log(`🔍 Checking bus ${busId} capacity...`);
-            const busCount = await new Promise((resolve, reject) => {
-                db.get("SELECT COUNT(*) as count FROM bus_assignments WHERE bus_id = ?", 
-                    [busId], (err, row) => {
-                    if (err) {
-                        console.error('❌ Error checking bus capacity:', err.message);
-                        reject(err);
-                    } else {
-                        const count = row ? row.count : 0;
-                        console.log(`📊 Bus ${busId} has ${count}/${bus.capacity} assignments`);
-                        resolve(count);
-                    }
-                });
-            });
+            const [busCount] = await db.promise().query(
+                "SELECT COUNT(*) as count FROM bus_assignments WHERE bus_id = ?", 
+                [busId]
+            );
             
-            if (busCount >= bus.capacity) {
-                console.log(`❌ Bus ${bus.bus_number} is FULL: ${busCount}/${bus.capacity}`);
+            const count = busCount[0].count;
+            console.log(`📊 Bus ${busId} has ${count}/${busData.capacity} assignments`);
+            
+            if (count >= busData.capacity) {
+                console.log(`❌ Bus ${busData.bus_number} is FULL: ${count}/${busData.capacity}`);
                 return res.status(400).json({ 
-                    error: `Bus ${bus.bus_number} is at full capacity (${busCount}/${bus.capacity})` 
+                    error: `Bus ${busData.bus_number} is at full capacity (${count}/${busData.capacity})` 
                 });
             }
             
-            // 4. Check if user has approved registration for this event
+            // 4. Check if user has approved registration
             console.log(`🔍 Checking if user ${userId} has approved registration for event ${eventId}...`);
-            const approvedRegistration = await new Promise((resolve, reject) => {
-                db.get(`
-                    SELECT * FROM registration_requests 
-                    WHERE user_id = ? AND event_id = ? AND status = 'approved'
-                `, [userId, eventId], (err, row) => {
-                    if (err) {
-                        console.error('❌ Error checking registration:', err.message);
-                        reject(err);
-                    } else if (!row) {
-                        console.log('❌ User does not have approved registration for this event');
-                        resolve(null);
-                    } else {
-                        console.log('✅ User has approved registration');
-                        resolve(row);
-                    }
-                });
-            });
+            const [approvedRegistration] = await db.promise().query(
+                `SELECT * FROM registration_requests 
+                 WHERE user_id = ? AND event_id = ? AND status = 'approved'`,
+                [userId, eventId]
+            );
             
-            if (!approvedRegistration) {
+            if (approvedRegistration.length === 0) {
+                console.log('❌ User does not have approved registration for this event');
                 return res.status(400).json({ 
                     error: 'User does not have an approved registration for this event' 
                 });
             }
             
+            console.log('✅ User has approved registration');
+            
             // 5. Create the assignment
             console.log('📝 Creating bus assignment...');
-            const result = await new Promise((resolve, reject) => {
-                db.run("INSERT INTO bus_assignments (user_id, event_id, bus_id, notes) VALUES (?, ?, ?, ?)", 
-                    [userId, eventId, busId, notes || ''], 
-                    function(err) {
-                        if (err) {
-                            console.error('❌ Error creating assignment:', err.message);
-                            console.error('Full error:', err);
-                            reject(err);
-                        } else {
-                            console.log(`✅ Assignment created with ID: ${this.lastID}`);
-                            resolve(this);
-                        }
-                    });
-            });
+            const [result] = await db.promise().query(
+                "INSERT INTO bus_assignments (user_id, event_id, bus_id, notes) VALUES (?, ?, ?, ?)", 
+                [userId, eventId, busId, notes || '']
+            );
+            
+            console.log(`✅ Assignment created with ID: ${result.insertId}`);
             
             // 6. Update bus passenger count
             console.log(`🔄 Updating bus ${busId} passenger count...`);
-            await new Promise((resolve, reject) => {
-                db.run("UPDATE buses SET current_passengers = current_passengers + 1 WHERE id = ?", 
-                    [busId], function(err) {
-                        if (err) {
-                            console.error('❌ Error updating bus passenger count:', err.message);
-                            reject(err);
-                        } else {
-                            console.log(`✅ Bus ${busId} passenger count updated (changed: ${this.changes})`);
-                            resolve(this);
-                        }
-                    });
-            });
+            const [updateResult] = await db.promise().query(
+                "UPDATE buses SET current_passengers = current_passengers + 1 WHERE id = ?", 
+                [busId]
+            );
+            
+            console.log(`✅ Bus ${busId} passenger count updated (changed: ${updateResult.affectedRows})`);
             
             console.log('🎉 BUS ASSIGNMENT SUCCESSFUL!');
             res.json({ 
                 success: true, 
                 message: 'Bus assignment created successfully',
-                assignmentId: result.lastID,
+                assignmentId: result.insertId,
                 bus: {
                     id: busId,
-                    number: bus.bus_number,
-                    capacity: bus.capacity,
-                    newPassengerCount: busCount + 1
+                    number: busData.bus_number,
+                    capacity: busData.capacity,
+                    newPassengerCount: count + 1
                 }
             });
             
@@ -1472,240 +1152,7 @@ app.post('/api/bus-assignments', (req, res) => {
     
     createAssignment();
 });
-// Debug bus assignment data
-app.get('/api/debug/assignment/:user_id/:event_id', (req, res) => {
-    const { user_id, event_id } = req.params;
-    
-    console.log(`Debugging user ${user_id} for event ${event_id}`);
-    
-    const userId = parseInt(user_id);
-    const eventId = parseInt(event_id);
-    
-    // Check multiple things
-    const checks = {};
-    
-    // 1. Check if user exists
-    db.get("SELECT id, name, email FROM users WHERE id = ?", [userId], (err, user) => {
-        checks.user = { exists: !!user, data: user, error: err };
-        
-        // 2. Check if event exists
-        db.get("SELECT id, title FROM events WHERE id = ?", [eventId], (err, event) => {
-            checks.event = { exists: !!event, data: event, error: err };
-            
-            // 3. Check if user has approved registration
-            db.get(`
-                SELECT * FROM registration_requests 
-                WHERE user_id = ? AND event_id = ? AND status = 'approved'
-            `, [userId, eventId], (err, registration) => {
-                checks.registration = { 
-                    approved: !!registration, 
-                    data: registration, 
-                    error: err 
-                };
-                
-                // 4. Check if user already has bus assignment
-                db.get(`
-                    SELECT ba.*, b.bus_number 
-                    FROM bus_assignments ba
-                    JOIN buses b ON ba.bus_id = b.id
-                    WHERE ba.user_id = ? AND ba.event_id = ?
-                `, [userId, eventId], (err, assignment) => {
-                    checks.assignment = { exists: !!assignment, data: assignment, error: err };
-                    
-                    res.json({
-                        userId,
-                        eventId,
-                        checks,
-                        summary: {
-                            userExists: checks.user.exists,
-                            eventExists: checks.event.exists,
-                            hasApprovedRegistration: checks.registration.approved,
-                            hasExistingAssignment: checks.assignment.exists,
-                            canAssign: checks.user.exists && 
-                                      checks.event.exists && 
-                                      checks.registration.approved && 
-                                      !checks.assignment.exists
-                        }
-                    });
-                });
-            });
-        });
-    });
-});
-// Debug endpoint to check bus data
-app.get('/api/debug/bus/:bus_id', (req, res) => {
-    const { bus_id } = req.params;
-    
-    console.log(`Debugging bus ${bus_id}`);
-    
-    // Get bus info
-    db.get("SELECT * FROM buses WHERE id = ?", [bus_id], (err, bus) => {
-        if (err) {
-            console.error('Error fetching bus:', err);
-            return res.status(500).json({ error: err.message });
-        }
-        
-        if (!bus) {
-            return res.status(404).json({ error: 'Bus not found' });
-        }
-        
-        // Get assignments count
-        db.get("SELECT COUNT(*) as assignment_count FROM bus_assignments WHERE bus_id = ?", 
-            [bus_id], (err, countRow) => {
-            if (err) {
-                console.error('Error counting assignments:', err);
-                return res.status(500).json({ error: err.message });
-            }
-            
-            res.json({
-                bus,
-                assignment_count: countRow.assignment_count,
-                current_passengers: bus.current_passengers,
-                discrepancy: bus.current_passengers !== countRow.assignment_count
-            });
-        });
-    });
-});
-// Test bus assignment endpoint
-app.get('/api/test-bus-assignment', (req, res) => {
-    // Create a test bus
-    db.run("INSERT OR IGNORE INTO buses (bus_number, capacity) VALUES ('TEST-BUS', 50)", function(err) {
-        if (err) {
-            console.error('Error creating test bus:', err);
-            return res.status(500).json({ error: err.message });
-        }
-        
-        // Get a user
-        db.get("SELECT id FROM users WHERE role = 'student' LIMIT 1", (err, user) => {
-            if (err) {
-                console.error('Error getting user:', err);
-                return res.status(500).json({ error: err.message });
-            }
-            
-            // Get an event
-            db.get("SELECT id FROM events LIMIT 1", (err, event) => {
-                if (err) {
-                    console.error('Error getting event:', err);
-                    return res.status(500).json({ error: err.message });
-                }
-                
-                const testData = {
-                    user_id: user.id,
-                    event_id: event.id,
-                    bus_id: this.lastID || 1,
-                    notes: 'Test assignment'
-                };
-                
-                console.log('Test data:', testData);
-                res.json(testData);
-            });
-        });
-    });
-});
-// Add this function to run database migrations
-// Add this function to run database migrations
-function runMigrations() {
-    console.log('Checking database migrations...');
-    
-    // Check if buses table has current_passengers column
-    db.all("PRAGMA table_info(buses)", [], (err, columns) => {  // Changed from db.get to db.all
-        if (err) {
-            console.error('Error checking table schema:', err);
-            return;
-        }
-        
-        console.log('Columns in buses table:', columns);
-        
-        if (!columns || columns.length === 0) {
-            console.log('No columns found or table might not exist');
-            return;
-        }
-        
-        const hasCurrentPassengers = columns.some(col => col.name === 'current_passengers');
-        console.log('Buses table has current_passengers column?', hasCurrentPassengers);
-        
-        if (!hasCurrentPassengers) {
-            console.log('Adding current_passengers column to buses table...');
-            db.run("ALTER TABLE buses ADD COLUMN current_passengers INTEGER DEFAULT 0", (err) => {
-                if (err) {
-                    console.error('Error adding column:', err);
-                    // If column already exists, ignore the error
-                    if (err.message.includes('duplicate column name')) {
-                        console.log('Column already exists, ignoring...');
-                    }
-                } else {
-                    console.log('✅ Added current_passengers column');
-                    
-                    // Update all buses to have correct current_passengers count
-                    db.all("SELECT id FROM buses", [], (err, buses) => {
-                        if (err) {
-                            console.error('Error fetching buses:', err);
-                            return;
-                        }
-                        
-                        if (!buses || buses.length === 0) {
-                            console.log('No buses found to update');
-                            return;
-                        }
-                        
-                        let completed = 0;
-                        buses.forEach(bus => {
-                            db.get("SELECT COUNT(*) as count FROM bus_assignments WHERE bus_id = ?", 
-                                [bus.id], (err, row) => {
-                                if (err) {
-                                    console.error(`Error counting assignments for bus ${bus.id}:`, err);
-                                } else {
-                                    db.run("UPDATE buses SET current_passengers = ? WHERE id = ?", 
-                                        [row.count, bus.id], (updateErr) => {
-                                        if (updateErr) {
-                                            console.error(`Error updating bus ${bus.id}:`, updateErr);
-                                        } else {
-                                            console.log(`✅ Updated bus ${bus.id} to ${row.count} passengers`);
-                                        }
-                                    });
-                                }
-                                
-                                completed++;
-                                if (completed === buses.length) {
-                                    console.log('✅ All buses updated');
-                                }
-                            });
-                        });
-                    });
-                }
-            });
-        } else {
-            console.log('current_passengers column already exists');
-            
-            // Verify and fix passenger counts
-            db.all("SELECT id FROM buses", [], (err, buses) => {
-                if (err || !buses) {
-                    console.error('Error fetching buses:', err);
-                    return;
-                }
-                
-                buses.forEach(bus => {
-                    db.get("SELECT COUNT(*) as count FROM bus_assignments WHERE bus_id = ?", 
-                        [bus.id], (err, row) => {
-                        if (!err && row) {
-                            db.get("SELECT current_passengers FROM buses WHERE id = ?", 
-                                [bus.id], (err, busData) => {
-                                if (!err && busData && busData.current_passengers !== row.count) {
-                                    console.log(`⚠️ Fixing bus ${bus.id} passenger count: ${busData.current_passengers} → ${row.count}`);
-                                    db.run("UPDATE buses SET current_passengers = ? WHERE id = ?", 
-                                        [row.count, bus.id]);
-                                }
-                            });
-                        }
-                    });
-                });
-            });
-        }
-    });
-}
 
-// Call this after creating tables
-runMigrations();
 // Get bus assignments for an event
 app.get('/api/events/:event_id/bus-assignments', (req, res) => {
     const { event_id } = req.params;
@@ -1723,196 +1170,21 @@ app.get('/api/events/:event_id/bus-assignments', (req, res) => {
         ORDER BY b.bus_number, ba.assignment_date
     `;
     
-    db.all(query, [event_id], (err, assignments) => {
+    db.query(query, [event_id], (err, results) => {
         if (err) {
             console.error('Error fetching bus assignments:', err);
             return res.status(500).json({ error: 'Database error' });
         }
-        res.json(assignments);
+        res.json(results);
     });
 });
 
-// Get bus assignments for a bus
-app.get('/api/buses/:bus_id/assignments', (req, res) => {
-    const { bus_id } = req.params;
-    
-    const query = `
-        SELECT ba.*, 
-               u.name as user_name, u.student_number, u.email,
-               b.bus_number, b.capacity,
-               e.title as event_title, e.date as event_date
-        FROM bus_assignments ba
-        JOIN users u ON ba.user_id = u.id
-        JOIN buses b ON ba.bus_id = b.id
-        JOIN events e ON ba.event_id = e.id
-        WHERE ba.bus_id = ?
-        ORDER BY ba.assignment_date
-    `;
-    
-    db.all(query, [bus_id], (err, assignments) => {
-        if (err) {
-            console.error('Error fetching bus assignments:', err);
-            return res.status(500).json({ error: 'Database error' });
-        }
-        res.json(assignments);
-    });
-});
-
-// Move participant to different bus
-app.put('/api/bus-assignments/:assignment_id', (req, res) => {
-    const { assignment_id } = req.params;
-    const { new_bus_id, notes } = req.body;
-    
-    if (!new_bus_id) {
-        return res.status(400).json({ error: 'New bus ID is required' });
-    }
-    
-    // Use async/await pattern instead of nested callbacks
-    const moveAssignment = async () => {
-        try {
-            // Get current assignment
-            const assignment = await new Promise((resolve, reject) => {
-                db.get("SELECT * FROM bus_assignments WHERE id = ?", [assignment_id], (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
-                });
-            });
-            
-            if (!assignment) {
-                return res.status(404).json({ error: 'Assignment not found' });
-            }
-            
-            const old_bus_id = assignment.bus_id;
-            
-            // Check if new bus exists
-            const newBus = await new Promise((resolve, reject) => {
-                db.get("SELECT * FROM buses WHERE id = ?", [new_bus_id], (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
-                });
-            });
-            
-            if (!newBus) {
-                return res.status(404).json({ error: 'New bus not found' });
-            }
-            
-            // Check new bus capacity
-            const busCount = await new Promise((resolve, reject) => {
-                db.get("SELECT COUNT(*) as count FROM bus_assignments WHERE bus_id = ?", 
-                    [new_bus_id], (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row.count);
-                });
-            });
-            
-            if (busCount >= newBus.capacity) {
-                return res.status(400).json({ error: 'New bus is at full capacity' });
-            }
-            
-            // Update assignment notes
-            const updatedNotes = notes ? 
-                `${assignment.notes || ''}\nMoved to bus ${newBus.bus_number} on ${new Date().toLocaleString()}: ${notes}`.trim() 
-                : assignment.notes;
-            
-            // Update assignment
-            await new Promise((resolve, reject) => {
-                db.run("UPDATE bus_assignments SET bus_id = ?, notes = ? WHERE id = ?", 
-                    [new_bus_id, updatedNotes, assignment_id], 
-                    function(err) {
-                        if (err) reject(err);
-                        else resolve(this);
-                    });
-            });
-            
-            // Update old bus passenger count
-            await new Promise((resolve, reject) => {
-                db.run("UPDATE buses SET current_passengers = current_passengers - 1 WHERE id = ?", 
-                    [old_bus_id], function(err) {
-                        if (err) reject(err);
-                        else resolve(this);
-                    });
-            });
-            
-            // Update new bus passenger count
-            await new Promise((resolve, reject) => {
-                db.run("UPDATE buses SET current_passengers = current_passengers + 1 WHERE id = ?", 
-                    [new_bus_id], function(err) {
-                        if (err) reject(err);
-                        else resolve(this);
-                    });
-            });
-            
-            res.json({ success: true, message: 'Assignment moved successfully' });
-            
-        } catch (error) {
-            console.error('Error moving bus assignment:', error);
-            res.status(500).json({ error: 'Database error: ' + error.message });
-        }
-    };
-    
-    moveAssignment();
-});
-
-// Remove bus assignment
-app.delete('/api/bus-assignments/:assignment_id', (req, res) => {
-    const { assignment_id } = req.params;
-    
-    const removeAssignment = async () => {
-        try {
-            // Get assignment details
-            const assignment = await new Promise((resolve, reject) => {
-                db.get("SELECT * FROM bus_assignments WHERE id = ?", [assignment_id], (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
-                });
-            });
-            
-            if (!assignment) {
-                return res.status(404).json({ error: 'Assignment not found' });
-            }
-            
-            const bus_id = assignment.bus_id;
-            
-            // Delete assignment
-            const result = await new Promise((resolve, reject) => {
-                db.run("DELETE FROM bus_assignments WHERE id = ?", [assignment_id], function(err) {
-                    if (err) reject(err);
-                    else resolve(this);
-                });
-            });
-            
-            if (result.changes === 0) {
-                return res.status(404).json({ error: 'Assignment not found' });
-            }
-            
-            // Update bus passenger count
-            await new Promise((resolve, reject) => {
-                db.run("UPDATE buses SET current_passengers = current_passengers - 1 WHERE id = ?", 
-                    [bus_id], function(err) {
-                        if (err) reject(err);
-                        else resolve(this);
-                    });
-            });
-            
-            res.json({ success: true, message: 'Assignment removed successfully' });
-            
-        } catch (error) {
-            console.error('Error removing bus assignment:', error);
-            res.status(500).json({ error: 'Database error: ' + error.message });
-        }
-    };
-    
-    removeAssignment();
-});
-
-// Get participants eligible for bus assignment (approved registrations not yet assigned)
-// Get participants eligible for bus assignment (approved registrations not yet assigned)
+// Get eligible participants for bus assignment
 app.get('/api/events/:event_id/eligible-participants', (req, res) => {
     const { event_id } = req.params;
     
     console.log(`\n=== Fetching eligible participants for event ${event_id} ===`);
     
-    // BETTER QUERY: Use NOT EXISTS instead of LEFT JOIN
     const query = `
         SELECT 
             u.id, 
@@ -1939,102 +1211,174 @@ app.get('/api/events/:event_id/eligible-participants', (req, res) => {
     
     console.log('SQL Query:', query.replace(/\s+/g, ' '));
     
-    db.all(query, [event_id], (err, participants) => {
+    db.query(query, [event_id], (err, results) => {
         if (err) {
             console.error('❌ Error fetching eligible participants:', err);
             return res.status(500).json({ error: 'Database error: ' + err.message });
         }
         
-        console.log(`✅ Found ${participants.length} eligible participants`);
-        
-        // DEBUG: Also show who has assignments
-        const debugQuery = `
-            SELECT 
-                u.id,
-                u.name,
-                ba.id as assignment_id,
-                b.bus_number
-            FROM users u
-            JOIN registration_requests rr ON u.id = rr.user_id
-            LEFT JOIN bus_assignments ba ON u.id = ba.user_id AND rr.event_id = ba.event_id
-            LEFT JOIN buses b ON ba.bus_id = b.id
-            WHERE rr.event_id = ? 
-              AND rr.status = 'approved'
-            ORDER BY u.name
-        `;
-        
-        db.all(debugQuery, [event_id], (debugErr, allUsers) => {
-            if (!debugErr && allUsers) {
-                console.log('\n📊 ALL APPROVED USERS FOR THIS EVENT:');
-                allUsers.forEach(user => {
-                    const status = user.assignment_id 
-                        ? `🚌 Assigned to Bus ${user.bus_number} (ID: ${user.assignment_id})` 
-                        : '✅ Eligible (no assignment)';
-                    console.log(`  - ${user.name} (ID: ${user.id}): ${status}`);
-                });
-            }
-            
-            console.log('\n📋 RETURNING ELIGIBLE PARTICIPANTS:');
-            participants.forEach(p => {
-                console.log(`  - ${p.name} (ID: ${p.id})`);
-            });
-            
-            res.json(participants);
-        });
+        console.log(`✅ Found ${results.length} eligible participants`);
+        res.json(results);
     });
 });
-// Clean up inconsistent data
-app.get('/api/fix-bus-data', (req, res) => {
-    console.log('Fixing bus assignment data inconsistencies...');
+
+// Notifications endpoints
+
+// Create notification
+app.post('/api/notifications', (req, res) => {
+    const { user_id, title, message, type } = req.body;
     
-    // Fix 1: Update bus passenger counts
-    db.run(`
-        UPDATE buses 
-        SET current_passengers = (
-            SELECT COUNT(*) 
-            FROM bus_assignments 
-            WHERE bus_id = buses.id
-        )
-    `, (err) => {
-        if (err) {
-            console.error('Error fixing passenger counts:', err);
-            return res.status(500).json({ error: err.message });
-        }
-        
-        console.log('✅ Bus passenger counts updated');
-        
-        // Fix 2: Find and log any users with multiple assignments (shouldn't happen)
-        db.all(`
-            SELECT user_id, event_id, COUNT(*) as assignment_count
-            FROM bus_assignments
-            GROUP BY user_id, event_id
-            HAVING assignment_count > 1
-        `, [], (err, duplicates) => {
+    if (!user_id || !title || !message) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    db.query("INSERT INTO notifications (user_id, title, message, type) VALUES (?, ?, ?, ?)",
+        [user_id, title, message, type || 'info'], (err, result) => {
             if (err) {
-                console.error('Error checking duplicates:', err);
-                return res.status(500).json({ error: err.message });
+                console.error('Error creating notification:', err);
+                return res.status(500).json({ error: 'Database error' });
             }
-            
-            if (duplicates.length > 0) {
-                console.log('⚠️ Found duplicate assignments:', duplicates);
-            } else {
-                console.log('✅ No duplicate assignments found');
+            res.json({ success: true, notificationId: result.insertId });
+        });
+});
+
+// Get user notifications
+app.get('/api/notifications/user/:user_id', (req, res) => {
+    const { user_id } = req.params;
+    
+    db.query("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC", 
+        [user_id], (err, results) => {
+            if (err) {
+                console.error('Error fetching user notifications:', err);
+                return res.status(500).json({ error: 'Database error' });
             }
+            res.json(results);
+        });
+});
+
+// Mark notification as read
+app.put('/api/notifications/:id/read', (req, res) => {
+    const { id } = req.params;
+    
+    db.query("UPDATE notifications SET is_read = 1 WHERE id = ?", [id], (err, result) => {
+        if (err) {
+            console.error('Error marking notification as read:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ success: true });
+    });
+});
+
+// Serve uploaded files
+app.get('/api/uploads/:filename', (req, res) => {
+    const { filename } = req.params;
+    const filePath = path.join(__dirname, 'uploads', filename);
+    
+    console.log(`📁 File request: ${filename}`);
+    console.log(`📁 File path: ${filePath}`);
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+        console.log(`❌ File not found: ${filename}`);
+        return res.status(404).json({ error: 'File not found: ' + filename });
+    }
+    
+    // Get file stats
+    const stats = fs.statSync(filePath);
+    console.log(`✅ File found: ${filename} (${stats.size} bytes)`);
+    
+    // Set appropriate headers
+    const ext = path.extname(filename).toLowerCase();
+    let contentType = 'application/octet-stream';
+    
+    if (ext === '.pdf') contentType = 'application/pdf';
+    else if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
+    else if (ext === '.png') contentType = 'image/png';
+    else if (ext === '.gif') contentType = 'image/gif';
+    else if (ext === '.doc') contentType = 'application/msword';
+    else if (ext === '.docx') contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    else if (ext === '.txt') contentType = 'text/plain';
+    
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Length', stats.size);
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    
+    // Create read stream
+    const fileStream = fs.createReadStream(filePath);
+    
+    fileStream.on('error', (err) => {
+        console.error('Error streaming file:', err);
+        res.status(500).json({ error: 'Error reading file' });
+    });
+    
+    fileStream.pipe(res);
+});
+
+// Also add a direct access route (just in case)
+app.get('/uploads/:filename', (req, res) => {
+    const { filename } = req.params;
+    const filePath = path.join(__dirname, 'uploads', filename);
+    
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).send('File not found');
+    }
+    
+    res.sendFile(filePath);
+});
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// Page routes
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'frontp/frontp.html'));
+});
+
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'main/mainpage.html'));
+});
+
+app.get('/verify-email.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'main/verify-email.html'));
+});
+
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin/adminpage.html'));
+});
+
+app.get('/student', (req, res) => {
+    res.sendFile(path.join(__dirname, 'student/studpage.html'));
+});
+
+// Logout route
+app.post('/api/logout', (req, res) => {
+    res.json({ success: true, message: 'Logged out successfully' });
+});
+
+// Debug endpoint
+app.get('/api/debug/db-state', (req, res) => {
+    const tables = ['users', 'events', 'registration_requests', 'buses', 'bus_assignments'];
+    const results = {};
+    let completed = 0;
+    
+    tables.forEach(table => {
+        db.query(`SELECT * FROM ${table}`, (err, rows) => {
+            results[table] = { error: err, data: rows };
+            completed++;
             
-            res.json({ 
-                success: true, 
-                message: 'Data fixed',
-                duplicates_found: duplicates.length
-            });
+            if (completed === tables.length) {
+                res.json(results);
+            }
         });
     });
 });
+
 app.listen(PORT, () => {
     console.log(`🚀 EduTrip server running on http://localhost:${PORT}`);
-    console.log(`📊 Using SQLite database: edutrip.db`);
+    console.log(`📊 Using MySQL database: ${process.env.DB_NAME || 'edutrip'}`);
     console.log(`🔑 Test credentials:`);
     console.log(`   Admin: admin@edutrip.com / admin123`);
     console.log(`   Student: student@edutrip.com / student123`);
     console.log(`🐛 Debug endpoint available: http://localhost:${PORT}/api/debug/db-state`);
 });
-})

@@ -1071,10 +1071,11 @@ async function loadRegistrationRequests() {
                 if (hasRegForm) {
                     fileLinksHTML += `
                         <p>
-                            <a href="#" class="text-blue-400 hover:text-blue-300 text-sm inline-flex items-center" 
-                               onclick="openFileViewer(${request.id}, '${safeName}', '${safeRegForm}', '${safeWaiverForm}'); return false;"
-                               title="View uploaded registration form">
-                                <i class='bx bx-file mr-1'></i> Registration Form uploaded
+                            <a href="/api/uploads/${encodeURIComponent(request.registration_form)}" 
+                               target="_blank"
+                               class="text-blue-400 hover:text-blue-300 text-sm inline-flex items-center"
+                               title="View/download registration form">
+                                <i class='bx bx-file mr-1'></i> Registration Form
                             </a>
                         </p>
                     `;
@@ -1083,14 +1084,25 @@ async function loadRegistrationRequests() {
                 if (hasWaiverForm) {
                     fileLinksHTML += `
                         <p>
-                            <a href="#" class="text-blue-400 hover:text-blue-300 text-sm inline-flex items-center" 
-                               onclick="openFileViewer(${request.id}, '${safeName}', '${safeRegForm}', '${safeWaiverForm}'); return false;"
-                               title="View uploaded waiver form">
-                                <i class='bx bx-file mr-1'></i> Waiver Form uploaded
+                            <a href="/api/uploads/${encodeURIComponent(request.waiver_form)}" 
+                               target="_blank"
+                               class="text-blue-400 hover:text-blue-300 text-sm inline-flex items-center"
+                               title="View/download waiver form">
+                                <i class='bx bx-file mr-1'></i> Waiver Form
                             </a>
                         </p>
                     `;
                 }
+                
+                // Also add a "View All" button
+                fileLinksHTML += `
+                    <div class="pt-2">
+                        <button onclick="openFileViewer(${request.id}, '${safeName}', '${safeRegForm}', '${safeWaiverForm}')"
+                                class="px-3 py-1 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs font-medium transition-colors">
+                            <i class='bx bx-expand mr-1'></i> Preview All Files
+                        </button>
+                    </div>
+                `;
                 
                 fileLinksHTML += '</div>';
             }
@@ -1193,7 +1205,7 @@ async function updateRequestStatus(requestId, status) {
     }
 }
 
-// File viewing functionality
+// File viewing functionality - FIXED VERSION
 let currentRequestFiles = [];
 
 function openFileViewer(requestId, requestName, registrationForm, waiverForm) {
@@ -1206,7 +1218,9 @@ function openFileViewer(requestId, requestName, registrationForm, waiverForm) {
         currentRequestFiles.push({
             type: 'registration',
             filename: registrationForm.trim(),
-            title: 'Registration Form'
+            title: 'Registration Form',
+            // FIX: Use the correct API endpoint
+            url: `/api/uploads/${encodeURIComponent(registrationForm.trim())}`
         });
     }
     
@@ -1214,7 +1228,9 @@ function openFileViewer(requestId, requestName, registrationForm, waiverForm) {
         currentRequestFiles.push({
             type: 'waiver',
             filename: waiverForm.trim(),
-            title: 'Waiver Form'
+            title: 'Waiver Form',
+            // FIX: Use the correct API endpoint
+            url: `/api/uploads/${encodeURIComponent(waiverForm.trim())}`
         });
     }
     
@@ -1260,9 +1276,17 @@ function createFilePreview(file, index) {
                     <p class="text-gray-400">Loading file...</p>
                 </div>
             </div>
-            <div class="text-gray-400 text-sm">
-                <p><strong>File name:</strong> ${file.filename}</p>
-                <p><strong>Type:</strong> ${isImage ? 'Image' : isPdf ? 'PDF Document' : 'Document'}</p>
+            <div class="flex flex-wrap gap-3 items-center">
+                <div class="text-gray-400 text-sm">
+                    <p><strong>File name:</strong> ${file.filename}</p>
+                    <p><strong>Type:</strong> ${isImage ? 'Image' : isPdf ? 'PDF Document' : 'Document'}</p>
+                </div>
+                <div class="ml-auto">
+                    <a href="${file.url}" target="_blank" 
+                       class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors inline-flex items-center">
+                        <i class='bx bx-download mr-2'></i> Download
+                    </a>
+                </div>
             </div>
         </div>
     `;
@@ -1271,23 +1295,22 @@ function createFilePreview(file, index) {
 function loadFileContent(file, index) {
     const viewer = document.getElementById(`file-viewer-${index}`);
     const fileExt = file.filename.split('.').pop().toLowerCase();
-    const fileUrl = `/uploads/${file.filename}`;
     
     const isImage = ['jpg', 'jpeg', 'png', 'gif', 'bmp'].includes(fileExt);
     const isPdf = fileExt === 'pdf';
     
     if (isImage) {
-        viewer.innerHTML = `<img src="${fileUrl}" alt="${file.title}" class="w-full h-auto max-h-[400px] object-contain" onerror="handleFileError(${index})">`;
+        viewer.innerHTML = `<img src="${file.url}" alt="${file.title}" class="w-full h-auto max-h-[400px] object-contain" onerror="handleFileError(${index})">`;
     } else if (isPdf) {
         viewer.innerHTML = `
-            <iframe src="${fileUrl}" class="w-full h-[400px]" title="${file.title}"></iframe>
+            <iframe src="${file.url}" class="w-full h-[400px]" title="${file.title}"></iframe>
         `;
     } else {
         viewer.innerHTML = `
             <div class="text-center p-8">
                 <i class='bx bx-file text-6xl text-gray-500 mb-4'></i>
                 <p class="text-gray-400 mb-4">Document preview not available for .${fileExt} files</p>
-                <a href="${fileUrl}" target="_blank" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                <a href="${file.url}" target="_blank" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
                     <i class='bx bx-download mr-2'></i> Download File
                 </a>
             </div>
@@ -1309,17 +1332,24 @@ function handleFileError(index) {
 function downloadAllFiles() {
     if (currentRequestFiles.length === 0) return;
     
+    // Show download progress
+    let downloaded = 0;
+    const total = currentRequestFiles.length;
+    
     currentRequestFiles.forEach(file => {
-        const fileUrl = `/uploads/${file.filename}`;
         const link = document.createElement('a');
-        link.href = fileUrl;
+        link.href = file.url;
         link.download = file.filename;
+        link.style.display = 'none';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        
+        downloaded++;
+        if (downloaded === total) {
+            alert(`✅ Downloaded ${total} file(s) successfully!`);
+        }
     });
-    
-    alert('Download started for all files');
 }
 
 async function loadParticipants() {

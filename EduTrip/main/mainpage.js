@@ -478,6 +478,60 @@ document.getElementById('enter-code-form').addEventListener('submit', async (e) 
         }, 5000);
     }
 });
+// Debug functions
+async function checkUserVerification() {
+    const email = document.querySelector('#login-form input[type="email"]').value;
+    if (!email) {
+        alert('Please enter your email first');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/debug/user-verification/${encodeURIComponent(email)}`);
+        const data = await response.json();
+        
+        console.log('Verification debug:', data);
+        alert(`User: ${email}\nVerified in DB: ${data.user.verified}\nVerified (bool): ${data.user.verified_bool}\nHas verification record: ${data.latest_verification ? 'Yes' : 'No'}`);
+    } catch (error) {
+        console.error('Debug error:', error);
+        alert('Debug failed: ' + error.message);
+    }
+}
+
+async function fixVerification() {
+    const email = document.querySelector('#login-form input[type="email"]').value;
+    if (!email) {
+        alert('Please enter your email first');
+        return;
+    }
+    
+    // First get user ID
+    try {
+        const userResponse = await fetch(`/api/debug/user-verification/${encodeURIComponent(email)}`);
+        const userData = await userResponse.json();
+        
+        if (!userData.user) {
+            alert('User not found');
+            return;
+        }
+        
+        if (confirm(`Force verify ${email}? This will set verified = 1 in database.`)) {
+            const fixResponse = await fetch(`/api/fix-verification/${userData.user.id}`, {
+                method: 'POST'
+            });
+            const fixData = await fixResponse.json();
+            
+            if (fixData.success) {
+                alert('✅ Verification fixed! Try logging in again.');
+            } else {
+                alert('❌ Failed to fix: ' + (fixData.error || 'Unknown error'));
+            }
+        }
+    } catch (error) {
+        console.error('Fix error:', error);
+        alert('Fix failed: ' + error.message);
+    }
+}
 // Check if user is already logged in
 document.addEventListener('DOMContentLoaded', function() {
     const user = localStorage.getItem('user');
