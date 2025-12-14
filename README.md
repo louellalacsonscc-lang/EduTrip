@@ -13,6 +13,9 @@ cd [file location]
 ENTER THESE COMMANDS:
 npm install
 npm install multer
+npm install nodemailer
+npm install dotenv
+npm install mysql2
 npm install -D tailwindcss postcss autoprefixer
 npx tailwindcss -i tailwind.css -o tailwind-output.css
 npm start
