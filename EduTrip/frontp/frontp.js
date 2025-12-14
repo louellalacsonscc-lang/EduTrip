@@ -3,8 +3,8 @@ class InfiniteCarousel {
         this.events = [];
         this.track = document.getElementById('infiniteTrack');
         this.isPlaying = true;
-        this.animationSpeed = 30; // seconds for one complete loop
-        this.duplicateFactor = 2; // Reduced for single track
+        this.animationSpeed = 30;
+        this.duplicateFactor = 2;
         this.init();
     }
     
@@ -136,16 +136,13 @@ class InfiniteCarousel {
         const trackWidth = this.track.scrollWidth;
         const animationDuration = trackWidth / (cardWidth / this.animationSpeed);
         
-        // Remove existing animation
         this.track.style.animation = 'none';
         
         // Force reflow
         void this.track.offsetWidth;
         
-        // Apply new animation
         this.track.style.animation = `scroll ${animationDuration}s linear infinite`;
         
-        // Apply play/pause state
         if (!this.isPlaying) {
             this.track.classList.add('paused');
         } else {

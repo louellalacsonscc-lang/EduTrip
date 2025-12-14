@@ -113,11 +113,9 @@ function initializePage() {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             
-            // Remove active class from all
             navLinks.forEach(l => l.classList.remove('active', 'bg-blue-600'));
             pages.forEach(page => page.classList.add('hidden'));
             
-            // Add active class to clicked
             link.classList.add('active', 'bg-blue-600');
             
             // Show corresponding page
@@ -600,7 +598,7 @@ async function loadMyRegistrations() {
         }
     }
 }
-// Add this function to studpage.js
+// Load Bus Assignment
 async function loadBusAssignment() {
     if (!currentUser || !currentUser.id) return;
     

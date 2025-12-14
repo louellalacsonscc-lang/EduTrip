@@ -5,7 +5,6 @@ const registerForm = document.getElementById('register-form');
 
 // Toggle forms
 loginToggle.addEventListener('click', () => {
-    // Add blue underline to login, remove from register
     loginToggle.classList.add('border-blue-500', 'text-white');
     loginToggle.classList.remove('text-gray-400', 'border-transparent');
     registerToggle.classList.add('text-gray-400', 'border-transparent');
@@ -23,7 +22,6 @@ loginToggle.addEventListener('click', () => {
 });
 
 registerToggle.addEventListener('click', () => {
-    // Add blue underline to register, remove from login
     registerToggle.classList.add('border-blue-500', 'text-white');
     registerToggle.classList.remove('text-gray-400', 'border-transparent');
     loginToggle.classList.add('text-gray-400', 'border-transparent');
@@ -146,7 +144,7 @@ document.querySelector('#register-form form').addEventListener('submit', async (
         submitBtn.disabled = false;
     }
 });
-// Add resend verification functionality
+// Resend Verification
 document.getElementById('resend-verification')?.addEventListener('click', async () => {
     const email = prompt('Please enter your email address to resend verification code:');
     

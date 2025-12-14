@@ -103,7 +103,6 @@ function initializePage() {
         });
     }
     
-    // Remove active class from all links first
     navLinks.forEach(link => link.classList.remove('active', 'bg-blue-600'));
     // Set dashboard as active
     const dashboardLink = document.querySelector('[data-page="dashboard"]');
@@ -113,11 +112,9 @@ function initializePage() {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             
-            // Remove active class from all
             navLinks.forEach(l => l.classList.remove('active', 'bg-blue-600'));
             pages.forEach(page => page.classList.add('hidden'));
-            
-            // Add active class to clicked
+
             link.classList.add('active', 'bg-blue-600');
             
             // Show corresponding page
@@ -274,7 +271,6 @@ function initializePage() {
         eventStatusFilter.addEventListener('change', loadRegistrationRequests);
     }
 }
-// Add this function to update dashboard stats
 // Update the updateDashboardStats function to handle spinner animation
 async function updateDashboardStats() {
     try {
@@ -284,7 +280,6 @@ async function updateDashboardStats() {
         const refreshBtn = document.getElementById('refresh-dashboard-btn');
         const refreshIcon = refreshBtn?.querySelector('i.bx-refresh');
         
-        // Add spinning animation to refresh button
         if (refreshIcon) {
             refreshIcon.classList.add('bx-spin');
             refreshBtn.classList.add('refreshing');
@@ -407,7 +402,6 @@ async function updateDashboardStats() {
     }
 }
 
-// Add event listener for the refresh button
 function initializeDashboardRefreshButton() {
     const refreshBtn = document.getElementById('refresh-dashboard-btn');
     if (refreshBtn) {
@@ -479,7 +473,6 @@ function initializePage() {
         updateDashboardStats();
     }
     
-    // Remove active class from all links first
     navLinks.forEach(link => link.classList.remove('active', 'bg-blue-600'));
     // Set dashboard as active
     const dashboardLink = document.querySelector('[data-page="dashboard"]');
@@ -489,11 +482,9 @@ function initializePage() {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             
-            // Remove active class from all
             navLinks.forEach(l => l.classList.remove('active', 'bg-blue-600'));
             pages.forEach(page => page.classList.add('hidden'));
             
-            // Add active class to clicked
             link.classList.add('active', 'bg-blue-600');
             
             // Show corresponding page
@@ -809,7 +800,6 @@ async function removeBusAssignment(assignmentId, userName) {
     }
 }
 
-// Add this function to periodically update dashboard stats
 function startDashboardAutoRefresh() {
     // Update stats immediately
     updateDashboardStats();
@@ -926,7 +916,6 @@ async function editEvent(eventId) {
     }
 }
 
-// ADD THIS MISSING FUNCTION
 async function updateEvent(eventId, eventData) {
     try {
         // Get original event to compare
@@ -1696,7 +1685,7 @@ function initParticipantsFilters() {
     console.log('Search input found:', !!searchInput);
     
     if (eventFilter) {
-        // Remove any existing event listeners first
+
         const newEventFilter = eventFilter.cloneNode(true);
         eventFilter.parentNode.replaceChild(newEventFilter, eventFilter);
         
@@ -1783,11 +1772,9 @@ function initializeBusAssignment() {
     // Add Bus Button
     const addBusBtn = document.getElementById('add-bus-btn');
     if (addBusBtn) {
-        // Remove existing event listeners first
         const newAddBusBtn = addBusBtn.cloneNode(true);
         addBusBtn.parentNode.replaceChild(newAddBusBtn, addBusBtn);
         
-        // Add fresh event listener
         document.getElementById('add-bus-btn').addEventListener('click', () => {
             console.log('Add bus button clicked');
             document.getElementById('add-bus-form').reset();
@@ -1814,7 +1801,6 @@ async function initBusEventFilter() {
         return;
     }
     
-    // Remove existing event listener
     const newEventFilter = eventFilter.cloneNode(true);
     eventFilter.parentNode.replaceChild(newEventFilter, eventFilter);
     
@@ -1850,20 +1836,19 @@ async function initBusEventFilter() {
             freshEventFilter.appendChild(option);
         });
         
-        // Add CSS class to control dropdown width
         freshEventFilter.classList.add('max-w-xs', 'truncate');
         
-        // Add event listener for filter change
+        // Event listener for filter change
         freshEventFilter.addEventListener('change', function() {
             const eventId = this.value;
             console.log('Event filter changed to:', eventId);
             handleEventFilterChange(eventId);
         });
         
-        // Add clear filter button listener
+        // Clear filter button listener
         const clearFilterBtn = document.getElementById('clear-event-filter');
         if (clearFilterBtn) {
-            // Remove existing event listener
+
             const newClearBtn = clearFilterBtn.cloneNode(true);
             clearFilterBtn.parentNode.replaceChild(newClearBtn, clearFilterBtn);
             
@@ -3027,7 +3012,6 @@ async function loadEligibleParticipants(eventId) {
             `;
         }).join('');
         
-        // Add refresh button at bottom
         list.innerHTML += `
             <div class="text-center mt-4">
                 <button onclick="refreshEligibleList()" 
@@ -3059,7 +3043,7 @@ async function loadEligibleParticipants(eventId) {
     }
 }
 
-// Add refresh function
+// Refresh Function
 function refreshEligibleList() {
     const eventId = document.getElementById('bus-event-filter').value;
     if (eventId) {
