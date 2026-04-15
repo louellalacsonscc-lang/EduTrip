@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE-edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <title>EduTrip Admin</title>
+    <style>
+        /* Black theme w/ blue accents */
+        .black-bg {
+            background: #000000;
+        }
+        .input-focus:focus {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+            border-color: #3b82f6;
+        }
+        .sidebar-item {
+            transition: all 0.2s ease;
+        }
+        .sidebar-item:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+        .sidebar-item.active {
+            background: #3b82f6;
+        }
+            /* Sidebar */
+    .sidebar {
+        transition: width 0.3s ease;
+    }
+    
+    main {
+        transition: margin-left 0.3s ease;
+    }
+    
+    /* Text transitions */
+    .sidebar .text {
+        transition: opacity 0.3s ease, width 0.3s ease;
+        white-space: nowrap;
+        overflow: hidden;
+    }
+    
+    /* Fixed position for icons */
+    .sidebar-item .icon {
+        flex-shrink: 0;
+        width: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Toggle button rotation */
+    .toggle {
+        transition: transform 0.3s ease;
+    }
+    
+    .bx-chevron-left {
+        transform: rotate(180deg);
+    }
+.min-h-64 {
+    min-height: 16rem;
+}
+
+.bg-gray-900\/50 {
+    background-color: rgba(17, 24, 39, 0.5);
+}
+
+.border-gray-800\/50 {
+    border-color: rgba(31, 41, 55, 0.5);
+}
+
+.border-gray-800\/30 {
+    border-color: rgba(31, 41, 55, 0.3);
+}
+
+.bg-green-900\/30 {
+    background-color: rgba(20, 83, 45, 0.3);
+}
+
+.border-green-800 {
+    border-color: rgb(22 101 52);
+}
+
+.bg-red-900\/30 {
+    background-color: rgba(127, 29, 29, 0.3);
+}
+
+.border-red-800 {
+    border-color: rgb(153 27 27);
+}
+
+.bg-yellow-900\/30 {
+    background-color: rgba(113, 63, 18, 0.3);
+}
+
+.border-yellow-800 {
+    border-color: rgb(146 64 14);
+}
+
+.bg-blue-900\/30 {
+    background-color: rgba(30, 58, 138, 0.3);
+}
+
+.border-blue-800 {
+    border-color: rgb(30 64 175);
+}
+
+.opacity-80 {
+    opacity: 0.8;
+}
+
+.w-64 {
+    width: 16rem;
+}
+
+.w-full {
+    width: 100%;
+}
+
+.max-w-4xl {
+    max-width: 56rem;
+}
+
+.max-w-2xl {
+    max-width: 42rem;
+}
+
+.max-h-\[90vh\] {
+    max-height: 90vh;
+}
+
+.z-50 {
+    z-index: 50;
+}
+
+.flex-1 {
+    flex: 1 1 0%;
+}
+
+.grid-cols-1 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.gap-2 {
+    gap: 0.5rem;
+}
+
+.gap-3 {
+    gap: 0.75rem;
+}
+
+.gap-4 {
+    gap: 1rem;
+}
+
+.gap-6 {
+    gap: 1.5rem;
+}
+
+.gap-8 {
+    gap: 2rem;
+}
+
+.space-y-2 > * + * {
+    margin-top: 0.5rem;
+}
+
+.space-y-3 > * + * {
+    margin-top: 0.75rem;
+}
+
+.space-y-4 > * + * {
+    margin-top: 1rem;
+}
+
+.space-y-5 > * + * {
+    margin-top: 1.25rem;
+}
+
+.space-y-6 > * + * {
+    margin-top: 1.5rem;
+}
+
+.space-x-2 > * + * {
+    margin-left: 0.5rem;
+}
+
+.space-x-3 > * + * {
+    margin-left: 0.75rem;
+}
+
+.space-x-4 > * + * {
+    margin-left: 1rem;
+}
+
+.mb-2 {
+    margin-bottom: 0.5rem;
+}
+
+.mb-3 {
+    margin-bottom: 0.75rem;
+}
+
+.mb-4 {
+    margin-bottom: 1rem;
+}
+
+.mb-6 {
+    margin-bottom: 1.5rem;
+}
+
+.mt-1 {
+    margin-top: 0.25rem;
+}
+
+.mt-2 {
+    margin-top: 0.5rem;
+}
+
+.mt-3 {
+    margin-top: 0.75rem;
+}
+
+.mt-4 {
+    margin-top: 1rem;
+}
+
+.mt-6 {
+    margin-top: 1.5rem;
+}
+
+.ml-1 {
+    margin-left: 0.25rem;
+}
+
+.ml-2 {
+    margin-left: 0.5rem;
+}
+
+.ml-3 {
+    margin-left: 0.75rem;
+}
+
+.mr-1 {
+    margin-right: 0.25rem;
+}
+
+.mr-2 {
+    margin-right: 0.5rem;
+}
+
+.p-3 {
+    padding: 0.75rem;
+}
+
+.p-4 {
+    padding: 1rem;
+}
+
+.p-5 {
+    padding: 1.25rem;
+}
+
+.p-6 {
+    padding: 1.5rem;
+}
+
+.px-2 {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+.px-3 {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+}
+
+.px-4 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+.py-1 {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+}
+
+.py-2 {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+.py-3 {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+}
+
+.py-4 {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+.pt-4 {
+    padding-top: 1rem;
+}
+
+.pt-6 {
+    padding-top: 1.5rem;
+}
+
+.pb-3 {
+    padding-bottom: 0.75rem;
+}
+
+.text-xs {
+    font-size: 0.75rem;
+    line-height: 1rem;
+}
+
+.text-sm {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+
+.text-lg {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+}
+
+.text-xl {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+}
+
+.text-2xl {
+    font-size: 1.5rem;
+    line-height: 2rem;
+}
+
+.text-3xl {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+}
+
+.text-4xl {
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+}
+
+.text-6xl {
+    font-size: 3.75rem;
+    line-height: 1;
+}
+
+.font-medium {
+    font-weight: 500;
+}
+
+.font-semibold {
+    font-weight: 600;
+}
+
+.font-bold {
+    font-weight: 700;
+}
+
+.text-gray-300 {
+    --tw-text-opacity: 1;
+    color: rgb(209 213 219 / var(--tw-text-opacity, 1));
+}
+
+.text-gray-400 {
+    --tw-text-opacity: 1;
+    color: rgb(156 163 175 / var(--tw-text-opacity, 1));
+}
+
+.text-gray-500 {
+    --tw-text-opacity: 1;
+    color: rgb(107 114 128 / var(--tw-text-opacity, 1));
+}
+
+.text-blue-400 {
+    --tw-text-opacity: 1;
+    color: rgb(96 165 250 / var(--tw-text-opacity, 1));
+}
+
+.text-blue-500 {
+    --tw-text-opacity: 1;
+    color: rgb(59 130 246 / var(--tw-text-opacity, 1));
+}
+
+.text-green-400 {
+    --tw-text-opacity: 1;
+    color: rgb(74 222 128 / var(--tw-text-opacity, 1));
+}
+
+.text-red-400 {
+    --tw-text-opacity: 1;
+    color: rgb(248 113 113 / var(--tw-text-opacity, 1));
+}
+
+.text-red-500 {
+    --tw-text-opacity: 1;
+    color: rgb(239 68 68 / var(--tw-text-opacity, 1));
+}
+
+.text-yellow-400 {
+    --tw-text-opacity: 1;
+    color: rgb(250 204 21 / var(--tw-text-opacity, 1));
+}
+
+.rounded-lg {
+    border-radius: 0.5rem;
+}
+
+.rounded-xl {
+    border-radius: 0.75rem;
+}
+
+.border-b {
+    border-bottom-width: 1px;
+}
+
+.border-t {
+    border-top-width: 1px;
+}
+
+.overflow-auto {
+    overflow: auto;
+}
+
+.overflow-x-auto {
+    overflow-x: auto;
+}
+
+.overflow-hidden {
+    overflow: hidden;
+}
+
+.overflow-ellipsis {
+    text-overflow: ellipsis;
+}
+
+.whitespace-nowrap {
+    white-space: nowrap;
+}
+
+.bg-opacity-75 {
+    --tw-bg-opacity: 0.75;
+}
+
+.object-contain {
+    object-fit: contain;
+}
+
+.max-h-\[400px\] {
+    max-height: 400px;
+}
+
+.h-auto {
+    height: auto;
+}
+
+.inline-flex {
+    display: inline-flex;
+}
+
+.flex-col {
+    flex-direction: column;
+}
+
+.items-center {
+    align-items: center;
+}
+
+.justify-center {
+    justify-content: center;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.justify-end {
+    justify-content: flex-end;
+}
+
+.flex-wrap {
+    flex-wrap: wrap;
+}
+
+.self-center {
+    align-self: center;
+}
+
+.sticky {
+    position: sticky;
+}
+
+.top-0 {
+    top: 0px;
+}
+
+.right-2 {
+    right: 0.5rem;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.shadow-lg {
+    --tw-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --tw-shadow-colored: 0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);
+    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
+
+.transition-colors {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+.transition-all {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+.duration-300 {
+    transition-duration: 300ms;
+}
+#bus-fleet-section,
+#event-assignments-section {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+#bus-fleet-section.hidden,
+#event-assignments-section.hidden {
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+    position: absolute;
+    visibility: hidden;
+}
+
+#bus-fleet-section:not(.hidden),
+#event-assignments-section:not(.hidden) {
+    opacity: 1;
+    transform: translateY(0);
+    position: relative;
+    visibility: visible;
+}
+/* Control filter dropdown width */
+#bus-event-filter {
+    min-width: 200px;
+    max-width: 300px;
+    width: auto;
+}
+
+/* Truncate text with ellipsis */
+.truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Responsive title handling */
+#bus h1 .truncate {
+    max-width: calc(100vw - 32rem);
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.bx-spin {
+    animation: spin 1s linear infinite;
+}
+
+.refreshing {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+#reg-request .text-3xl,
+#bus-request .text-3xl,
+#participants .text-3xl {
+    transition: all 0.3s ease;
+    display: inline-block;
+}
+
+.number-update {
+    animation: pulse 0.5s ease;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+@media (max-width: 1024px) {
+    #bus h1 .truncate {
+        max-width: calc(100vw - 24rem);
+    }
+}
+
+@media (max-width: 768px) {
+    #bus h1 .truncate {
+        max-width: calc(100vw - 16rem);
+    }
+}
+
+#bus > div:first-child {
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+#bus-event-filter {
+    flex: 1;
+    min-width: 200px;
+}
+
+/* Event info truncation */
+#bus-assignments-container h3.truncate {
+    max-width: 100%;
+}
+    </style>
+</head>
+
+<body class="black-bg min-h-screen">
+    <!-- Sidebar -->
+    <nav class="sidebar close fixed top-0 left-0 h-full w-64 bg-gray-900 border-r border-gray-800 z-50 transition-all duration-300">
+<header class="p-5 border-b border-gray-800">
+    <div class="flex items-center relative">
+        <div class="w-10 h-10 flex items-center justify-center flex-shrink-0">
+            <img src="/img/logo.png.png" alt="logo" class="w-11 h-10">
+        </div>
+        <div class="ml-3 header-text transition-all duration-300">
+            <div class="name text-white font-bold">EduTrip</div>
+            <div class="desc text-gray-400 text-sm">Admin Portal</div>
+        </div>
+    </div>
+    <!-- Toggle button -->
+    <i class='bx bx-chevron-left toggle absolute top-6 right-0 transform translate-x-1/2 bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center cursor-pointer'></i>
+</header>
+        
+        <div class="p-4">
+            <ul class="space-y-2">
+                <li>
+                    <a href="#" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white active" data-page="dashboard">
+                        <i class='bx bx-grid-alt text-lg'></i>
+                        <span class="text">Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white" data-page="events">
+                        <i class='bx bx-calendar-alt text-lg'></i>
+                        <span class="text">Events</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white" data-page="requests">
+                        <i class='bx bx-file text-lg'></i>
+                        <span class="text">Request</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white" data-page="participants">
+                        <i class='bx bx-group text-lg'></i>
+                        <span class="text">Participants</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white" data-page="bus">
+                        <i class='bx bx-bus text-lg'></i>
+                        <span class="text">Bus Assignment</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white" data-page="announcement">
+                        <i class='bx bx-notification text-lg'></i>
+                        <span class="text">Announcement</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white" data-page="certificate">
+                        <i class='bx bx-certification text-lg'></i>
+                        <span class="text">E-Certificate</span>
+                    </a>
+                </li>
+            </ul>
+            
+            <div class="absolute bottom-6 left-0 right-0 px-4">
+                <a href="#" onclick="logout()" class="sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-red-600/10">
+                    <i class='bx bx-log-out text-lg'></i>
+                    <span class="text">Logout</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Main Content -->
+    <main class="ml-64 p-6 min-h-screen transition-all duration-300">
+        <!-- Dashboard -->
+<div id="dashboard" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 active">
+    <h1 class="text-2xl font-bold text-white mb-6">Dashboard</h1>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-black border border-gray-800 rounded-lg p-6 cursor-pointer hover:border-blue-500 transition-colors" id="reg-request">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-lg font-semibold text-white">Registration Requests</h2>
+                    <p class="text-gray-400 text-sm mt-1">Pending registration requests</p>
+                </div>
+                <div class="w-12 h-12 bg-blue-900/30 rounded-lg flex items-center justify-center">
+                    <i class='bx bx-file text-blue-400 text-xl'></i>
+                </div>
+            </div>
+            <div class="text-right">
+                <span class="text-3xl font-bold text-blue-500">0</span>
+                <p class="text-gray-500 text-sm">pending requests</p>
+            </div>
+        </div>
+        
+        <div class="bg-black border border-gray-800 rounded-lg p-6 cursor-pointer hover:border-blue-500 transition-colors" id="bus-request">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-lg font-semibold text-white">Bus Assignments</h2>
+                    <p class="text-gray-400 text-sm mt-1">Participants needing bus assignment</p>
+                </div>
+                <div class="w-12 h-12 bg-blue-900/30 rounded-lg flex items-center justify-center">
+                    <i class='bx bx-bus text-blue-400 text-xl'></i>
+                </div>
+            </div>
+            <div class="text-right">
+                <span class="text-3xl font-bold text-blue-500">0</span>
+                <p class="text-gray-500 text-sm">requests</p>
+            </div>
+        </div>
+        
+        <div class="bg-black border border-gray-800 rounded-lg p-6 cursor-pointer hover:border-blue-500 transition-colors" id="participants">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-lg font-semibold text-white">Participants</h2>
+                    <p class="text-gray-400 text-sm mt-1">Total approved participants</p>
+                </div>
+                <div class="w-12 h-12 bg-blue-900/30 rounded-lg flex items-center justify-center">
+                    <i class='bx bx-group text-blue-400 text-xl'></i>
+                </div>
+            </div>
+            <div class="text-right">
+                <span class="text-3xl font-bold text-blue-500">0</span>
+                <p class="text-gray-500 text-sm">participants</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Refresh Button -->
+    <div class="mt-6 text-right">
+        <button id="refresh-dashboard-btn" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center space-x-2">
+            <i class='bx bx-refresh'></i>
+            <span>Refresh Stats</span>
+        </button>
+    </div>
+</div>
+
+        <!-- Requests Page -->
+        <div id="requests" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-2xl font-bold text-white">Registration Requests</h1>
+                <div class="flex space-x-4">
+                    <select id="status-filter" class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500">
+                        <option value="all">All Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
+                    <select id="event-status-filter" class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500">
+                        <option value="active">Active Events</option>
+                        <option value="all">All Events</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="requests-container">
+                <div class="requests-list space-y-4" id="requests-list">
+                    <!-- Sample request item -->
+                    <div class="bg-black border border-gray-800 rounded-lg p-5 hover:border-blue-500/50 transition-colors">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-lg font-semibold text-white">John Doe</h3>
+                                <p class="text-gray-400 text-sm">Student #: S123456</p>
+                                <p class="text-gray-400 text-sm">Email: john@example.com</p>
+                                <p class="text-gray-400 text-sm">Event: Tech Conference 2025</p>
+                            </div>
+                            <span class="px-3 py-1 bg-yellow-900/30 text-yellow-400 border border-yellow-800 rounded-full text-sm font-medium">
+                                PENDING
+                            </span>
+                        </div>
+                        <div class="flex space-x-3">
+                            <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
+                                Approve
+                            </button>
+                            <button class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors">
+                                View Documents
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Events Page -->
+        <div id="events" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
+            <h1 class="text-2xl font-bold text-white mb-6">Events Management</h1>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Create Event Form -->
+                <div class="bg-black border border-gray-800 rounded-xl p-6">
+                    <h2 class="text-xl font-semibold text-white mb-6">Create New Event</h2>
+                    <form id="create-event-form" class="space-y-5">
+                        <div>
+                            <label class="block text-gray-300 mb-2">Event Title</label>
+                            <input type="text" id="event-title" required 
+                                   class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-gray-300 mb-2">Description</label>
+                            <textarea id="event-description" rows="4" required 
+                                      class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"></textarea>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-gray-300 mb-2">Date</label>
+                                <input type="date" id="event-date" required 
+                                       class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-gray-300 mb-2">Course</label>
+                                <select id="event-course" required 
+                                        class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                                    <option value="ALL">All Courses</option>
+                                    <option value="BSCS">BSCS</option>
+                                    <option value="BSHM">BSHM</option>
+                                    <option value="BSTM">BSTM</option>
+                                    <option value="BAPOLSCIE">BAPOLSCIE</option>
+                                    <option value="BSEED">BSEED</option>
+                                    <option value="BSBA">BSBA</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-gray-300 mb-2">Image</label>
+                            <input type="file" id="event-image" accept="image/*"
+                                   class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500" />
+                            <p class="text-gray-500 text-xs mt-2">Optional visual for the seminar venue.</p>
+                        </div>
+                        <button type="submit" 
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                            Create Event
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Existing Events -->
+                <div class="bg-black border border-gray-800 rounded-xl p-6">
+                    <h2 class="text-xl font-semibold text-white mb-6">Existing Events</h2>
+                    <div class="space-y-4" id="admin-events-list">
+                        <!-- Sample event card -->
+                        <div class="bg-gray-900 border border-gray-800 rounded-lg p-5 hover:border-blue-500/30 transition-colors">
+                            <div class="flex justify-between items-start mb-3">
+                                <h3 class="text-lg font-semibold text-white">Tech Conference 2025</h3>
+                                <span class="px-3 py-1 bg-green-900/30 text-green-400 border border-green-800 rounded-full text-xs font-medium">
+                                    ACTIVE
+                                </span>
+                            </div>
+                            <p class="text-gray-400 text-sm mb-3">Annual technology conference featuring industry experts...</p>
+                            <div class="flex justify-between text-gray-500 text-sm mb-4">
+                                <span>June 15, 2025</span>
+                                <span>Convention Center</span>
+                            </div>
+                            <div class="flex space-x-3">
+                                <button class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">
+                                    Edit
+                                </button>
+                                <button class="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+<!-- Bus Assignment -->
+<div id="bus" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+    <h1 class="text-2xl font-bold text-white flex-1 truncate">Bus Assignment Management</h1>
+    <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+        <select id="bus-event-filter" class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500 truncate min-w-[200px]">
+            <option value="">Select Event</option>
+            <!-- Events will be loaded dynamically -->
+        </select>
+        <button id="add-bus-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors whitespace-nowrap">
+            <i class='bx bx-plus mr-2'></i> Add New Bus
+        </button>
+    </div>
+</div>
+    
+    <!-- Bus Fleet Section -->
+    <div id="bus-fleet-section">
+        <h2 class="text-xl font-semibold text-white mb-4">Bus Fleet</h2>
+        <div id="bus-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Buses will be loaded here -->
+        </div>
+    </div>
+    
+    <!-- Event Bus Assignments Section - Show when event IS selected -->
+    <div id="event-assignments-section" class="hidden">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold text-white">Event Bus Assignments</h2>
+            <button id="clear-event-filter" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors">
+                <i class='bx bx-x mr-2'></i> Clear Event Filter
+            </button>
+        </div>
+        
+        <div id="bus-assignments-container">
+            <!-- Bus assignments will be loaded here -->
+        </div>
+        
+        <!-- Eligible Participants Section -->
+        <div id="eligible-participants-section" class="mt-8">
+            <h3 class="text-lg font-semibold text-white mb-4">Eligible Participants (Not Yet Assigned)</h3>
+            <div id="eligible-participants-list" class="space-y-3">
+                <!-- Eligible participants will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Announcement Page -->
+<div id="announcement" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-white">Announcements Management</h1>
+        <button id="create-announcement-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
+            <i class='bx bx-plus mr-2'></i> Create Announcement
+        </button>
+    </div>
+    
+    <!-- Announcements List -->
+    <div id="announcements-list" class="space-y-4">
+        <!-- Announcements will be loaded here -->
+        <div class="text-center py-10">
+            <i class='bx bx-message text-4xl text-gray-500 mb-3'></i>
+            <p class="text-gray-400">No announcements yet</p>
+            <p class="text-gray-500 text-sm">Create your first announcement to get started</p>
+        </div>
+    </div>
+    
+    <!-- Create Announcement Modal -->
+    <div id="announcement-modal" class="fixed inset-0 bg-black bg-opacity-75 items-center justify-center z-50 hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-xl w-11/12 max-w-2xl">
+            <div class="sticky top-0 bg-gray-900 border-b border-gray-800 p-6 flex justify-between items-center">
+                <h3 class="text-xl font-semibold text-white">Create New Announcement</h3>
+                <button id="close-announcement-modal" class="text-gray-400 hover:text-white text-2xl">
+                    <i class='bx bx-x'></i>
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <form id="create-announcement-form" class="space-y-5">
+                    <div>
+                        <label class="block text-gray-300 mb-2">Title</label>
+                        <input type="text" id="announcement-title" required 
+                               class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+                               placeholder="Enter announcement title">
+                    </div>
+                    <div>
+                        <label class="block text-gray-300 mb-2">Message</label>
+                        <textarea id="announcement-message" rows="6" required 
+                                  class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+                                  placeholder="Enter announcement message..."></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-gray-300 mb-2">Type</label>
+                        <select id="announcement-type" 
+                                class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                            <option value="info">Information</option>
+                            <option value="warning">Warning</option>
+                            <option value="urgent">Urgent</option>
+                            <option value="success">Success</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-300 mb-2">Target Audience</label>
+                        <select id="announcement-audience" 
+                                class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                            <option value="all">All Users</option>
+                            <option value="students">Students Only</option>
+                            <option value="participants">Event Participants Only</option>
+                            <option value="specific">Specific Event</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex space-x-4 pt-4">
+                        <button type="submit" 
+                                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                            Create Announcement
+                        </button>
+                        <button type="button" id="cancel-announcement" 
+                                class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- E-Certificate Page -->
+<div id="certificate" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-white">E-Certificate Management</h1>
+        <div class="flex space-x-4">
+            <select id="certificate-event-filter" class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500">
+                <option value="all">All Events</option>
+                <!-- Events will be loaded here -->
+            </select>
+            <button id="generate-certificates-btn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors">
+                <i class='bx bx-certification mr-2'></i> Generate Certificates
+            </button>
+        </div>
+    </div>
+    
+    <!-- Certificate Status Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-black border border-gray-800 rounded-lg p-4">
+            <div class="text-center">
+                <div class="text-3xl font-bold text-blue-500">0</div>
+                <div class="text-gray-400 text-sm">Generated</div>
+            </div>
+        </div>
+        <div class="bg-black border border-gray-800 rounded-lg p-4">
+            <div class="text-center">
+                <div class="text-3xl font-bold text-green-500">0</div>
+                <div class="text-gray-400 text-sm">Sent</div>
+            </div>
+        </div>
+        <div class="bg-black border border-gray-800 rounded-lg p-4">
+            <div class="text-center">
+                <div class="text-3xl font-bold text-yellow-500">0</div>
+                <div class="text-gray-400 text-sm">Pending</div>
+            </div>
+        </div>
+        <div class="bg-black border border-gray-800 rounded-lg p-4">
+            <div class="text-center">
+                <div class="text-3xl font-bold text-gray-500">0</div>
+                <div class="text-gray-400 text-sm">Total Participants</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Certificates List -->
+    <div id="certificates-list" class="space-y-4">
+        <div class="text-center py-10">
+            <i class='bx bx-certification text-4xl text-gray-500 mb-3'></i>
+            <p class="text-gray-400">No certificates generated yet</p>
+            <p class="text-gray-500 text-sm">Generate certificates for approved event participants</p>
+        </div>
+    </div>
+    
+    <!-- Generate Certificates Modal -->
+    <div id="generate-certificates-modal" class="fixed inset-0 bg-black bg-opacity-75 items-center justify-center z-50 hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-xl w-11/12 max-w-2xl">
+            <div class="sticky top-0 bg-gray-900 border-b border-gray-800 p-6 flex justify-between items-center">
+                <h3 class="text-xl font-semibold text-white">Generate E-Certificates</h3>
+                <button id="close-certificates-modal" class="text-gray-400 hover:text-white text-2xl">
+                    <i class='bx bx-x'></i>
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <form id="generate-certificates-form" class="space-y-5">
+                    <div>
+                        <label class="block text-gray-300 mb-2">Select Event</label>
+                        <select id="certificate-event-select" required 
+                                class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                            <option value="">Select an event</option>
+                            <!-- Events will be loaded here -->
+                        </select>
+                    </div>
+                    
+                    <div id="certificate-event-info" class="p-4 bg-gray-800 rounded-lg hidden">
+                        <!-- Event info will be shown here -->
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-300 mb-2">Certificate Template</label>
+                        <div class="space-y-2">
+                            <div class="flex items-center">
+                                <input type="radio" id="template-default" name="certificate-template" value="default" checked 
+                                       class="mr-2">
+                                <label for="template-default" class="text-gray-300">Default Template</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="radio" id="template-premium" name="certificate-template" value="premium" 
+                                       class="mr-2">
+                                <label for="template-premium" class="text-gray-300">Premium Template</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="radio" id="template-custom" name="certificate-template" value="custom" 
+                                       class="mr-2">
+                                <label for="template-custom" class="text-gray-300">Custom Template</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-300 mb-2">Options</label>
+                        <div class="space-y-2">
+                            <div class="flex items-center">
+                                <input type="checkbox" id="send-email" checked 
+                                       class="mr-2">
+                                <label for="send-email" class="text-gray-300">Send via email to participants</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="download-all" checked 
+                                       class="mr-2">
+                                <label for="download-all" class="text-gray-300">Download all as ZIP file</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-4 pt-4">
+                        <button type="submit" 
+                                class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                            <i class='bx bx-certification mr-2'></i> Generate Certificates
+                        </button>
+                        <button type="button" id="cancel-certificates" 
+                                class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+        <!-- Other pages (simplified) -->
+<div id="participants-page" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-white">Participants Management</h1>
+        <div class="flex space-x-4">
+            <select id="participants-event-filter" class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500">
+                <option value="all">All Events</option>
+                <!-- Events will be loaded here dynamically -->
+            </select>
+            <input type="text" id="participants-search" placeholder="Search participants..." 
+                   class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500 w-64">
+        </div>
+    </div>
+    
+<!-- Loading State -->
+<div id="participants-loading" class="hidden">
+    <div class="flex items-center justify-center h-64">
+        <div class="text-center">
+            <i class='bx bx-loader-circle bx-spin text-4xl text-blue-500 mb-2'></i>
+            <p class="text-gray-400">Loading participants...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Participants Content -->
+<div id="participants-content" class="hidden">
+    <!-- Content will be loaded dynamically by JavaScript -->
+</div>
+
+<!-- No Participants Message -->
+<div id="no-participants" class="hidden text-center py-10">
+    <i class='bx bx-user-x text-4xl text-gray-500 mb-3'></i>
+    <p class="text-gray-400">No approved participants found</p>
+    <p class="text-gray-500 text-sm">Participants will appear here once registrations are approved</p>
+</div>
+    </main>
+<!-- File Viewer Modal -->
+<div id="file-modal" class="fixed inset-0 bg-black bg-opacity-75 items-center justify-center z-50 hidden">
+    <div class="bg-gray-900 border border-gray-800 rounded-xl w-11/12 max-w-4xl max-h-[90vh] overflow-auto">
+        <div class="sticky top-0 bg-gray-900 border-b border-gray-800 p-6 flex justify-between items-center z-10">
+            <h3 class="text-xl font-semibold text-white">Documents</h3>
+            <button id="close-file-modal" class="text-gray-400 hover:text-white text-2xl">
+                <i class='bx bx-x'></i>
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <div id="file-preview-container" class="space-y-6">
+                <!-- File previews will be loaded here -->
+            </div>
+            
+            <div class="mt-8 pt-6 border-t border-gray-800 flex justify-between">
+                <button id="close-modal-btn" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors">
+                    Close
+                </button>
+                <button id="download-all-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                    <i class='bx bx-download mr-2'></i> Download All Files
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Event Modal -->
+<div id="edit-event-modal" class="fixed inset-0 bg-black bg-opacity-75 items-center justify-center z-50 hidden">
+    <div class="bg-gray-900 border border-gray-800 rounded-xl w-11/12 max-w-2xl">
+        <div class="sticky top-0 bg-gray-900 border-b border-gray-800 p-6 flex justify-between items-center z-10">
+            <h3 class="text-xl font-semibold text-white">Edit Event</h3>
+            <button id="close-edit-modal" class="text-gray-400 hover:text-white text-2xl">
+                <i class='bx bx-x'></i>
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <form id="edit-event-form" class="space-y-5">
+                <input type="hidden" id="edit-event-id">
+                
+                <div>
+                    <label class="block text-gray-300 mb-2">Event Title</label>
+                    <input type="text" id="edit-event-title" required 
+                           class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-gray-300 mb-2">Description</label>
+                    <textarea id="edit-event-description" rows="4" required 
+                              class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"></textarea>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-300 mb-2">Date</label>
+                        <input type="date" id="edit-event-date" required 
+                               class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-300 mb-2">Course</label>
+                        <select id="edit-event-course" required 
+                                class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                            <option value="ALL">All Courses</option>
+                            <option value="BSCS">BSCS</option>
+                            <option value="BSHM">BSHM</option>
+                            <option value="BSTM">BSTM</option>
+                            <option value="BAPOLSCIE">BAPOLSCIE</option>
+                            <option value="BSEED">BSEED</option>
+                            <option value="BSBA">BSBA</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gray-300 mb-2">Status</label>
+                    <select id="edit-event-status" 
+                            class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                        <option value="active">Active</option>
+                        <option value="cancelled">Cancelled</option>
+                        <option value="completed">Completed</option>
+                        <option value="upcoming">Upcoming</option>
+                    </select>
+                </div>
+                
+                <div class="flex space-x-4 pt-4">
+                    <button type="submit" 
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Update Event
+                    </button>
+                    <button type="button" id="cancel-edit" 
+                            class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- Add Bus Modal -->
+<div id="add-bus-modal" class="fixed inset-0 bg-black bg-opacity-75 items-center justify-center z-50 hidden">
+    <div class="bg-gray-900 border border-gray-800 rounded-xl w-11/12 max-w-md">
+        <div class="sticky top-0 bg-gray-900 border-b border-gray-800 p-6 flex justify-between items-center">
+            <h3 class="text-xl font-semibold text-white">Add New Bus</h3>
+            <button id="close-add-bus-modal" class="text-gray-400 hover:text-white text-2xl">
+                <i class='bx bx-x'></i>
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <form id="add-bus-form" class="space-y-5">
+                <div>
+                    <label class="block text-gray-300 mb-2">Bus Number</label>
+                    <input type="text" id="bus-number" required 
+                           class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+                           placeholder="e.g., BUS-001">
+                </div>
+                <div>
+                    <label class="block text-gray-300 mb-2">Capacity</label>
+                    <input type="number" id="bus-capacity" required min="1" 
+                           class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+                           placeholder="Number of seats">
+                </div>
+                
+                <div class="flex space-x-4 pt-4">
+                    <button type="submit" 
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Add Bus
+                    </button>
+                    <button type="button" id="cancel-add-bus" 
+                            class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Participant to Bus Modal -->
+<div id="assign-bus-modal" class="fixed inset-0 bg-black bg-opacity-75 items-center justify-center z-50 hidden">
+    <div class="bg-gray-900 border border-gray-800 rounded-xl w-11/12 max-w-md">
+        <div class="sticky top-0 bg-gray-900 border-b border-gray-800 p-6 flex justify-between items-center">
+            <h3 class="text-xl font-semibold text-white">Assign to Bus</h3>
+            <button id="close-assign-bus-modal" class="text-gray-400 hover:text-white text-2xl">
+                <i class='bx bx-x'></i>
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <div id="assign-participant-info" class="mb-4 p-4 bg-gray-800 rounded-lg">
+                <!-- Participant info will be loaded here -->
+            </div>
+            
+            <form id="assign-bus-form" class="space-y-5">
+                <input type="hidden" id="assign-user-id">
+                <input type="hidden" id="assign-event-id">
+                
+                <div>
+                    <label class="block text-gray-300 mb-2">Select Bus</label>
+                    <select id="assign-bus-select" required 
+                            class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                        <option value="">Select a bus</option>
+                        <!-- Buses will be loaded here -->
+                    </select>
+                    <div id="bus-capacity-info" class="text-gray-400 text-sm mt-2"></div>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-300 mb-2">Notes (Optional)</label>
+                    <textarea id="assign-notes" rows="3" 
+                              class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+                              placeholder="Special requirements or notes..."></textarea>
+                </div>
+                
+                <div class="flex space-x-4 pt-4">
+                    <button type="submit" 
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Assign to Bus
+                    </button>
+                    <button type="button" id="cancel-assign-bus" 
+                            class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Move Participant to Different Bus Modal -->
+<div id="move-bus-modal" class="fixed inset-0 bg-black bg-opacity-75 items-center justify-center z-50 hidden">
+    <div class="bg-gray-900 border border-gray-800 rounded-xl w-11/12 max-w-md">
+        <div class="sticky top-0 bg-gray-900 border-b border-gray-800 p-6 flex justify-between items-center">
+            <h3 class="text-xl font-semibold text-white">Move to Different Bus</h3>
+            <button id="close-move-bus-modal" class="text-gray-400 hover:text-white text-2xl">
+                <i class='bx bx-x'></i>
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <div id="move-participant-info" class="mb-4 p-4 bg-gray-800 rounded-lg">
+                <!-- Participant info will be loaded here -->
+            </div>
+            
+            <form id="move-bus-form" class="space-y-5">
+                <input type="hidden" id="move-assignment-id">
+                <input type="hidden" id="move-current-bus-id">
+                
+                <div>
+                    <label class="block text-gray-300 mb-2">Select New Bus</label>
+                    <select id="move-bus-select" required 
+                            class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                        <option value="">Select a new bus</option>
+                        <!-- Available buses will be loaded here -->
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-300 mb-2">Reason for Move (Optional)</label>
+                    <textarea id="move-reason" rows="3" 
+                              class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+                              placeholder="Why is this move necessary?..."></textarea>
+                </div>
+                
+                <div class="flex space-x-4 pt-4">
+                    <button type="submit" 
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Move Participant
+                    </button>
+                    <button type="button" id="cancel-move-bus" 
+                            class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+    <script src="/adminpage.js"></script>
+</body>
+</html>

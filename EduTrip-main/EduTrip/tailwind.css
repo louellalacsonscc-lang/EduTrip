@@ -1,0 +1,4 @@
+/* ! @tailwind css does not recognize these directives by default */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
