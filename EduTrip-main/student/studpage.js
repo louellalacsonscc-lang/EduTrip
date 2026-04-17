@@ -1,5 +1,22 @@
-// studpage.js - FIXED VERSION
 let currentUser = null;
+
+// Helper function to display dates without timezone shift
+function formatDateForDisplay(dateString) {
+    if (!dateString) return 'TBA';
+    
+    // MySQL returns YYYY-MM-DD
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+        const year = parts[0];
+        const month = parts[1];
+        const day = parts[2].split('T')[0]; // Remove any time part
+        
+        // Return in MM/DD/YYYY format
+        return `${month}/${day}/${year}`;
+    }
+    
+    return dateString;
+}
 
 // Check authentication on page load
 document.addEventListener('DOMContentLoaded', function () {
@@ -232,12 +249,12 @@ async function submitProfileCompleteForm(e) {
     const sex = document.getElementById('profile-sex')?.value;
 
     if (!currentUser?.id) {
-        alert('User information is missing. Please log in again.');
+        showAlert('User information is missing. Please log in again.');
         return;
     }
 
     if (!course || !section || !year || !birthdate || !age || !sex) {
-        alert('Please fill in all required profile fields.');
+        showAlert('Please fill in all required profile fields.');
         return;
     }
 
@@ -254,10 +271,10 @@ async function submitProfileCompleteForm(e) {
         localStorage.setItem('user', JSON.stringify(currentUser));
         loadUserProfile();
         closeProfileModal();
-        alert('Profile updated successfully');
+        showSuccess('Profile updated successfully');
     } catch (error) {
         console.error('Profile update error:', error);
-        alert('Failed to save profile. Please try again.');
+        showAlert('Failed to save profile. Please try again.');
     }
 }
 
@@ -287,7 +304,7 @@ async function loadEvents() {
 
         // Filter to only show active events (not hidden, cancelled, or completed)
         const activeEvents = events.filter(event => 
-            event.status === 'active' && event.status !== 'hidden' && event.status !== 'cancelled'
+            event.status === 'active' || event.status === 'upcoming'
         );
 
         if (activeEvents.length === 0) {
@@ -304,7 +321,7 @@ async function loadEvents() {
                 </div>
                 <p class="text-gray-400 text-sm mb-4 line-clamp-2">${event.description || 'No description'}</p>
                 <div class="space-y-3 mb-6">
-                    <div class="flex items-center text-gray-500 text-sm"><i class='bx bx-calendar mr-2'></i>${event.date ? new Date(event.date).toLocaleDateString() : 'TBA'}</div>
+                    <div class="flex items-center text-gray-500 text-sm"><i class='bx bx-calendar mr-2'></i>${event.date ? formatDateForDisplay(event.date) : 'TBA'}</div>
                     <div class="flex items-center text-gray-500 text-sm"><i class='bx bx-map mr-2'></i>${event.location || 'TBA'}</div>
                 </div>
                 <button onclick="openRegistrationModal(${event.id})" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">Register Now</button>
@@ -318,13 +335,13 @@ async function loadEvents() {
 
 function openRegistrationModal(eventId) {
     if (!currentUser?.id) {
-        alert('Please login to register');
+        showAlert('Please login to register');
         window.location.href = '/';
         return;
     }
 
     if (isProfileIncomplete(currentUser)) {
-        alert('Please complete your profile before registering.');
+        showAlert('Please complete your profile before registering.');
         openProfileModal();
         return;
     }
@@ -366,15 +383,15 @@ async function handleRegistrationSubmit(e) {
         const result = await response.json();
 
         if (result.success) {
-            alert('✅ Registration submitted! Pending approval.');
             document.getElementById('registration-modal').classList.add('hidden');
+            showSuccess('Registration submitted! Pending approval.', 'Success!');
             document.querySelector('[data-page="my-registrations"]')?.click();
         } else {
-            alert('❌ Error: ' + (result.error || 'Failed to submit'));
+            showError('❌ Error: ' + (result.error || 'Failed to submit'));
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('❌ Network error. Please try again.');
+        showError('❌ Network error. Please try again.');
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
@@ -471,48 +488,329 @@ async function markNotificationAsRead(id) {
 }
 
 async function loadBusAssignment() {
-    const container = document.querySelector('#bus .bus-content');
-    if (!container || !currentUser?.id) return;
+    const container = document.getElementById('bus-content');
+    if (!container || !currentUser?.id) {
+        console.error('Container or user not found');
+        return;
+    }
 
-    container.innerHTML = `<div class="text-center py-10"><i class='bx bx-loader-circle bx-spin text-4xl text-blue-500 mb-2'></i></div>`;
+    container.innerHTML = `
+        <div class="text-center py-10">
+            <i class='bx bx-loader-circle bx-spin text-4xl text-blue-500 mb-2'></i>
+            <p class="text-gray-400">Loading bus assignments...</p>
+        </div>
+    `;
 
     try {
+        // Get user's approved registrations
         const response = await fetch(`/api/user/registration-requests?user_id=${currentUser.id}`);
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch registrations');
+        }
+        
         const registrations = await response.json();
-        const approved = registrations.filter(r => r.status === 'approved' && r.event_status !== 'cancelled');
+        
+        // Filter for approved registrations from active events
+        const approvedRegistrations = registrations.filter(r => 
+            r.status === 'approved' && r.event_status !== 'cancelled'
+        );
 
-        if (approved.length === 0) {
-            container.innerHTML = `<div class="text-center py-10"><i class='bx bx-bus text-4xl text-gray-500 mb-3'></i><p class="text-gray-400">No approved registrations</p><p class="text-gray-500 text-sm">Bus assignment appears after approval</p></div>`;
+        if (approvedRegistrations.length === 0) {
+            container.innerHTML = `
+                <div class="bg-black border border-gray-800 rounded-xl p-8 text-center">
+                    <i class='bx bx-bus text-5xl text-gray-500 mb-4'></i>
+                    <h3 class="text-lg font-semibold text-white mb-2">No Approved Registrations</h3>
+                    <p class="text-gray-400">You don't have any approved event registrations yet.</p>
+                    <p class="text-gray-500 text-sm mt-2">Bus assignments will appear here once your registration is approved.</p>
+                    <button onclick="document.querySelector('[data-page=\\'events\\']')?.click()" 
+                            class="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
+                        <i class='bx bx-calendar mr-2'></i>Browse Events
+                    </button>
+                </div>
+            `;
             return;
         }
 
         let html = '';
-        for (const reg of approved) {
+        let hasAnyAssignment = false;
+
+        // For each approved registration, check bus assignment
+        for (const reg of approvedRegistrations) {
             try {
                 const busRes = await fetch(`/api/events/${reg.event_id}/bus-assignments`);
-                const assignments = await busRes.json();
-                const userAssignment = assignments.find(a => a.user_id === currentUser.id);
-
-                html += `<div class="bg-black border border-gray-800 rounded-xl p-6 mb-4"><div class="flex justify-between items-start mb-4"><div><h3 class="text-lg font-semibold text-white">${reg.event_title}</h3><div class="flex items-center space-x-4 text-gray-400 text-sm mt-2"><span>${reg.event_date ? new Date(reg.event_date).toLocaleDateString() : 'TBA'}</span><span>${reg.event_location || 'TBA'}</span></div></div></div>`;
                 
-                if (userAssignment) {
-                    html += `<div class="bg-green-900/20 border border-green-800 rounded-lg p-4"><div class="flex items-center mb-3"><i class='bx bx-bus text-2xl text-green-400 mr-3'></i><div><h4 class="text-white font-semibold">Bus ${userAssignment.bus_number}</h4><p class="text-gray-400 text-sm">Your assigned bus</p></div></div><div class="text-gray-300 text-sm space-y-1"><p><strong>Capacity:</strong> ${userAssignment.capacity} seats</p><p><strong>Assigned on:</strong> ${new Date(userAssignment.assignment_date).toLocaleString()}</p>${userAssignment.notes ? `<p><strong>Notes:</strong> ${userAssignment.notes}</p>` : ''}</div></div>`;
-                } else {
-                    html += `<div class="bg-gray-900 border border-gray-800 rounded-lg p-4 text-center"><i class='bx bx-time text-2xl text-yellow-400 mb-2'></i><p class="text-gray-400">Bus assignment pending</p><p class="text-gray-500 text-sm">Will be announced soon</p></div>`;
+                if (!busRes.ok) {
+                    html += createBusCard(reg, null);
+                    continue;
                 }
-                html += `</div>`;
+                
+                const assignments = await busRes.json();
+                const myAssignment = assignments.find(a => a.user_id === currentUser.id);
+                
+                if (myAssignment) {
+                    hasAnyAssignment = true;
+                }
+                
+                html += createBusCard(reg, myAssignment);
+                
             } catch (e) {
-                console.error('Error loading bus for event:', e);
+                console.error('Error loading bus for event:', reg.event_id, e);
+                html += createBusCard(reg, null);
             }
         }
 
-        container.innerHTML = html || `<div class="text-center py-10"><i class='bx bx-time text-4xl text-yellow-500 mb-3'></i><p class="text-gray-400">Bus assignments being prepared</p></div>`;
+        container.innerHTML = html || `
+            <div class="bg-black border border-gray-800 rounded-xl p-8 text-center">
+                <i class='bx bx-time text-5xl text-yellow-500 mb-4'></i>
+                <h3 class="text-lg font-semibold text-white mb-2">Bus Assignments Pending</h3>
+                <p class="text-gray-400">Your bus assignments are being prepared.</p>
+                <p class="text-gray-500 text-sm mt-2">Check back soon for your bus assignment details.</p>
+            </div>
+        `;
+
     } catch (error) {
-        console.error('Error:', error);
-        container.innerHTML = `<div class="text-center py-10"><i class='bx bx-error text-4xl text-red-500 mb-3'></i><p class="text-gray-400">Error loading bus assignments</p></div>`;
+        console.error('Error loading bus assignments:', error);
+        container.innerHTML = `
+            <div class="bg-black border border-red-800/50 rounded-xl p-8 text-center">
+                <i class='bx bx-error text-5xl text-red-500 mb-4'></i>
+                <h3 class="text-lg font-semibold text-white mb-2">Error Loading Assignments</h3>
+                <p class="text-gray-400 mb-4">Unable to load bus assignments at this time.</p>
+                <button onclick="loadBusAssignment()" 
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
+                    <i class='bx bx-refresh mr-2'></i>Try Again
+                </button>
+            </div>
+        `;
     }
 }
 
+// Helper function to create bus card HTML
+function createBusCard(registration, busAssignment) {
+    const eventDate = registration.event_date ? new Date(registration.event_date).toLocaleDateString('en-US', {
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    }) : 'Date TBA';
+    
+    if (busAssignment) {
+        // User has a bus assignment
+        return `
+            <div class="bg-black border border-green-800/50 rounded-xl p-6 hover:border-green-500/30 transition-all">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-white">${registration.event_title}</h3>
+                        <div class="flex items-center space-x-4 text-gray-400 text-sm mt-2">
+                            <span class="flex items-center">
+                                <i class='bx bx-calendar mr-1'></i>${eventDate}
+                            </span>
+                            <span class="flex items-center">
+                                <i class='bx bx-map mr-1'></i>${registration.event_location || 'Location TBA'}
+                            </span>
+                        </div>
+                    </div>
+                    <span class="px-3 py-1 bg-green-900/30 text-green-400 border border-green-800 rounded-full text-xs font-medium">
+                        ASSIGNED
+                    </span>
+                </div>
+                
+                <div class="bg-green-900/20 border border-green-800 rounded-lg p-5 mt-4">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 bg-green-900/30 rounded-full flex items-center justify-center mr-4">
+                            <i class='bx bx-bus text-3xl text-green-400'></i>
+                        </div>
+                        <div>
+                            <h4 class="text-white font-semibold text-lg">Bus ${busAssignment.bus_number}</h4>
+                            <p class="text-gray-400 text-sm">Your assigned bus for this event</p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div class="bg-black/30 rounded-lg p-3">
+                            <p class="text-gray-400 mb-1">Bus Capacity</p>
+                            <p class="text-white font-medium">${busAssignment.capacity} seats</p>
+                        </div>
+                        <div class="bg-black/30 rounded-lg p-3">
+                            <p class="text-gray-400 mb-1">Assigned On</p>
+                            <p class="text-white font-medium">${new Date(busAssignment.assignment_date).toLocaleDateString()}</p>
+                        </div>
+                    </div>
+                    
+                    ${busAssignment.notes ? `
+                        <div class="mt-4 bg-black/30 rounded-lg p-3">
+                            <p class="text-gray-400 mb-1">Notes</p>
+                            <p class="text-white">${busAssignment.notes}</p>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="mt-4 p-3 bg-blue-900/20 border border-blue-800 rounded-lg">
+                        <p class="text-blue-300 text-sm flex items-start">
+                            <i class='bx bx-info-circle mr-2 mt-0.5'></i>
+                            <span>Please arrive at least 15 minutes before departure. Bring your student ID.</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        // User doesn't have a bus assignment yet
+        return `
+            <div class="bg-black border border-gray-800 rounded-xl p-6 hover:border-blue-500/30 transition-all">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-white">${registration.event_title}</h3>
+                        <div class="flex items-center space-x-4 text-gray-400 text-sm mt-2">
+                            <span class="flex items-center">
+                                <i class='bx bx-calendar mr-1'></i>${eventDate}
+                            </span>
+                            <span class="flex items-center">
+                                <i class='bx bx-map mr-1'></i>${registration.event_location || 'Location TBA'}
+                            </span>
+                        </div>
+                    </div>
+                    <span class="px-3 py-1 bg-yellow-900/30 text-yellow-400 border border-yellow-800 rounded-full text-xs font-medium">
+                        PENDING
+                    </span>
+                </div>
+                
+                <div class="bg-gray-900/50 border border-gray-800 rounded-lg p-5 mt-4 text-center">
+                    <i class='bx bx-time text-4xl text-yellow-400 mb-3'></i>
+                    <h4 class="text-white font-medium mb-2">Bus Assignment Pending</h4>
+                    <p class="text-gray-400 text-sm">Your bus assignment will be announced soon.</p>
+                    <p class="text-gray-500 text-xs mt-2">Check back later or contact the event coordinator.</p>
+                </div>
+            </div>
+        `;
+    }
+}
+// Toast Modal System
+function showToast(options) {
+    const {
+        type = 'info', // success, error, warning, info
+        title = 'Notification',
+        message = '',
+        confirmText = 'OK',
+        cancelText = null,
+        onConfirm = null,
+        onCancel = null
+    } = options;
+
+    const modal = document.getElementById('toast-modal');
+    const iconElement = document.getElementById('toast-icon-element');
+    const titleElement = document.getElementById('toast-title');
+    const messageElement = document.getElementById('toast-message');
+    const confirmBtn = document.getElementById('toast-confirm');
+    const cancelBtn = document.getElementById('toast-cancel');
+
+    // Remove existing type classes
+    modal.classList.remove('toast-success', 'toast-error', 'toast-warning', 'toast-info');
+    modal.classList.add(`toast-${type}`);
+
+    // Set icon based on type
+    const icons = {
+        success: 'bx-check-circle',
+        error: 'bx-error-circle',
+        warning: 'bx-error',
+        info: 'bx-info-circle'
+    };
+    iconElement.className = `bx ${icons[type]} text-3xl`;
+
+    // Set content
+    titleElement.textContent = title;
+    messageElement.textContent = message;
+    confirmBtn.textContent = confirmText;
+
+    // Handle cancel button
+    if (cancelText) {
+        cancelBtn.textContent = cancelText;
+        cancelBtn.classList.remove('hidden');
+    } else {
+        cancelBtn.classList.add('hidden');
+    }
+
+    // Show modal
+    modal.classList.remove('hidden');
+    modal.classList.add('show');
+
+    // Handle confirm
+    const handleConfirm = () => {
+        modal.classList.add('hidden');
+        modal.classList.remove('show');
+        if (onConfirm) onConfirm();
+        cleanup();
+    };
+
+    // Handle cancel
+    const handleCancel = () => {
+        modal.classList.add('hidden');
+        modal.classList.remove('show');
+        if (onCancel) onCancel();
+        cleanup();
+    };
+
+    // Handle outside click
+    const handleOutsideClick = (e) => {
+        if (e.target === modal) {
+            handleCancel();
+        }
+    };
+
+    // Cleanup listeners
+    const cleanup = () => {
+        confirmBtn.removeEventListener('click', handleConfirm);
+        cancelBtn.removeEventListener('click', handleCancel);
+        modal.removeEventListener('click', handleOutsideClick);
+    };
+
+    // Add listeners
+    confirmBtn.addEventListener('click', handleConfirm);
+    cancelBtn.addEventListener('click', handleCancel);
+    modal.addEventListener('click', handleOutsideClick);
+}
+
+// Confirmation Dialog (returns Promise)
+function showConfirm(options) {
+    return new Promise((resolve) => {
+        showToast({
+            ...options,
+            type: options.type || 'warning',
+            cancelText: options.cancelText || 'Cancel',
+            onConfirm: () => resolve(true),
+            onCancel: () => resolve(false)
+        });
+    });
+}
+
+// Simple alert replacement
+function showAlert(message, type = 'info', title = 'Notification') {
+    showToast({
+        type,
+        title,
+        message,
+        confirmText: 'OK'
+    });
+}
+
+// Success alert
+function showSuccess(message, title = 'Success!') {
+    showToast({
+        type: 'success',
+        title,
+        message,
+        confirmText: 'Great!'
+    });
+}
+
+// Error alert
+function showError(message, title = 'Error!') {
+    showToast({
+        type: 'error',
+        title,
+        message,
+        confirmText: 'OK'
+    });
+}
 function logout() {
     localStorage.removeItem('user');
     localStorage.removeItem('token');

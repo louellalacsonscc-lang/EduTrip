@@ -711,13 +711,19 @@ app.get('/api/frontpage-events', (req, res) => {
     });
 });
 
-// Get all events
+// Get all events - ADMIN NEEDS ALL EVENTS, students only see active ones
 app.get('/api/events', (req, res) => {
     const course = req.query.course ? req.query.course.toString().toUpperCase() : null;
     const validCourses = ['BSCS', 'BSHM', 'BSTM', 'BAPOLSCI', 'BSED', 'BSBA', 'ALL'];
+    const includeAll = req.query.all === 'true'; // New parameter for admin
 
-    let sql = "SELECT * FROM events WHERE status = 'active'";
+    let sql = "SELECT * FROM events WHERE 1=1";
     const params = [];
+
+    // If not admin request, only show active events
+    if (!includeAll) {
+        sql += " AND status = 'active'";
+    }
 
     if (course && validCourses.includes(course)) {
         sql += " AND (course = ? OR course = 'ALL')";
@@ -1073,8 +1079,10 @@ app.post('/api/events', upload.single('image'), (req, res) => {
     const validCourses = ['BSCS', 'BSHM', 'BSTM', 'BAPOLSCI', 'BSED', 'BSBA', 'ALL'];
     const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
     
-    // Default to 'hidden' if no status provided
+    // Default to 'hidden' if not provided (new events start hidden)
     const eventStatus = status || 'hidden';
+    
+    console.log('📅 Creating event with date:', date); // Add this log
 
     if (!title || !description || !date || !location || !normalizedCourse) {
         return res.status(400).json({ error: 'All fields are required' });
@@ -1084,15 +1092,17 @@ app.post('/api/events', upload.single('image'), (req, res) => {
         return res.status(400).json({ error: 'Invalid course selection' });
     }
 
-    db.query("INSERT INTO events (title, description, date, location, course, image_url, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    db.query(
+        "INSERT INTO events (title, description, date, location, course, image_url, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
         [title, description, date, location, normalizedCourse, imageUrl, eventStatus], 
         (err, result) => {
             if (err) {
-                console.log('Database error creating event:', err);
+                console.error('Database error creating event:', err);
                 return res.status(500).json({ error: 'Database error' });
             }
             res.json({ success: true, message: 'Event created successfully', eventId: result.insertId });
-        });
+        }
+    );
 });
 
 // Delete event
@@ -1118,9 +1128,36 @@ app.delete('/api/events/:id', (req, res) => {
         });
     });
 });
+// Auto-complete events that have passed their date by 3 days
+async function autoCompleteEvents() {
+    try {
+        // Find events that are active/upcoming and ended more than 3 days ago
+        const query = `
+            UPDATE events 
+            SET status = 'completed' 
+            WHERE status IN ('active', 'upcoming') 
+            AND DATE_ADD(date, INTERVAL 3 DAY) < CURDATE()
+        `;
+        
+        const [result] = await db.promise().query(query);
+        
+        if (result.affectedRows > 0) {
+            console.log(`✅ Auto-completed ${result.affectedRows} event(s)`);
+        }
+    } catch (error) {
+        console.error('❌ Error auto-completing events:', error);
+    }
+}
 
+// Run auto-complete on server start
+setTimeout(() => {
+    autoCompleteEvents();
+}, 5000);
+
+// Run auto-complete every day (24 hours)
+setInterval(autoCompleteEvents, 24 * 60 * 60 * 1000);
 // Update registration request status
-app.put('/api/registration-requests/:id', (req, res) => {
+app.put('/api/registration-requests/:id', async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
@@ -1130,47 +1167,143 @@ app.put('/api/registration-requests/:id', (req, res) => {
         return res.status(400).json({ error: 'Invalid status' });
     }
 
-    db.query("UPDATE registration_requests SET status = ? WHERE id = ?",
-        [status, id], (err, result) => {
-            if (err) {
-                console.log('Database error updating request:', err);
-                return res.status(500).json({ error: 'Database error' });
-            }
-            res.json({ success: true, message: 'Request updated successfully' });
-        });
+    try {
+        // Get the request details first
+        const [requestResult] = await db.promise().query(
+            "SELECT * FROM registration_requests WHERE id = ?", [id]
+        );
+        
+        if (requestResult.length === 0) {
+            return res.status(404).json({ error: 'Request not found' });
+        }
+        
+        const request = requestResult[0];
+        
+        // Update the status
+        const [updateResult] = await db.promise().query(
+            "UPDATE registration_requests SET status = ? WHERE id = ?",
+            [status, id]
+        );
+
+        // If approved, try to auto-assign to a bus
+        if (status === 'approved') {
+            await autoAssignToBus(request.user_id, request.event_id);
+        }
+
+        res.json({ success: true, message: 'Request updated successfully' });
+        
+    } catch (error) {
+        console.error('Error updating request:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
 });
+
+// Auto-assign function
+async function autoAssignToBus(userId, eventId) {
+    try {
+        // Check if user already has a bus assignment for this event
+        const [existing] = await db.promise().query(
+            "SELECT * FROM bus_assignments WHERE user_id = ? AND event_id = ?",
+            [userId, eventId]
+        );
+        
+        if (existing.length > 0) {
+            console.log(`User ${userId} already assigned to bus for event ${eventId}`);
+            return;
+        }
+
+        // Find available buses with capacity
+        const [buses] = await db.promise().query(
+            `SELECT b.*, 
+                    (SELECT COUNT(*) FROM bus_assignments WHERE bus_id = b.id) as assigned_count
+             FROM buses b
+             HAVING assigned_count < b.capacity
+             ORDER BY b.bus_number
+             LIMIT 1`
+        );
+        
+        if (buses.length === 0) {
+            console.log(`No available buses for event ${eventId}, user ${userId} pending assignment`);
+            return;
+        }
+        
+        const bus = buses[0];
+        
+        // Assign to the first available bus
+        await db.promise().query(
+            "INSERT INTO bus_assignments (user_id, event_id, bus_id, notes) VALUES (?, ?, ?, ?)",
+            [userId, eventId, bus.id, 'Auto-assigned upon approval']
+        );
+        
+        // Update bus passenger count
+        await db.promise().query(
+            "UPDATE buses SET current_passengers = current_passengers + 1 WHERE id = ?",
+            [bus.id]
+        );
+        
+        console.log(`✅ Auto-assigned user ${userId} to bus ${bus.bus_number} for event ${eventId}`);
+        
+    } catch (error) {
+        console.error('Error auto-assigning to bus:', error);
+    }
+}
 
 // Update event
 app.put('/api/events/:id', (req, res) => {
     const { id } = req.params;
     const { title, description, date, location, status, course } = req.body;
-    const normalizedCourse = typeof course === 'string' ? course.toUpperCase() : 'ALL';
-    const validCourses = ['BSCS', 'BSHM', 'BSTM', 'BAPOLSCI', 'BSED', 'BSBA', 'ALL'];
-
-    if (!title || !description || !date || !location || !normalizedCourse) {
-        return res.status(400).json({ error: 'All fields are required' });
+    
+    // Build dynamic UPDATE query based on provided fields
+    const updates = [];
+    const params = [];
+    
+    if (title !== undefined) {
+        updates.push('title = ?');
+        params.push(title);
     }
-
-    if (!validCourses.includes(normalizedCourse)) {
-        return res.status(400).json({ error: 'Invalid course selection' });
+    if (description !== undefined) {
+        updates.push('description = ?');
+        params.push(description);
     }
-
-    const validStatuses = ['active', 'cancelled', 'completed', 'upcoming'];
-    const eventStatus = status && validStatuses.includes(status) ? status : 'active';
-
-    db.query(
-        `UPDATE events 
-         SET title = ?, description = ?, date = ?, location = ?, status = ?, course = ?
-         WHERE id = ?`,
-        [title, description, date, location, eventStatus, normalizedCourse, id],
-        (err, result) => {
-            if (err) {
-                console.log('Database error updating event:', err);
-                return res.status(500).json({ error: 'Database error' });
-            }
-            res.json({ success: true, message: 'Event updated successfully' });
+    if (date !== undefined) {
+        updates.push('date = ?');
+        params.push(date);
+    }
+    if (location !== undefined) {
+        updates.push('location = ?');
+        params.push(location);
+    }
+    if (status !== undefined) {
+        const validStatuses = ['active', 'hidden', 'cancelled', 'completed', 'upcoming'];
+        if (validStatuses.includes(status)) {
+            updates.push('status = ?');
+            params.push(status);
         }
-    );
+    }
+    if (course !== undefined) {
+        const normalizedCourse = typeof course === 'string' ? course.toUpperCase() : 'ALL';
+        const validCourses = ['BSCS', 'BSHM', 'BSTM', 'BAPOLSCI', 'BSED', 'BSBA', 'ALL'];
+        if (validCourses.includes(normalizedCourse)) {
+            updates.push('course = ?');
+            params.push(normalizedCourse);
+        }
+    }
+    
+    if (updates.length === 0) {
+        return res.status(400).json({ error: 'No valid fields to update' });
+    }
+    
+    params.push(id);
+    
+    const sql = `UPDATE events SET ${updates.join(', ')} WHERE id = ?`;
+    
+    db.query(sql, params, (err, result) => {
+        if (err) {
+            console.log('Database error updating event:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ success: true, message: 'Event updated successfully' });
+    });
 });
 
 // Bus Management Endpoints
@@ -1425,7 +1558,117 @@ app.get('/api/events/:event_id/eligible-participants', (req, res) => {
         res.json(results);
     });
 });
+// Update bus
+app.put('/api/buses/:id', (req, res) => {
+    const { id } = req.params;
+    const { bus_number, capacity } = req.body;
 
+    if (!bus_number || !capacity) {
+        return res.status(400).json({ error: 'Bus number and capacity are required' });
+    }
+
+    if (capacity <= 0) {
+        return res.status(400).json({ error: 'Capacity must be greater than 0' });
+    }
+
+    // First check if bus exists and get current passengers
+    db.query("SELECT * FROM buses WHERE id = ?", [id], (err, results) => {
+        if (err) {
+            console.error('Error checking bus:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Bus not found' });
+        }
+
+        const bus = results[0];
+
+        // Check if new capacity is valid
+        if (capacity < bus.current_passengers) {
+            return res.status(400).json({ 
+                error: `Cannot set capacity (${capacity}) lower than current passengers (${bus.current_passengers})` 
+            });
+        }
+
+        // Update bus
+        db.query(
+            "UPDATE buses SET bus_number = ?, capacity = ? WHERE id = ?",
+            [bus_number, capacity, id],
+            (err, result) => {
+                if (err) {
+                    console.error('Error updating bus:', err);
+                    if (err.code === 'ER_DUP_ENTRY') {
+                        return res.status(400).json({ error: 'Bus number already exists' });
+                    }
+                    return res.status(500).json({ error: 'Database error' });
+                }
+
+                res.json({ success: true, message: 'Bus updated successfully' });
+            }
+        );
+    });
+});
+
+// Delete bus
+app.delete('/api/buses/:id', (req, res) => {
+    const { id } = req.params;
+
+    // Check if bus has assignments
+    db.query("SELECT COUNT(*) as count FROM bus_assignments WHERE bus_id = ?", [id], (err, results) => {
+        if (err) {
+            console.error('Error checking bus assignments:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        if (results[0].count > 0) {
+            return res.status(400).json({ 
+                error: 'Cannot delete bus with existing assignments. Remove all assignments first.' 
+            });
+        }
+
+        // Delete the bus
+        db.query("DELETE FROM buses WHERE id = ?", [id], (err, result) => {
+            if (err) {
+                console.error('Error deleting bus:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ error: 'Bus not found' });
+            }
+
+            res.json({ success: true, message: 'Bus deleted successfully' });
+        });
+    });
+});
+
+// Get bus assignments (for View Details button)
+app.get('/api/buses/:id/assignments', (req, res) => {
+    const { id } = req.params;
+
+    const query = `
+        SELECT ba.*, 
+               u.name as user_name, 
+               u.student_number, 
+               u.email,
+               e.title as event_title, 
+               e.date as event_date
+        FROM bus_assignments ba
+        JOIN users u ON ba.user_id = u.id
+        JOIN events e ON ba.event_id = e.id
+        WHERE ba.bus_id = ?
+        ORDER BY e.date, u.name
+    `;
+
+    db.query(query, [id], (err, results) => {
+        if (err) {
+            console.error('Error fetching bus assignments:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json(results);
+    });
+});
 // Notifications endpoints
 
 // Create notification

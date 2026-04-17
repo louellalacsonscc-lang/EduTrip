@@ -2,6 +2,25 @@ let currentUser = null;
 let editingEventId = null;
 let busFilterInitialized = false; // Track if bus filter is already initialized
 
+// Helper function to display dates without timezone shift
+function formatDateForDisplay(dateString) {
+    if (!dateString) return 'TBA';
+    
+    // MySQL returns YYYY-MM-DD
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+        const year = parts[0];
+        const month = parts[1];
+        const day = parts[2].split('T')[0]; // Remove any time part
+        
+        // Create date in local timezone without shifting
+        // MM/DD/YYYY format
+        return `${month}/${day}/${year}`;
+    }
+    
+    return dateString;
+}
+
 // Check authentication on page load
 document.addEventListener('DOMContentLoaded', function () {
     // Check if user is logged in
@@ -89,10 +108,12 @@ function initSidebarToggle() {
 function initializePage() {
     initParticipantsFilters();
     initializeModalListeners();
+    initializeEditBusForm();
     initializeDashboardRefreshButton();
     // Navigation functionality
     const navLinks = document.querySelectorAll('.sidebar-item');
     const pages = document.querySelectorAll('.page-container');
+
 
     // Initialize dashboard as active
     const dashboardPage = document.getElementById('dashboard');
@@ -189,20 +210,17 @@ if (createEventForm) {
         
         // Check if all required elements exist
         if (!titleEl || !descEl || !dateEl || !locationEl || !courseEl) {
-            alert('Error: Form fields are missing. Please refresh the page.');
-            console.error('Missing form fields:', {
-                title: !!titleEl,
-                description: !!descEl,
-                date: !!dateEl,
-                location: !!locationEl,
-                course: !!courseEl
-            });
+            showError('Error: Form fields are missing. Please refresh the page.');
             return;
         }
         
+        // Get the date value as-is from the input (already in YYYY-MM-DD format)
+        const selectedDate = dateEl.value;
+        console.log('📅 Creating event with date:', selectedDate);
+        
         eventData.append('title', titleEl.value);
         eventData.append('description', descEl.value);
-        eventData.append('date', dateEl.value);
+        eventData.append('date', selectedDate); // Send as YYYY-MM-DD
         eventData.append('location', locationEl.value);
         eventData.append('course', courseEl.value);
 
@@ -296,6 +314,13 @@ if (createEventForm) {
 
     if (eventStatusFilter) {
         eventStatusFilter.addEventListener('change', loadRegistrationRequests);
+    }
+        initializeAutoAssignButton();
+    
+    // Add sort filter listener
+    const sortFilter = document.getElementById('participants-sort-filter');
+    if (sortFilter) {
+        sortFilter.addEventListener('change', loadParticipants);
     }
 }
 // Update the updateDashboardStats function to handle spinner animation
@@ -449,9 +474,14 @@ function animateNumberUpdate(element) {
 
 // Update the loadRegistrationRequests function to refresh dashboard stats when requests are updated
 async function updateRequestStatus(requestId, status) {
-    if (!confirm(`Are you sure you want to ${status} this registration request?`)) {
-        return;
-    }
+    const confirmed = await showConfirm({
+        title: `${status.charAt(0).toUpperCase() + status.slice(1)} Request`,
+        message: `Are you sure you want to ${status} this registration request?`,
+        type: status === 'rejected' ? 'error' : 'info',
+        confirmText: `Yes, ${status}`,
+        cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
 
     try {
         const response = await fetch(`/api/registration-requests/${requestId}`, {
@@ -465,45 +495,29 @@ async function updateRequestStatus(requestId, status) {
         const result = await response.json();
 
         if (result.success) {
-            alert('Request status updated successfully!');
+            showSuccess('Request status updated successfully!');
             loadRegistrationRequests();
             updateDashboardStats(); // Refresh dashboard stats
         } else {
-            alert('Error updating request status: ' + result.error);
+            showError('Error updating request status: ' + result.error);
         }
     } catch (error) {
         console.error('Error updating request status:', error);
-        alert('Error updating request status: ' + error.message);
-    }
-}
-
-// Update the createEvent function to refresh dashboard
-async function createEvent(eventData) {
-    try {
-        const response = await fetch('/api/events', {
-            method: 'POST',
-            body: eventData
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            alert('Event created successfully!');
-            document.getElementById('create-event-form').reset();
-            loadAdminEvents();
-            updateDashboardStats(); // Refresh dashboard after creating event
-        } else {
-            alert('Error creating event: ' + result.error);
-        }
-    } catch (error) {
-        console.error('Error creating event:', error);
-        alert('Error creating event: ' + error.message);
+        showError('Error updating request status: ' + error.message);
     }
 }
 
 // Update the deleteEvent function
 async function deleteEvent(eventId) {
-    if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+    const confirmed = await showConfirm({
+        title: 'Delete Event',
+        message: 'Are you sure you want to delete this event? This action cannot be undone.',
+        type: 'error',
+        confirmText: 'Yes, Delete',
+        cancelText: 'Cancel'
+    });
+    
+    if (!confirmed) {
         return;
     }
 
@@ -515,15 +529,15 @@ async function deleteEvent(eventId) {
         const result = await response.json();
 
         if (result.success) {
-            alert('Event deleted successfully!');
+            showSuccess('Event deleted successfully!');
             loadAdminEvents();
             updateDashboardStats(); // Refresh dashboard after deleting event
         } else {
-            alert('Error deleting event: ' + result.error);
+            showError('Error deleting event: ' + result.error);
         }
     } catch (error) {
         console.error('Error deleting event:', error);
-        alert('Error deleting event: ' + error.message);
+        showError('Error deleting event: ' + error.message);
     }
 }
 
@@ -532,7 +546,7 @@ async function assignToBus(assignmentData) {
     try {
         // Validate bus selection
         if (!assignmentData.bus_id) {
-            alert('Please select a bus');
+            showAlert('Please select a bus');
             return;
         }
 
@@ -545,7 +559,7 @@ async function assignToBus(assignmentData) {
         const result = await response.json();
 
         if (result.success) {
-            alert('✅ Participant assigned to bus successfully!');
+            showSuccess('✅ Participant assigned to bus successfully!');
             document.getElementById('assign-bus-form').reset();
             document.getElementById('assign-bus-modal').classList.add('hidden');
 
@@ -558,44 +572,44 @@ async function assignToBus(assignmentData) {
             loadBuses();
             updateDashboardStats(); // Refresh dashboard stats
         } else {
-            alert('❌ Error: ' + result.error);
+            showError('❌ Error: ' + result.error);
         }
     } catch (error) {
         console.error('Error assigning to bus:', error);
-        alert('❌ Error assigning to bus: ' + error.message);
+        showError('❌ Error assigning to bus: ' + error.message);
     }
 }
 
 // Update the removeBusAssignment function
 async function removeBusAssignment(assignmentId, userName) {
-    if (!confirm(`Are you sure you want to remove ${userName} from their bus assignment?\n\nThis will free up their seat on the bus.`)) {
-        return;
-    }
+    const confirmed = await showConfirm({
+        title: 'Remove Assignment',
+        message: `Are you sure you want to remove ${userName} from their bus assignment?\n\nThis will free up their seat on the bus.`,
+        type: 'warning',
+        confirmText: 'Yes, Remove',
+        cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
 
     try {
-        const response = await fetch(`/api/bus-assignments/${assignmentId}`, {
-            method: 'DELETE'
-        });
-
+        const response = await fetch(`/api/bus-assignments/${assignmentId}`, { method: 'DELETE' });
         const result = await response.json();
 
         if (result.success) {
-            alert('✅ Bus assignment removed successfully!');
-
-            // Refresh data
+            showSuccess('✅ Bus assignment removed successfully!');
             const eventId = document.getElementById('bus-event-filter').value;
             if (eventId) {
                 loadEventBusAssignments(eventId);
                 loadEligibleParticipants(eventId);
             }
             loadBuses();
-            updateDashboardStats(); // Refresh dashboard stats
+            updateDashboardStats();
         } else {
-            alert('❌ Error: ' + result.error);
+            showError('❌ Error: ' + result.error);
         }
     } catch (error) {
         console.error('Error removing bus assignment:', error);
-        alert('❌ Error removing bus assignment: ' + error.message);
+        showError('❌ Error removing bus assignment: ' + error.message);
     }
 }
 
@@ -623,13 +637,14 @@ async function loadAdminEvents() {
             </div>
         `;
 
-        const response = await fetch('/api/events');
+        // Add ?all=true to get ALL events including hidden ones
+        const response = await fetch('/api/events?all=true');
         allEvents = await response.json();
+        console.log('📊 Loaded events:', allEvents.length);
 
         // Set up filter listener
         const filterSelect = document.getElementById('admin-events-course-filter');
         if (filterSelect) {
-            // Remove old listener and add new one
             const newFilter = filterSelect.cloneNode(true);
             filterSelect.parentNode.replaceChild(newFilter, filterSelect);
             
@@ -651,6 +666,7 @@ async function loadAdminEvents() {
 }
 
 function filterEventsByCourse(course) {
+    console.log('filterEventsByCourse called with course:', course, 'allEvents length:', allEvents.length);
     const eventsList = document.getElementById('admin-events-list');
     if (!eventsList) return;
 
@@ -722,6 +738,11 @@ function filterEventsByCourse(course) {
                         <i class='bx bx-edit mr-1'></i>Edit
                     </button>
                     ${toggleButton}
+                    ${!isCancelled && !isCompleted ? `
+                        <button class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors" onclick="finishEvent(${event.id})">
+                            <i class='bx bx-check-circle mr-1'></i>Finish
+                        </button>
+                    ` : ''}
                     <button class="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors" onclick="deleteEvent(${event.id})">
                         <i class='bx bx-trash mr-1'></i>Delete
                     </button>
@@ -730,60 +751,167 @@ function filterEventsByCourse(course) {
         `;
     }).join('');
 }
-async function toggleEventVisibility(eventId, currentlyHidden) {
-    const action = currentlyHidden ? 'show' : 'hide';
+async function finishEvent(eventId) {
+    // Find the event to get its details
+    const event = allEvents.find(e => e.id === eventId);
     
-    if (!confirm(`Are you sure you want to ${action} this event?`)) {
+    if (!event) {
+        showError('Event not found', 'Error');
         return;
     }
-
+    
+    // Check if event can be finished
+    if (event.status === 'completed') {
+        showAlert('This event is already completed', 'info', 'Already Completed');
+        return;
+    }
+    
+    if (event.status === 'cancelled') {
+        showAlert('Cannot finish a cancelled event', 'warning', 'Cannot Finish');
+        return;
+    }
+    
+    const confirmed = await showConfirm({
+        title: 'Finish Event',
+        message: `Are you sure you want to mark "${event.title}" as completed?\n\nThis will:\n• Move the event to completed status\n• Prevent new registrations\n• Allow certificate generation`,
+        type: 'info',
+        confirmText: 'Yes, Finish Event',
+        cancelText: 'Cancel'
+    });
+    
+    if (!confirmed) return;
+    
     try {
-        // Get current event data
-        const response = await fetch(`/api/events/${eventId}`);
-        const event = await response.json();
-        
-        if (!event) {
-            throw new Error('Event not found');
-        }
-
-        // Toggle status: if currently hidden -> set to 'active', if currently active -> set to 'hidden'
-        const newStatus = currentlyHidden ? 'active' : 'hidden';
-        
-        console.log(`Toggling event ${eventId} from ${event.status} to ${newStatus}`);
-        
-        const updateResponse = await fetch(`/api/events/${eventId}`, {
+        const response = await fetch(`/api/events/${eventId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                title: event.title,
-                description: event.description || '',
-                date: event.date,
-                location: event.location || '',
-                course: event.course || 'ALL',
-                status: newStatus
+                status: 'completed'
             })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess(`Event "${event.title}" has been marked as completed!`, 'Event Finished');
+            
+            // Refresh events list
+            const eventsResponse = await fetch('/api/events?all=true');
+            allEvents = await eventsResponse.json();
+            
+            const courseFilter = document.getElementById('admin-events-course-filter');
+            filterEventsByCourse(courseFilter ? courseFilter.value : 'ALL');
+            updateDashboardStats();
+        } else {
+            showError(result.error || 'Failed to finish event', 'Error');
+        }
+    } catch (error) {
+        console.error('Error finishing event:', error);
+        showError('Error: ' + error.message, 'Error');
+    }
+}
+async function autoCompleteOldEvents() {
+    const confirmed = await showConfirm({
+        title: 'Auto-Complete Events',
+        message: 'This will mark all events that ended more than 3 days ago as completed. Continue?',
+        type: 'info',
+        confirmText: 'Yes, Complete Old Events',
+        cancelText: 'Cancel'
+    });
+    
+    if (!confirmed) return;
+    
+    try {
+        const response = await fetch('/api/events/auto-complete', {
+            method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess(`${result.completed} event(s) marked as completed!`, 'Auto-Complete Done');
+            
+            // Refresh events
+            const eventsResponse = await fetch('/api/events?all=true');
+            allEvents = await eventsResponse.json();
+            
+            const courseFilter = document.getElementById('admin-events-course-filter');
+            filterEventsByCourse(courseFilter ? courseFilter.value : 'ALL');
+        } else {
+            showError(result.error || 'Failed to auto-complete events', 'Error');
+        }
+    } catch (error) {
+        console.error('Error auto-completing events:', error);
+        showError('Error: ' + error.message, 'Error');
+    }
+}
+
+// Initialize button
+document.getElementById('auto-complete-events-btn')?.addEventListener('click', autoCompleteOldEvents);
+
+// Add endpoint to server.js
+app.post('/api/events/auto-complete', async (req, res) => {
+    try {
+        const query = `
+            UPDATE events 
+            SET status = 'completed' 
+            WHERE status IN ('active', 'upcoming') 
+            AND DATE_ADD(date, INTERVAL 3 DAY) < CURDATE()
+        `;
+        
+        const [result] = await db.promise().query(query);
+        
+        res.json({ 
+            success: true, 
+            completed: result.affectedRows,
+            message: `${result.affectedRows} event(s) auto-completed`
+        });
+    } catch (error) {
+        console.error('Error auto-completing events:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+async function toggleEventVisibility(eventId, currentlyHidden) {
+    const action = currentlyHidden ? 'show' : 'hide';
+    
+    const confirmed = await showConfirm({
+        title: `${action === 'show' ? 'Show' : 'Hide'} Event`,
+        message: `Are you sure you want to ${action} this event?`,
+        type: 'info',
+        confirmText: `Yes, ${action}`,
+        cancelText: 'Cancel'
+    });
+    
+    if (!confirmed) return;
+
+    try {
+        // Toggle status
+        const newStatus = currentlyHidden ? 'active' : 'hidden';
+        
+        console.log(`Toggling event ${eventId} to ${newStatus}`);
+        
+        // ONLY send the status field
+        const updateResponse = await fetch(`/api/events/${eventId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus })
         });
 
         const result = await updateResponse.json();
 
         if (result.success) {
-            alert(`Event ${action}n successfully!`);
-            
-            // Refresh events list
-            const eventsResponse = await fetch('/api/events');
+            const eventsResponse = await fetch('/api/events?all=true');
             allEvents = await eventsResponse.json();
             
             const courseFilter = document.getElementById('admin-events-course-filter');
             filterEventsByCourse(courseFilter ? courseFilter.value : 'ALL');
-            
-            // Also refresh dashboard stats
             updateDashboardStats();
         } else {
-            alert('Error: ' + (result.error || 'Failed to update event'));
+            showError('Error: ' + (result.error || 'Failed to update event'));
         }
     } catch (error) {
         console.error('Error toggling event:', error);
-        alert('Error: ' + error.message);
+        showError('Error: ' + error.message);
     }
 }
 
@@ -792,7 +920,7 @@ window.toggleEventVisibility = toggleEventVisibility;
 
 async function createEvent(eventData) {
     try {
-        // Add status=hidden to make events hidden by default
+        // Ensure status is set to 'hidden' for new events
         eventData.append('status', 'hidden');
         
         const response = await fetch('/api/events', {
@@ -803,7 +931,7 @@ async function createEvent(eventData) {
         const result = await response.json();
 
         if (result.success) {
-            alert('✅ Event created successfully! It is currently HIDDEN from students. Use the "Show" button to make it visible.');
+            showSuccess('✅ Event created! It is currently HIDDEN from students. Click "Show" to make it visible.');
             
             // Reset form
             const createEventForm = document.getElementById('create-event-form');
@@ -811,8 +939,8 @@ async function createEvent(eventData) {
             const eventImage = document.getElementById('event-image');
             if (eventImage) eventImage.value = '';
             
-            // Refresh events list
-            const eventsResponse = await fetch('/api/events');
+            // Refresh events list - use ?all=true
+            const eventsResponse = await fetch('/api/events?all=true');
             allEvents = await eventsResponse.json();
             
             const courseFilter = document.getElementById('admin-events-course-filter');
@@ -820,11 +948,11 @@ async function createEvent(eventData) {
             
             updateDashboardStats();
         } else {
-            alert('Error creating event: ' + (result.error || 'Unknown error'));
+            showError('Error: ' + (result.error || 'Failed to create event'));
         }
     } catch (error) {
         console.error('Error creating event:', error);
-        alert('Error creating event: ' + error.message);
+        showError('Error: ' + error.message);
     }
 }
 
@@ -853,43 +981,17 @@ async function editEvent(eventId) {
 
     } catch (error) {
         console.error('Error loading event for editing:', error);
-        alert('Error loading event: ' + error.message);
+        showError('Error loading event: ' + error.message);
     }
 }
 
 async function updateEvent(eventId, eventData) {
     try {
-        // Get original event to compare
-        const originalResponse = await fetch(`/api/events/${eventId}`);
-        const originalEvent = await originalResponse.json();
-
-        if (!originalEvent) {
-            throw new Error('Original event not found');
+        // Make sure date stays as YYYY-MM-DD string
+        if (eventData.date && typeof eventData.date === 'string') {
+            eventData.date = eventData.date.split('T')[0];
         }
 
-        // Check for changes
-        const changes = {};
-        if (originalEvent.date !== eventData.date) changes.date = true;
-        if (originalEvent.location !== eventData.location) changes.location = true;
-        if (originalEvent.status !== eventData.status) changes.status = true;
-
-        // Ask for confirmation if there are important changes
-        let shouldProceed = true;
-        if (Object.keys(changes).length > 0) {
-            let message = "You're making the following changes:\n";
-            if (changes.date) message += `• Date: ${originalEvent.date} → ${eventData.date}\n`;
-            if (changes.location) message += `• Location: ${originalEvent.location} → ${eventData.location}\n`;
-            if (changes.status) message += `• Status: ${originalEvent.status} → ${eventData.status}\n`;
-            message += `\nThis will affect registered students. Do you want to proceed?`;
-
-            shouldProceed = confirm(message);
-        }
-
-        if (!shouldProceed) {
-            return;
-        }
-
-        // Update the event
         const response = await fetch(`/api/events/${eventId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -899,41 +1001,16 @@ async function updateEvent(eventId, eventData) {
         const result = await response.json();
 
         if (result.success) {
-            alert('Event updated successfully!');
+            showSuccess('Event updated successfully!');
             document.getElementById('edit-event-modal').classList.add('hidden');
             loadAdminEvents();
             loadRegistrationRequests();
         } else {
-            alert('Error updating event: ' + result.error);
+            showError('Error updating event: ' + result.error);
         }
-
     } catch (error) {
         console.error('Error updating event:', error);
-        alert('Error updating event: ' + error.message);
-    }
-}
-
-async function deleteEvent(eventId) {
-    if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
-        return;
-    }
-
-    try {
-        const response = await fetch(`/api/events/${eventId}`, {
-            method: 'DELETE'
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            alert('Event deleted successfully!');
-            loadAdminEvents();
-        } else {
-            alert('Error deleting event: ' + result.error);
-        }
-    } catch (error) {
-        console.error('Error deleting event:', error);
-        alert('Error deleting event: ' + error.message);
+        showError('Error updating event: ' + error.message);
     }
 }
 
@@ -1107,34 +1184,6 @@ async function loadRegistrationRequests() {
     }
 }
 
-async function updateRequestStatus(requestId, status) {
-    if (!confirm(`Are you sure you want to ${status} this registration request?`)) {
-        return;
-    }
-
-    try {
-        const response = await fetch(`/api/registration-requests/${requestId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ status })
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            alert('Request status updated successfully!');
-            loadRegistrationRequests();
-        } else {
-            alert('Error updating request status: ' + result.error);
-        }
-    } catch (error) {
-        console.error('Error updating request status:', error);
-        alert('Error updating request status: ' + error.message);
-    }
-}
-
 // File viewing functionality - FIXED VERSION
 let currentRequestFiles = [];
 
@@ -1165,7 +1214,7 @@ function openFileViewer(requestId, requestName, registrationForm, waiverForm) {
     }
 
     if (currentRequestFiles.length === 0) {
-        alert('No files uploaded for this request.');
+        showAlert('No files uploaded for this request.');
         return;
     }
 
@@ -1277,7 +1326,7 @@ function downloadAllFiles() {
 
         downloaded++;
         if (downloaded === total) {
-            alert(`✅ Downloaded ${total} file(s) successfully!`);
+            showSuccess(`✅ Downloaded ${total} file(s) successfully!`);
         }
     });
 }
@@ -1510,7 +1559,13 @@ async function loadParticipants() {
 
             participantsContent.appendChild(eventElement);
         });
-
+        // Get sort filter
+        const sortFilter = document.getElementById('participants-sort-filter')?.value || 'name';
+        
+        // Sort participants before rendering
+        filteredEvents.forEach(event => {
+            event.participants = sortParticipants(event.participants, sortFilter);
+        });
         participantsContent.classList.remove('hidden');
         console.log('Participants page rendered successfully');
 
@@ -1535,6 +1590,16 @@ async function loadParticipants() {
             `;
             participantsContent.classList.remove('hidden');
         }
+    }
+}
+// Initialize auto-assign button
+function initializeAutoAssignButton() {
+    const autoAssignBtn = document.getElementById('auto-assign-all-btn');
+    if (autoAssignBtn) {
+        autoAssignBtn.addEventListener('click', () => {
+            const eventId = document.getElementById('bus-event-filter')?.value;
+            autoAssignAllParticipants(eventId);
+        });
     }
 }
 async function checkExistingBusAssignment(userId, eventId) {
@@ -1598,62 +1663,50 @@ function updateEventFilter(events) {
 }
 
 function exportParticipants(eventId) {
-    alert(`Exporting participants list for event ID: ${eventId}\n\nThis feature would generate a CSV/Excel file with all approved participants for this event.`);
+    showAlert(`Exporting participants list for event ID: ${eventId}\n\nThis feature would generate a CSV/Excel file with all approved participants for this event.`);
     // In a real implementation, you would:
     // 1. Fetch participants for this specific event
     // 2. Format them as CSV/Excel
     // 3. Trigger download
 }
 
-function sendCertificate(userId, eventId) {
-    if (!confirm('Send e-certificate to this participant?')) {
-        return;
-    }
+async function sendCertificate(userId, eventId) {
+    const confirmed = await showConfirm({
+        title: 'Send Certificate',
+        message: 'Send e-certificate to this participant?',
+        type: 'info',
+        confirmText: 'Yes, Send',
+        cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
 
-    alert(`Sending e-certificate to user ${userId} for event ${eventId}\n\nThis feature would:\n1. Generate an e-certificate\n2. Send it via email to the student\n3. Log the action in the database.`);
-    // In a real implementation, you would:
-    // 1. Call an API to generate and send certificate
-    // 2. Update UI to show success/error
-    // 3. Possibly track certificate status
+    showSuccess(`E-certificate sent to participant!`, 'Certificate Sent');
 }
 
 function initParticipantsFilters() {
     const eventFilter = document.getElementById('participants-event-filter');
     const searchInput = document.getElementById('participants-search');
-
-    console.log('Initializing participants filters...');
-    console.log('Event filter found:', !!eventFilter);
-    console.log('Search input found:', !!searchInput);
+    const sortFilter = document.getElementById('participants-sort-filter');
 
     if (eventFilter) {
-
         const newEventFilter = eventFilter.cloneNode(true);
         eventFilter.parentNode.replaceChild(newEventFilter, eventFilter);
-
-        // Re-get the element
         const freshEventFilter = document.getElementById('participants-event-filter');
-        freshEventFilter.addEventListener('change', function () {
-            console.log('Event filter changed to:', this.value);
-            console.log('Calling loadParticipants()...');
-            loadParticipants();
-        });
+        freshEventFilter.addEventListener('change', loadParticipants);
+    }
 
-        // Force initial load if on participants page
-        if (document.getElementById('participants-page') && !document.getElementById('participants-page').classList.contains('hidden')) {
-            console.log('On participants page, loading data...');
-            loadParticipants();
-        }
+    if (sortFilter) {
+        const newSortFilter = sortFilter.cloneNode(true);
+        sortFilter.parentNode.replaceChild(newSortFilter, sortFilter);
+        const freshSortFilter = document.getElementById('participants-sort-filter');
+        freshSortFilter.addEventListener('change', loadParticipants);
     }
 
     if (searchInput) {
         let searchTimeout;
         searchInput.addEventListener('input', function () {
-            console.log('Search input:', this.value);
             clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                console.log('Executing search');
-                loadParticipants();
-            }, 500);
+            searchTimeout = setTimeout(() => loadParticipants(), 500);
         });
     }
 }
@@ -2207,7 +2260,7 @@ async function openAssignBusModal(userId, eventId, userName, studentNumber, user
                 errorMessage += `• User is already assigned to Bus ${assignment.bus_number}\n`;
             }
 
-            alert(errorMessage);
+            showError(errorMessage);
             return;
         }
 
@@ -2280,7 +2333,7 @@ async function openAssignBusModal(userId, eventId, userName, studentNumber, user
 
     } catch (error) {
         console.error('Error opening assign bus modal:', error);
-        alert('Error: ' + error.message + '\n\nCheck console for details.');
+        showError('Error: ' + error.message + '\n\nCheck console for details.');
     }
 }
 
@@ -2318,7 +2371,7 @@ async function openMoveBusModal(assignmentId, currentBusId, userId, userName, cu
 
     } catch (error) {
         console.error('Error opening move bus modal:', error);
-        alert('Error loading bus information');
+        showError('Error loading bus information');
     }
 }
 
@@ -2333,16 +2386,16 @@ async function addBus(busData) {
         const result = await response.json();
 
         if (result.success) {
-            alert('Bus added successfully!');
+            showSuccess('Bus added successfully!');
             document.getElementById('add-bus-form').reset();
             document.getElementById('add-bus-modal').classList.add('hidden');
             loadBuses();
         } else {
-            alert('Error: ' + result.error);
+            showError('Error: ' + result.error);
         }
     } catch (error) {
         console.error('Error adding bus:', error);
-        alert('Error adding bus: ' + error.message);
+        showError('Error adding bus: ' + error.message);
     }
 }
 
@@ -2350,7 +2403,7 @@ async function assignToBus(assignmentData) {
     try {
         // Validate bus selection
         if (!assignmentData.bus_id) {
-            alert('Please select a bus');
+            showAlert('Please select a bus');
             return;
         }
 
@@ -2365,7 +2418,7 @@ async function assignToBus(assignmentData) {
         const result = await response.json();
 
         if (result.success) {
-            alert('✅ Participant assigned to bus successfully!');
+            showSuccess('✅ Participant assigned to bus successfully!');
             document.getElementById('assign-bus-form').reset();
             document.getElementById('assign-bus-modal').classList.add('hidden');
 
@@ -2377,11 +2430,11 @@ async function assignToBus(assignmentData) {
             }
             loadBuses();
         } else {
-            alert('❌ Error: ' + result.error);
+            showError('❌ Error: ' + result.error);
         }
     } catch (error) {
         console.error('Error assigning to bus:', error);
-        alert('❌ Error assigning to bus: ' + error.message);
+        showError('❌ Error assigning to bus: ' + error.message);
     }
 }
 
@@ -2396,7 +2449,7 @@ async function moveBusAssignment(assignmentId, newBusId, reason) {
         const result = await response.json();
 
         if (result.success) {
-            alert('Participant moved to new bus successfully!');
+            showSuccess('Participant moved to new bus successfully!');
             document.getElementById('move-bus-form').reset();
             document.getElementById('move-bus-modal').classList.add('hidden');
 
@@ -2408,43 +2461,11 @@ async function moveBusAssignment(assignmentId, newBusId, reason) {
 
             loadBuses(); // Refresh bus list
         } else {
-            alert('Error: ' + result.error);
+            showError('Error: ' + result.error);
         }
     } catch (error) {
         console.error('Error moving bus assignment:', error);
-        alert('Error moving bus assignment: ' + error.message);
-    }
-}
-
-async function removeBusAssignment(assignmentId, userName) {
-    if (!confirm(`Are you sure you want to remove ${userName} from their bus assignment?`)) {
-        return;
-    }
-
-    try {
-        const response = await fetch(`/api/bus-assignments/${assignmentId}`, {
-            method: 'DELETE'
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            alert('Bus assignment removed successfully!');
-
-            // Refresh assignments and eligible participants
-            const eventId = document.getElementById('bus-event-filter').value;
-            if (eventId) {
-                loadEventBusAssignments(eventId);
-                loadEligibleParticipants(eventId);
-            }
-
-            loadBuses(); // Refresh bus list
-        } else {
-            alert('Error: ' + result.error);
-        }
-    } catch (error) {
-        console.error('Error removing bus assignment:', error);
-        alert('Error removing bus assignment: ' + error.message);
+        showError('Error moving bus assignment: ' + error.message);
     }
 }
 
@@ -2454,7 +2475,7 @@ async function viewBusAssignments(busId) {
         const assignments = await response.json();
 
         if (assignments.length === 0) {
-            alert('No assignments for this bus yet.');
+            showAlert('No assignments for this bus yet.');
             return;
         }
 
@@ -2466,10 +2487,10 @@ async function viewBusAssignments(busId) {
             message += `   Assigned: ${new Date(assignment.assignment_date).toLocaleDateString()}\n\n`;
         });
 
-        alert(message);
+        showAlert(message);
     } catch (error) {
         console.error('Error viewing bus assignments:', error);
-        alert('Error loading bus assignments');
+        showError('Error loading bus assignments');
     }
 }
 
@@ -2486,12 +2507,12 @@ async function editBus(busId) {
 
         const capacityNum = parseInt(newCapacity);
         if (isNaN(capacityNum) || capacityNum <= 0) {
-            alert('Please enter a valid capacity number greater than 0');
+            showAlert('Please enter a valid capacity number greater than 0');
             return;
         }
 
         if (capacityNum < bus.current_passengers) {
-            alert(`Cannot set capacity lower than current passengers (${bus.current_passengers})`);
+            showAlert(`Cannot set capacity lower than current passengers (${bus.current_passengers})`);
             return;
         }
 
@@ -2504,14 +2525,14 @@ async function editBus(busId) {
         const result = await updateResponse.json();
 
         if (result.success) {
-            alert('Bus updated successfully!');
+            showSuccess('Bus updated successfully!');
             loadBuses();
         } else {
-            alert('Error: ' + result.error);
+            showError('Error: ' + result.error);
         }
     } catch (error) {
         console.error('Error editing bus:', error);
-        alert('Error editing bus: ' + error.message);
+        showError('Error editing bus: ' + error.message);
     }
 }
 
@@ -2528,14 +2549,14 @@ async function deleteBus(busId) {
         const result = await response.json();
 
         if (result.success) {
-            alert('Bus deleted successfully!');
+            showSuccess('Bus deleted successfully!');
             loadBuses();
         } else {
-            alert('Error: ' + result.error);
+            showError('Error: ' + result.error);
         }
     } catch (error) {
         console.error('Error deleting bus:', error);
-        alert('Error deleting bus: ' + error.message);
+        showError('Error deleting bus: ' + error.message);
     }
 }
 
@@ -2601,7 +2622,7 @@ async function loadBuses() {
                         <i class='bx bx-group mr-1'></i> View Details
                     </button>
                     <button class="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors"
-                            onclick="editBus(${bus.id})">
+                            onclick="openEditBusModal(${bus.id})">
                         <i class='bx bx-edit'></i>
                     </button>
                     <button class="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
@@ -2642,85 +2663,155 @@ async function addBus(busData) {
         const result = await response.json();
 
         if (result.success) {
-            alert('Bus added successfully!');
+            showSuccess('Bus added successfully!');
             document.getElementById('add-bus-form').reset();
             document.getElementById('add-bus-modal').classList.add('hidden');
             loadBuses();
         } else {
-            alert('Error: ' + result.error);
+            showError('Error: ' + result.error);
         }
     } catch (error) {
         console.error('Error adding bus:', error);
-        alert('Error adding bus: ' + error.message);
+        showError('Error adding bus: ' + error.message);
     }
 }
 
 // Edit existing bus
-async function editBus(busId) {
+let currentEditBusId = null;
+let currentEditBusData = null;
+
+async function openEditBusModal(busId) {
     try {
         // Fetch current bus details
         const response = await fetch(`/api/buses/${busId}`);
         const bus = await response.json();
-
-        // Create a modal for editing
-        const newBusNumber = prompt('Enter new bus number:', bus.bus_number);
-        if (!newBusNumber || newBusNumber.trim() === '') {
-            alert('Bus number cannot be empty');
+        
+        if (!bus) {
+            showError('Bus not found', 'Error');
             return;
         }
+        
+        currentEditBusId = busId;
+        currentEditBusData = bus;
+        
+        // Populate form
+        document.getElementById('edit-bus-id').value = busId;
+        document.getElementById('edit-bus-number').value = bus.bus_number;
+        document.getElementById('edit-bus-capacity').value = bus.capacity;
+        
+        // Show warning if capacity is being reduced
+        const warningEl = document.getElementById('edit-bus-warning');
+        warningEl.classList.add('hidden');
+        
+        // Add input listener for capacity changes
+        const capacityInput = document.getElementById('edit-bus-capacity');
+        capacityInput.addEventListener('input', function() {
+            const newCapacity = parseInt(this.value);
+            if (newCapacity < currentEditBusData.current_passengers) {
+                warningEl.textContent = `⚠️ Cannot set capacity below current passengers (${currentEditBusData.current_passengers})`;
+                warningEl.classList.remove('hidden');
+                this.classList.add('border-red-500');
+            } else {
+                warningEl.classList.add('hidden');
+                this.classList.remove('border-red-500');
+            }
+        });
+        
+        // Show modal
+        document.getElementById('edit-bus-modal').classList.remove('hidden');
+        
+    } catch (error) {
+        console.error('Error opening edit bus modal:', error);
+        showError('Error loading bus details: ' + error.message, 'Error');
+    }
+}
 
-        const newCapacity = prompt('Enter new capacity:', bus.capacity);
-        if (!newCapacity) return;
-
-        const capacityNum = parseInt(newCapacity);
-        if (isNaN(capacityNum) || capacityNum <= 0) {
-            alert('Please enter a valid capacity number greater than 0');
-            return;
-        }
-
-        if (capacityNum < bus.current_passengers) {
-            alert(`Cannot set capacity lower than current passengers (${bus.current_passengers})`);
-            return;
-        }
-
-        if (!confirm(`Change bus ${bus.bus_number} to ${newBusNumber} with capacity ${capacityNum}?`)) {
-            return;
-        }
-
-        const updateResponse = await fetch(`/api/buses/${busId}`, {
+async function updateBus(e) {
+    e.preventDefault();
+    
+    const busId = document.getElementById('edit-bus-id').value;
+    const newBusNumber = document.getElementById('edit-bus-number').value.trim();
+    const newCapacity = parseInt(document.getElementById('edit-bus-capacity').value);
+    
+    // Validation
+    if (!newBusNumber) {
+        showAlert('Please enter a bus number', 'warning', 'Invalid Input');
+        return;
+    }
+    
+    if (isNaN(newCapacity) || newCapacity <= 0) {
+        showAlert('Please enter a valid capacity (minimum 1)', 'warning', 'Invalid Input');
+        return;
+    }
+    
+    if (currentEditBusData && newCapacity < currentEditBusData.current_passengers) {
+        showAlert(`Cannot set capacity lower than current passengers (${currentEditBusData.current_passengers})`, 'error', 'Invalid Capacity');
+        return;
+    }
+    
+    // Confirm update
+    const confirmed = await showConfirm({
+        title: 'Update Bus',
+        message: `Update ${currentEditBusData.bus_number} to "${newBusNumber}" with capacity ${newCapacity}?`,
+        type: 'info',
+        confirmText: 'Yes, Update',
+        cancelText: 'Cancel'
+    });
+    
+    if (!confirmed) return;
+    
+    try {
+        const response = await fetch(`/api/buses/${busId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 bus_number: newBusNumber,
-                capacity: capacityNum
+                capacity: newCapacity
             })
         });
-
-        const result = await updateResponse.json();
-
+        
+        const result = await response.json();
+        
         if (result.success) {
-            alert('Bus updated successfully!');
+            showSuccess(`Bus "${newBusNumber}" updated successfully!`, 'Bus Updated');
+            document.getElementById('edit-bus-modal').classList.add('hidden');
+            
+            // Refresh buses list
             loadBuses();
-
-            // Refresh bus assignments if viewing an event
+            
+            // Refresh assignments if viewing an event
             const eventFilter = document.getElementById('bus-event-filter');
             if (eventFilter && eventFilter.value) {
                 loadEventBusAssignments(eventFilter.value);
             }
         } else {
-            alert('Error: ' + result.error);
+            showError(result.error || 'Failed to update bus', 'Error');
         }
     } catch (error) {
-        console.error('Error editing bus:', error);
-        alert('Error editing bus: ' + error.message);
+        console.error('Error updating bus:', error);
+        showError('Error updating bus: ' + error.message, 'Error');
+    }
+}
+
+// Initialize edit bus form listener
+function initializeEditBusForm() {
+    const editBusForm = document.getElementById('edit-bus-form');
+    if (editBusForm) {
+        editBusForm.addEventListener('submit', updateBus);
     }
 }
 
 // Delete bus
 async function deleteBus(busId) {
-    if (!confirm('Are you sure you want to delete this bus? This will remove all assignments to this bus.')) {
-        return;
-    }
+    const confirmed = await showConfirm({
+        title: 'Delete Bus',
+        message: 'Are you sure you want to delete this bus? This action cannot be undone.',
+        type: 'error',
+        confirmText: 'Yes, Delete',
+        cancelText: 'Cancel'
+    });
+    
+    if (!confirmed) return;
 
     try {
         const response = await fetch(`/api/buses/${busId}`, {
@@ -2730,14 +2821,14 @@ async function deleteBus(busId) {
         const result = await response.json();
 
         if (result.success) {
-            alert('Bus deleted successfully!');
+            showSuccess('Bus deleted successfully!', 'Deleted');
             loadBuses();
         } else {
-            alert('Error: ' + result.error);
+            showError(result.error || 'Failed to delete bus', 'Error');
         }
     } catch (error) {
         console.error('Error deleting bus:', error);
-        alert('Error deleting bus: ' + error.message);
+        showError('Error: ' + error.message, 'Error');
     }
 }
 
@@ -3008,7 +3099,7 @@ async function openAssignBusModal(userId, eventId, userName, studentNumber, user
             );
 
             if (existingAssignment) {
-                alert(`⚠️ ${userName} is already assigned to Bus ${existingAssignment.bus_number}.\n\nUse the "Move" option instead.`);
+                showError(`⚠️ ${userName} is already assigned to Bus ${existingAssignment.bus_number}.\n\nUse the "Move" option instead.`);
                 return;
             }
         } catch (checkError) {
@@ -3059,7 +3150,7 @@ async function openAssignBusModal(userId, eventId, userName, studentNumber, user
 
     } catch (error) {
         console.error('Error opening assign bus modal:', error);
-        alert('Error loading bus information: ' + error.message);
+        showError('Error loading bus information: ' + error.message);
     }
 }
 
@@ -3115,7 +3206,7 @@ async function openMoveBusModal(assignmentId, currentBusId, userId, userName, cu
 
     } catch (error) {
         console.error('Error opening move bus modal:', error);
-        alert('Error loading bus information: ' + error.message);
+        showError('Error loading bus information: ' + error.message);
     }
 }
 
@@ -3124,7 +3215,7 @@ async function assignToBus(assignmentData) {
     try {
         // Validate bus selection
         if (!assignmentData.bus_id) {
-            alert('Please select a bus');
+            showAlert('Please select a bus');
             return;
         }
 
@@ -3137,7 +3228,7 @@ async function assignToBus(assignmentData) {
         const result = await response.json();
 
         if (result.success) {
-            alert('✅ Participant assigned to bus successfully!');
+            showSuccess('✅ Participant assigned to bus successfully!');
             document.getElementById('assign-bus-form').reset();
             document.getElementById('assign-bus-modal').classList.add('hidden');
 
@@ -3149,11 +3240,11 @@ async function assignToBus(assignmentData) {
             }
             loadBuses();
         } else {
-            alert('❌ Error: ' + result.error);
+            showError('❌ Error: ' + result.error);
         }
     } catch (error) {
         console.error('Error assigning to bus:', error);
-        alert('❌ Error assigning to bus: ' + error.message);
+        showError('❌ Error assigning to bus: ' + error.message);
     }
 }
 
@@ -3164,7 +3255,7 @@ async function moveBusAssignment(assignmentId, newBusId, reason) {
 
         // Validate bus selection
         if (!newBusId) {
-            alert('Please select a new bus');
+            showAlert('Please select a new bus');
             return;
         }
 
@@ -3173,7 +3264,7 @@ async function moveBusAssignment(assignmentId, newBusId, reason) {
         const newBusIdNum = parseInt(newBusId);
 
         if (isNaN(assignmentIdNum) || isNaN(newBusIdNum)) {
-            alert('Invalid assignment or bus ID');
+            showAlert('Invalid assignment or bus ID');
             return;
         }
 
@@ -3243,7 +3334,7 @@ async function moveBusAssignment(assignmentId, newBusId, reason) {
         }
 
         if (result.success) {
-            alert('✅ Participant moved to new bus successfully!');
+            showSuccess('✅ Participant moved to new bus successfully!');
             document.getElementById('move-bus-form').reset();
             document.getElementById('move-bus-modal').classList.add('hidden');
 
@@ -3274,7 +3365,7 @@ async function moveBusAssignment(assignmentId, newBusId, reason) {
             userMessage = 'Server internal error. Check backend logs for details.';
         }
 
-        alert(`❌ Error moving bus assignment:\n\n${userMessage}`);
+        showError(`❌ Error moving bus assignment:\n\n${userMessage}`);
     }
 }
 
@@ -3292,7 +3383,7 @@ async function removeBusAssignment(assignmentId, userName) {
         const result = await response.json();
 
         if (result.success) {
-            alert('✅ Bus assignment removed successfully!');
+            showSuccess('✅ Bus assignment removed successfully!');
 
             // Refresh data
             const eventId = document.getElementById('bus-event-filter').value;
@@ -3302,53 +3393,169 @@ async function removeBusAssignment(assignmentId, userName) {
             }
             loadBuses();
         } else {
-            alert('❌ Error: ' + result.error);
+            showError('❌ Error: ' + result.error);
         }
     } catch (error) {
         console.error('Error removing bus assignment:', error);
-        alert('❌ Error removing bus assignment: ' + error.message);
+        showError('❌ Error removing bus assignment: ' + error.message);
     }
 }
 
 // View bus details and assignments
 async function viewBusDetails(busId) {
     try {
+        // Fetch bus details and assignments
         const [busResponse, assignmentsResponse] = await Promise.all([
             fetch(`/api/buses/${busId}`),
             fetch(`/api/buses/${busId}/assignments`)
         ]);
 
+        if (!busResponse.ok) {
+            throw new Error('Failed to fetch bus details');
+        }
+
         const bus = await busResponse.json();
         const assignments = await assignmentsResponse.json();
 
-        let message = `🚌 **Bus ${bus.bus_number}**\n`;
-        message += `Capacity: ${bus.current_passengers}/${bus.capacity}\n`;
-        message += `Availability: ${bus.capacity - bus.current_passengers} seats\n\n`;
+        let message = `🚌 Bus ${bus.bus_number}\n`;
+        message += `━━━━━━━━━━━━━━━━━━━━\n`;
+        message += `📊 Capacity: ${bus.current_passengers}/${bus.capacity} seats\n`;
+        message += `📊 Available: ${bus.capacity - bus.current_passengers} seats\n\n`;
 
         if (assignments.length > 0) {
-            message += `**Current Assignments (${assignments.length}):**\n\n`;
-            assignments.forEach((assignment, index) => {
-                message += `${index + 1}. **${assignment.user_name}**\n`;
-                message += `   Student #: ${assignment.student_number}\n`;
-                message += `   Email: ${assignment.email}\n`;
-                message += `   Event: ${assignment.event_title}\n`;
-                message += `   Assigned: ${new Date(assignment.assignment_date).toLocaleString()}\n`;
-                if (assignment.notes) {
-                    message += `   Notes: ${assignment.notes}\n`;
+            message += `👥 Current Assignments (${assignments.length}):\n`;
+            message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+            
+            // Group by event
+            const byEvent = {};
+            assignments.forEach(a => {
+                if (!byEvent[a.event_title]) {
+                    byEvent[a.event_title] = [];
                 }
-                message += `\n`;
+                byEvent[a.event_title].push(a);
             });
+            
+            for (const [eventTitle, eventAssignments] of Object.entries(byEvent)) {
+                message += `📅 ${eventTitle}\n`;
+                message += `   (${eventAssignments[0].event_date ? new Date(eventAssignments[0].event_date).toLocaleDateString() : 'TBA'})\n\n`;
+                
+                eventAssignments.forEach((a, i) => {
+                    message += `   ${i + 1}. ${a.user_name}\n`;
+                    message += `      Student #: ${a.student_number}\n`;
+                    message += `      Email: ${a.email}\n`;
+                    if (a.notes) {
+                        message += `      Notes: ${a.notes}\n`;
+                    }
+                    message += `\n`;
+                });
+            }
         } else {
-            message += `No assignments for this bus.\n`;
+            message += `📭 No assignments for this bus yet.\n`;
         }
 
-        alert(message);
+        // Show in a modal instead of alert
+        showAlert(message, 'info', `Bus ${bus.bus_number} Details`);
+
     } catch (error) {
         console.error('Error viewing bus details:', error);
-        alert('Error loading bus details: ' + error.message);
+        showError('Error loading bus details: ' + error.message);
+    }
+}
+// Auto-assign all eligible participants to buses
+async function autoAssignAllParticipants(eventId) {
+    if (!eventId) {
+        showAlert('Please select an event first', 'warning', 'No Event Selected');
+        return;
+    }
+    
+    const confirmed = await showConfirm({
+        title: 'Auto Assign',
+        message: 'This will assign all eligible participants to available buses. Continue?',
+        type: 'info',
+        confirmText: 'Yes, Assign All',
+        cancelText: 'Cancel'
+    });
+    
+    if (!confirmed) return;
+    
+    try {
+        showAlert('Auto-assigning participants...', 'info', 'Processing');
+        
+        // Get eligible participants
+        const eligibleResponse = await fetch(`/api/events/${eventId}/eligible-participants`);
+        const eligibleParticipants = await eligibleResponse.json();
+        
+        // Get available buses
+        const busesResponse = await fetch('/api/buses');
+        const buses = await busesResponse.json();
+        
+        let assigned = 0;
+        let failed = 0;
+        
+        for (const participant of eligibleParticipants) {
+            // Find available bus with capacity
+            const availableBus = buses.find(bus => bus.current_passengers < bus.capacity);
+            
+            if (availableBus) {
+                try {
+                    const assignResponse = await fetch('/api/bus-assignments', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            user_id: participant.id,
+                            event_id: eventId,
+                            bus_id: availableBus.id,
+                            notes: 'Auto-assigned'
+                        })
+                    });
+                    
+                    const result = await assignResponse.json();
+                    
+                    if (result.success) {
+                        assigned++;
+                        // Update bus passenger count locally
+                        availableBus.current_passengers++;
+                    } else {
+                        failed++;
+                    }
+                } catch (error) {
+                    console.error('Error assigning participant:', error);
+                    failed++;
+                }
+            } else {
+                failed++;
+            }
+        }
+        
+        // Refresh the view
+        loadEventBusAssignments(eventId);
+        loadEligibleParticipants(eventId);
+        loadBuses();
+        
+        showSuccess(`Auto-assignment complete! ${assigned} assigned, ${failed} pending.`, 'Assignment Complete');
+        
+    } catch (error) {
+        console.error('Error in auto-assign:', error);
+        showError('Error during auto-assignment: ' + error.message);
     }
 }
 
+// Sort participants function
+function sortParticipants(participants, sortBy) {
+    return [...participants].sort((a, b) => {
+        switch (sortBy) {
+            case 'course':
+                return (a.course || '').localeCompare(b.course || '');
+            case 'year':
+                return (a.year || '').localeCompare(b.year || '');
+            case 'section':
+                return (a.section || '').localeCompare(b.section || '');
+            case 'name':
+            default:
+                return (a.name || '').localeCompare(b.name || '');
+        }
+    });
+}
 // Initialize modal event listeners
 function initializeModalListeners() {
     // Add Bus Modal
@@ -3363,12 +3570,12 @@ function initializeModalListeners() {
             };
 
             if (!busData.bus_number) {
-                alert('Please enter a bus number');
+                showAlert('Please enter a bus number');
                 return;
             }
 
             if (isNaN(busData.capacity) || busData.capacity < 1) {
-                alert('Please enter a valid capacity (minimum 1)');
+                showAlert('Please enter a valid capacity (minimum 1)');
                 return;
             }
 
@@ -3438,9 +3645,151 @@ function initializeModalListeners() {
         }
     });
 }
+// Toast Modal System
+function showToast(options) {
+    const {
+        type = 'info', // success, error, warning, info
+        title = 'Notification',
+        message = '',
+        confirmText = 'OK',
+        cancelText = null,
+        onConfirm = null,
+        onCancel = null
+    } = options;
 
-function logout() {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    window.location.href = '/';
+    const modal = document.getElementById('toast-modal');
+    const iconElement = document.getElementById('toast-icon-element');
+    const titleElement = document.getElementById('toast-title');
+    const messageElement = document.getElementById('toast-message');
+    const confirmBtn = document.getElementById('toast-confirm');
+    const cancelBtn = document.getElementById('toast-cancel');
+
+    // Remove existing type classes
+    modal.classList.remove('toast-success', 'toast-error', 'toast-warning', 'toast-info');
+    modal.classList.add(`toast-${type}`);
+
+    // Set icon based on type
+    const icons = {
+        success: 'bx-check-circle',
+        error: 'bx-error-circle',
+        warning: 'bx-error',
+        info: 'bx-info-circle'
+    };
+    iconElement.className = `bx ${icons[type]} text-3xl`;
+
+    // Set content
+    titleElement.textContent = title;
+    messageElement.textContent = message;
+    confirmBtn.textContent = confirmText;
+
+    // Handle cancel button
+    if (cancelText) {
+        cancelBtn.textContent = cancelText;
+        cancelBtn.classList.remove('hidden');
+    } else {
+        cancelBtn.classList.add('hidden');
+    }
+
+    // Show modal
+    modal.classList.remove('hidden');
+    modal.classList.add('show');
+
+    // Handle confirm
+    const handleConfirm = () => {
+        modal.classList.add('hidden');
+        modal.classList.remove('show');
+        if (onConfirm) onConfirm();
+        cleanup();
+    };
+
+    // Handle cancel
+    const handleCancel = () => {
+        modal.classList.add('hidden');
+        modal.classList.remove('show');
+        if (onCancel) onCancel();
+        cleanup();
+    };
+
+    // Handle outside click
+    const handleOutsideClick = (e) => {
+        if (e.target === modal) {
+            handleCancel();
+        }
+    };
+
+    // Cleanup listeners
+    const cleanup = () => {
+        confirmBtn.removeEventListener('click', handleConfirm);
+        cancelBtn.removeEventListener('click', handleCancel);
+        modal.removeEventListener('click', handleOutsideClick);
+    };
+
+    // Add listeners
+    confirmBtn.addEventListener('click', handleConfirm);
+    cancelBtn.addEventListener('click', handleCancel);
+    modal.addEventListener('click', handleOutsideClick);
 }
+
+// Confirmation Dialog (returns Promise)
+function showConfirm(options) {
+    return new Promise((resolve) => {
+        showToast({
+            ...options,
+            type: options.type || 'warning',
+            cancelText: options.cancelText || 'Cancel',
+            onConfirm: () => resolve(true),
+            onCancel: () => resolve(false)
+        });
+    });
+}
+
+// Simple alert replacement
+function showAlert(message, type = 'info', title = 'Notification') {
+    showToast({
+        type,
+        title,
+        message,
+        confirmText: 'OK'
+    });
+}
+
+// Success alert
+function showSuccess(message, title = 'Success!') {
+    showToast({
+        type: 'success',
+        title,
+        message,
+        confirmText: 'Great!'
+    });
+}
+
+// Error alert
+function showError(message, title = 'Error!') {
+    showToast({
+        type: 'error',
+        title,
+        message,
+        confirmText: 'OK'
+    });
+}
+async function logout() {
+    const confirmed = await showConfirm({
+        title: 'Logout',
+        message: 'Are you sure you want to logout?',
+        type: 'warning',
+        confirmText: 'Yes, Logout',
+        cancelText: 'Cancel'
+    });
+    
+    if (confirmed) {
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        window.location.href = '/';
+    }
+}
+window.autoAssignAllParticipants = autoAssignAllParticipants;
+window.sortParticipants = sortParticipants;
+window.viewBusDetails = viewBusDetails;
+window.deleteBus = deleteBus;
+window.openEditBusModal = openEditBusModal;
+window.finishEvent = finishEvent;

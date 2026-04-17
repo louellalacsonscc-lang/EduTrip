@@ -595,7 +595,150 @@
 .bx-chevron-left {
     transform: rotate(180deg);
 }
+/* Toast Modal Animation */
+#toast-modal .transform {
+    transition: transform 0.2s ease;
+}
 
+#toast-modal.show .transform {
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Toast Types */
+.toast-success #toast-icon {
+    background: rgba(20, 83, 45, 0.3);
+    border: 1px solid rgb(22, 101, 52);
+}
+
+.toast-success #toast-icon-element {
+    color: rgb(74, 222, 128);
+}
+
+.toast-error #toast-icon {
+    background: rgba(127, 29, 29, 0.3);
+    border: 1px solid rgb(153, 27, 27);
+}
+
+.toast-error #toast-icon-element {
+    color: rgb(248, 113, 113);
+}
+
+.toast-warning #toast-icon {
+    background: rgba(113, 63, 18, 0.3);
+    border: 1px solid rgb(146, 64, 14);
+}
+
+.toast-warning #toast-icon-element {
+    color: rgb(250, 204, 21);
+}
+
+.toast-info #toast-icon {
+    background: rgba(30, 58, 138, 0.3);
+    border: 1px solid rgb(30, 64, 175);
+}
+
+.toast-info #toast-icon-element {
+    color: rgb(96, 165, 250);
+}
+/* Modal Centering Fix */
+#toast-modal,
+#registration-modal,
+#profile-complete-modal,
+#file-modal,
+#edit-event-modal,
+#add-bus-modal,
+#assign-bus-modal,
+#move-bus-modal,
+#announcement-modal,
+#generate-certificates-modal {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+#toast-modal.hidden,
+#registration-modal.hidden,
+#profile-complete-modal.hidden,
+#file-modal.hidden,
+#edit-event-modal.hidden,
+#add-bus-modal.hidden,
+#assign-bus-modal.hidden,
+#move-bus-modal.hidden,
+#announcement-modal.hidden,
+#generate-certificates-modal.hidden {
+    display: none !important;
+}
+
+/* Modal Content Animation */
+#toast-modal > div,
+#registration-modal > div,
+#profile-complete-modal > div,
+#file-modal > div,
+#edit-event-modal > div,
+#add-bus-modal > div,
+#assign-bus-modal > div,
+#move-bus-modal > div,
+#announcement-modal > div,
+#generate-certificates-modal > div {
+    margin: 0 !important;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+/* Toast Modal specific centering */
+#toast-modal.show {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Ensure modals are centered in the viewport */
+.fixed.inset-0 {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+#registration-modal > div {
+    max-width: 400px !important;
+    width: 90% !important;
+}
+/* Toast Modal - Fixed Width for Student */
+#toast-modal > div {
+    max-width: 350px !important;
+    width: 90% !important;
+    word-wrap: break-word !important;
+}
+
+#toast-message {
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    max-width: 100% !important;
+}
+
+/* For smaller screens */
+@media (max-width: 640px) {
+    #toast-modal > div {
+        max-width: 300px !important;
+    }
+}
     </style>
 </head>
 
@@ -848,15 +991,16 @@
             </div>
         </div>
 
-<!-- Bus Assignment Page -->
-<div id="bus" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
-    <h1 class="text-2xl font-bold text-white mb-6">Bus Assignment</h1>
-    <div id="bus-content" class="space-y-4">
-        <div class="text-center py-10">
-            <i class='bx bx-loader-circle bx-spin text-4xl text-blue-500'></i>
+        <!-- Bus Assignment Page -->
+        <div id="bus" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
+            <h1 class="text-2xl font-bold text-white mb-6">Bus Assignment</h1>
+            <div id="bus-content" class="space-y-4">
+                <div class="text-center py-10">
+                    <i class='bx bx-loader-circle bx-spin text-4xl text-blue-500'></i>
+                    <p class="text-gray-400 mt-2">Loading bus assignments...</p>
+                </div>
+            </div>
         </div>
-    </div>
-</div>
 
         <div id="announcement" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
             <h1 class="text-2xl font-bold text-white mb-6">Announcements</h1>
@@ -869,136 +1013,150 @@
         </div>
     </main>
 
-    <!-- Registration Modal - Centered Version -->
+    <!-- Registration Modal -->
     <div id="registration-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-4">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-md">
-                <div class="p-6 border-b border-gray-800">
-                    <div class="flex justify-between items-center">
-                        <h2 class="text-xl font-bold text-white">Register for Event</h2>
-                        <button class="text-gray-500 hover:text-white text-2xl">&times;</button>
-                    </div>
+        <div class="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-md">
+            <div class="p-6 border-b border-gray-800">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-xl font-bold text-white">Register for Event</h2>
+                    <button type="button" onclick="document.getElementById('registration-modal').classList.add('hidden')" class="text-gray-500 hover:text-white text-2xl">&times;</button>
                 </div>
-                <form id="registration-form" class="p-6 space-y-5" enctype="multipart/form-data">
-                    <!-- Hidden inputs will be added by JavaScript -->
-                    <div>
-                        <label class="block text-gray-300 mb-2">Registration Form</label>
-                        <input type="file" name="registration_form" required
-                            class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3">
-                    </div>
-                    <div>
-                        <label class="block text-gray-300 mb-2">Waiver Form</label>
-                        <input type="file" name="waiver_form" required
-                            class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3">
-                    </div>
-                    <div class="flex space-x-3">
-                        <button type="submit"
-                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg">
-                            Submit
-                        </button>
-                        <button type="button"
-                            class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg">
-                            Cancel
-                        </button>
-                    </div>
-                </form>
             </div>
+            <form id="registration-form" class="p-6 space-y-5" enctype="multipart/form-data">
+                <div>
+                    <label class="block text-gray-300 mb-2">Registration Form</label>
+                    <input type="file" name="registration_form" required
+                        class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-600 file:text-white">
+                    <p class="text-gray-500 text-xs mt-1">Upload your completed registration form (PDF, DOC, DOCX)</p>
+                </div>
+                <div>
+                    <label class="block text-gray-300 mb-2">Waiver Form</label>
+                    <input type="file" name="waiver_form" required
+                        class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-600 file:text-white">
+                    <p class="text-gray-500 text-xs mt-1">Upload your signed waiver form (PDF, DOC, DOCX)</p>
+                </div>
+                <div class="flex space-x-3 pt-4">
+                    <button type="submit"
+                        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Submit Registration
+                    </button>
+                    <button type="button" onclick="document.getElementById('registration-modal').classList.add('hidden')"
+                        class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Cancel
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
     <!-- Profile Completion Modal -->
     <div id="profile-complete-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-4">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-2xl">
-                <div class="p-6 border-b border-gray-800 flex items-center justify-between">
-                    <div>
-                        <h2 class="text-xl font-bold text-white">Complete Your Student Profile</h2>
-                        <p class="text-gray-400 text-sm mt-1">Please fill in these required details before continuing.
-                        </p>
-                    </div>
-                    <button id="close-profile-modal" class="text-gray-500 hover:text-white text-2xl">&times;</button>
+        <div class="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-gray-800 flex items-center justify-between sticky top-0 bg-gray-900">
+                <div>
+                    <h2 class="text-xl font-bold text-white">Complete Your Student Profile</h2>
+                    <p class="text-gray-400 text-sm mt-1">Please fill in these required details before continuing.</p>
                 </div>
-                <form id="profile-complete-form" class="p-6 space-y-5">
-                    <div class="grid gap-4 md:grid-cols-3">
-                        <div>
-                            <label class="block text-gray-300 mb-2">Course</label>
-                            <select id="profile-course" required
-                                class="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white">
-                                <option value="" disabled selected>Select Course</option>
-                                <option value="BSCS">BSCS</option>
-                                <option value="BSHM">BSHM</option>
-                                <option value="BSTM">BSTM</option>
-                                <option value="BAPOLSCI">BAPOLSCI</option>
-                                <option value="BSED">BSED</option>
-                                <option value="BSBA">BSBA</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-gray-300 mb-2">Section</label>
-                            <select id="profile-section" required
-                                class="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white">
-                                <option value="" disabled selected>Select Section</option>
-                                <option value="A">A</option>
-                                <option value="B">B</option>
-                                <option value="C">C</option>
-                                <option value="D">D</option>
-                                <option value="E">E</option>
-                                <option value="F">F</option>
-                                <option value="G">G</option>
-                                <option value="H">H</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-gray-300 mb-2">Year</label>
-                            <select id="profile-year" required
-                                class="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white">
-                                <option value="" disabled selected>Select Year</option>
-                                <option value="1st yr">1st yr</option>
-                                <option value="2nd yr">2nd yr</option>
-                                <option value="3rd yr">3rd yr</option>
-                                <option value="4th yr">4th yr</option>
-                            </select>
-                        </div>
+                <button type="button" onclick="document.getElementById('profile-complete-modal').classList.add('hidden')" class="text-gray-500 hover:text-white text-2xl">&times;</button>
+            </div>
+            <form id="profile-complete-form" class="p-6 space-y-5">
+                <!-- Form content remains the same -->
+                <div class="grid gap-4 md:grid-cols-3">
+                    <div>
+                        <label class="block text-gray-300 mb-2">Course</label>
+                        <select id="profile-course" required
+                            class="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white">
+                            <option value="" disabled selected>Select Course</option>
+                            <option value="BSCS">BSCS</option>
+                            <option value="BSHM">BSHM</option>
+                            <option value="BSTM">BSTM</option>
+                            <option value="BAPOLSCI">BAPOLSCI</option>
+                            <option value="BSED">BSED</option>
+                            <option value="BSBA">BSBA</option>
+                        </select>
                     </div>
-
-                    <div class="grid gap-4 md:grid-cols-3">
-                        <div>
-                            <label class="block text-gray-300 mb-2">Birthdate</label>
-                            <input id="profile-birthdate" type="date" required
-                                class="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white">
-                        </div>
-                        <div>
-                            <label class="block text-gray-300 mb-2">Age</label>
-                            <input id="profile-age" type="number" min="10" max="99" required
-                                class="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white"
-                                placeholder="18">
-                        </div>
-                        <div>
-                            <label class="block text-gray-300 mb-2">Sex</label>
-                            <select id="profile-sex" required
-                                class="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white">
-                                <option value="" disabled selected>Select Sex</option>
-                                <option value="female">Female</option>
-                                <option value="male">Male</option>
-                            </select>
-                        </div>
+                    <div>
+                        <label class="block text-gray-300 mb-2">Section</label>
+                        <select id="profile-section" required
+                            class="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white">
+                            <option value="" disabled selected>Select Section</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                            <option value="E">E</option>
+                            <option value="F">F</option>
+                            <option value="G">G</option>
+                            <option value="H">H</option>
+                        </select>
                     </div>
-
-                    <div class="flex flex-col gap-3 sm:flex-row">
-                        <button type="submit"
-                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg">
-                            Save Profile
-                        </button>
-                        <button type="button" id="profile-modal-cancel"
-                            class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg">
-                            Later
-                        </button>
+                    <div>
+                        <label class="block text-gray-300 mb-2">Year</label>
+                        <select id="profile-year" required
+                            class="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white">
+                            <option value="" disabled selected>Select Year</option>
+                            <option value="1st yr">1st yr</option>
+                            <option value="2nd yr">2nd yr</option>
+                            <option value="3rd yr">3rd yr</option>
+                            <option value="4th yr">4th yr</option>
+                        </select>
                     </div>
-                </form>
+                </div>
+                <div class="grid gap-4 md:grid-cols-3">
+                    <div>
+                        <label class="block text-gray-300 mb-2">Birthdate</label>
+                        <input id="profile-birthdate" type="date" required
+                            class="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white">
+                    </div>
+                    <div>
+                        <label class="block text-gray-300 mb-2">Age</label>
+                        <input id="profile-age" type="number" min="10" max="99" required
+                            class="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white"
+                            placeholder="18">
+                    </div>
+                    <div>
+                        <label class="block text-gray-300 mb-2">Sex</label>
+                        <select id="profile-sex" required
+                            class="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white">
+                            <option value="" disabled selected>Select Sex</option>
+                            <option value="female">Female</option>
+                            <option value="male">Male</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex flex-col gap-3 sm:flex-row pt-4">
+                    <button type="submit"
+                        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Save Profile
+                    </button>
+                    <button type="button" onclick="document.getElementById('profile-complete-modal').classList.add('hidden')"
+                        class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Later
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Toast Notification Modal -->
+    <div id="toast-modal" class="fixed inset-0 bg-black/70 z-[100] hidden items-center justify-center p-4">
+        <div class="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-sm shadow-2xl transform transition-all">
+            <div class="p-6 text-center">
+                <div id="toast-icon" class="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4">
+                    <i id="toast-icon-element" class="text-3xl"></i>
+                </div>
+                <h3 id="toast-title" class="text-xl font-bold text-white mb-2">Title</h3>
+                <p id="toast-message" class="text-gray-400 mb-6">Message goes here</p>
+                <div class="flex space-x-3">
+                    <button id="toast-confirm" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors">
+                        OK
+                    </button>
+                    <button id="toast-cancel" class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors hidden">
+                        Cancel
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-
     <script src="studpage.js"></script>
 </body>
 
