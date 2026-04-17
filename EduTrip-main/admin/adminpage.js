@@ -110,6 +110,7 @@ function initializePage() {
     initializeModalListeners();
     initializeEditBusForm();
     initializeDashboardRefreshButton();
+    initCertificatePage();
     // Navigation functionality
     const navLinks = document.querySelectorAll('.sidebar-item');
     const pages = document.querySelectorAll('.page-container');
@@ -684,11 +685,20 @@ function filterEventsByCourse(course) {
         return;
     }
 
+    // Get today's date for comparison
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     eventsList.innerHTML = filteredEvents.map(event => {
         const isHidden = event.status === 'hidden';
         const isCancelled = event.status === 'cancelled';
         const isCompleted = event.status === 'completed';
         const isActive = event.status === 'active' || event.status === 'upcoming' || !event.status;
+        
+        // Check if event date has passed
+        const eventDate = event.date ? new Date(event.date) : null;
+        if (eventDate) eventDate.setHours(0, 0, 0, 0);
+        const hasEventPassed = eventDate && eventDate < today;
         
         // Determine status badge HTML
         let statusBadge = '';
@@ -699,7 +709,7 @@ function filterEventsByCourse(course) {
             statusColor = 'bg-red-900/30 text-red-400 border-red-800';
         } else if (isCompleted) {
             statusBadge = 'COMPLETED';
-            statusColor = 'bg-gray-900/30 text-gray-400 border-gray-800';
+            statusColor = 'bg-purple-900/30 text-purple-400 border-purple-800';
         } else if (isHidden) {
             statusBadge = 'HIDDEN';
             statusColor = 'bg-yellow-900/30 text-yellow-400 border-yellow-800';
@@ -714,6 +724,23 @@ function filterEventsByCourse(course) {
                     onclick="toggleEventVisibility(${event.id}, ${isHidden})">
                 <i class='bx ${isHidden ? 'bx-show' : 'bx-hide'} mr-1'></i>
                 ${isHidden ? 'Show' : 'Hide'}
+            </button>
+        ` : '';
+        
+        // Determine finish button - only show if event has passed and not already completed/cancelled
+        const finishButton = !isCancelled && !isCompleted && hasEventPassed ? `
+            <button class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors" 
+                    onclick="finishEvent(${event.id})">
+                <i class='bx bx-check-circle mr-1'></i>Finish
+            </button>
+        ` : '';
+        
+        // Locked finish button - show if event hasn't passed yet
+        const lockedFinishButton = !isCancelled && !isCompleted && !hasEventPassed ? `
+            <button class="px-3 py-2 bg-gray-700 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed" 
+                    onclick="showAlert('This event cannot be finished until after its scheduled date', 'info', 'Event Not Finished')"
+                    title="Event date hasn't passed yet">
+                <i class='bx bx-lock-alt mr-1'></i>Finish
             </button>
         ` : '';
         
@@ -738,11 +765,8 @@ function filterEventsByCourse(course) {
                         <i class='bx bx-edit mr-1'></i>Edit
                     </button>
                     ${toggleButton}
-                    ${!isCancelled && !isCompleted ? `
-                        <button class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors" onclick="finishEvent(${event.id})">
-                            <i class='bx bx-check-circle mr-1'></i>Finish
-                        </button>
-                    ` : ''}
+                    ${finishButton}
+                    ${lockedFinishButton}
                     <button class="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors" onclick="deleteEvent(${event.id})">
                         <i class='bx bx-trash mr-1'></i>Delete
                     </button>
@@ -751,6 +775,7 @@ function filterEventsByCourse(course) {
         `;
     }).join('');
 }
+
 async function finishEvent(eventId) {
     // Find the event to get its details
     const event = allEvents.find(e => e.id === eventId);
@@ -768,6 +793,17 @@ async function finishEvent(eventId) {
     
     if (event.status === 'cancelled') {
         showAlert('Cannot finish a cancelled event', 'warning', 'Cannot Finish');
+        return;
+    }
+    
+    // Check if event date has passed
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const eventDate = event.date ? new Date(event.date) : null;
+    if (eventDate) eventDate.setHours(0, 0, 0, 0);
+    
+    if (eventDate && eventDate >= today) {
+        showAlert('This event cannot be finished until after its scheduled date', 'warning', 'Cannot Finish Yet');
         return;
     }
     
@@ -811,11 +847,27 @@ async function finishEvent(eventId) {
     }
 }
 async function autoCompleteOldEvents() {
+    // Count eligible events first
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const eligibleEvents = allEvents.filter(event => {
+        if (event.status === 'completed' || event.status === 'cancelled') return false;
+        const eventDate = event.date ? new Date(event.date) : null;
+        if (eventDate) eventDate.setHours(0, 0, 0, 0);
+        return eventDate && eventDate < today;
+    });
+    
+    if (eligibleEvents.length === 0) {
+        showAlert('No events are eligible for auto-completion yet. Events must be past their scheduled date.', 'info', 'No Eligible Events');
+        return;
+    }
+    
     const confirmed = await showConfirm({
         title: 'Auto-Complete Events',
-        message: 'This will mark all events that ended more than 3 days ago as completed. Continue?',
+        message: `Found ${eligibleEvents.length} event(s) that have passed their scheduled date.\n\nThis will mark them as completed. Continue?`,
         type: 'info',
-        confirmText: 'Yes, Complete Old Events',
+        confirmText: `Yes, Complete ${eligibleEvents.length} Event(s)`,
         cancelText: 'Cancel'
     });
     
@@ -837,6 +889,7 @@ async function autoCompleteOldEvents() {
             
             const courseFilter = document.getElementById('admin-events-course-filter');
             filterEventsByCourse(courseFilter ? courseFilter.value : 'ALL');
+            updateDashboardStats();
         } else {
             showError(result.error || 'Failed to auto-complete events', 'Error');
         }
@@ -849,28 +902,6 @@ async function autoCompleteOldEvents() {
 // Initialize button
 document.getElementById('auto-complete-events-btn')?.addEventListener('click', autoCompleteOldEvents);
 
-// Add endpoint to server.js
-app.post('/api/events/auto-complete', async (req, res) => {
-    try {
-        const query = `
-            UPDATE events 
-            SET status = 'completed' 
-            WHERE status IN ('active', 'upcoming') 
-            AND DATE_ADD(date, INTERVAL 3 DAY) < CURDATE()
-        `;
-        
-        const [result] = await db.promise().query(query);
-        
-        res.json({ 
-            success: true, 
-            completed: result.affectedRows,
-            message: `${result.affectedRows} event(s) auto-completed`
-        });
-    } catch (error) {
-        console.error('Error auto-completing events:', error);
-        res.status(500).json({ error: 'Database error' });
-    }
-});
 async function toggleEventVisibility(eventId, currentlyHidden) {
     const action = currentlyHidden ? 'show' : 'hide';
     
@@ -3556,6 +3587,376 @@ function sortParticipants(participants, sortBy) {
         }
     });
 }
+// Certificate Management Functions
+let currentTemplates = [];
+
+// Load certificate page
+async function loadCertificatePage() {
+    await loadTemplates();
+    await loadEventsForCertificateSelect();
+}
+
+// Load templates
+async function loadTemplates() {
+    try {
+        const templatesList = document.getElementById('templates-list');
+        if (!templatesList) return;
+
+        const response = await fetch('/api/certificates/templates');
+        const templates = await response.json();
+        currentTemplates = templates;
+
+        if (templates.length === 0) {
+            templatesList.innerHTML = `
+                <div class="col-span-3 text-center py-8">
+                    <i class='bx bx-file text-4xl text-gray-500 mb-3'></i>
+                    <p class="text-gray-400">No templates uploaded yet</p>
+                    <p class="text-gray-500 text-sm">Upload a PDF template to get started</p>
+                </div>
+            `;
+            return;
+        }
+
+        templatesList.innerHTML = templates.map(template => `
+            <div class="bg-black border ${template.is_default ? 'border-green-800' : 'border-gray-800'} rounded-xl p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center">
+                        <i class='bx bx-file text-2xl text-blue-400 mr-3'></i>
+                        <div>
+                            <h4 class="text-white font-medium">${template.name}</h4>
+                            <p class="text-gray-500 text-xs">${new Date(template.created_at).toLocaleDateString()}</p>
+                        </div>
+                    </div>
+                    ${template.is_default ? `
+                        <span class="px-2 py-1 bg-green-900/30 text-green-400 border border-green-800 rounded text-xs">Default</span>
+                    ` : `
+                        <button onclick="setDefaultTemplate(${template.id})" class="text-gray-400 hover:text-white">
+                            <i class='bx bx-star'></i>
+                        </button>
+                    `}
+                </div>
+                <div class="flex space-x-2 mt-3">
+                    <a href="${template.template_url}" target="_blank" 
+                       class="flex-1 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors text-center">
+                        <i class='bx bx-download mr-1'></i> Download
+                    </a>
+                    <button onclick="deleteTemplate(${template.id})" 
+                            class="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors">
+                        <i class='bx bx-trash'></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Error loading templates:', error);
+        showError('Error loading templates', 'Error');
+    }
+}
+
+// Load events for certificate select
+async function loadEventsForCertificateSelect() {
+    try {
+        const select = document.getElementById('certificate-event-select');
+        if (!select) return;
+
+        const response = await fetch('/api/events?all=true');
+        const events = await response.json();
+
+        // Filter for completed events (eligible for certificates)
+        const eligibleEvents = events.filter(e => e.status === 'completed');
+
+        select.innerHTML = '<option value="">Select an event</option>';
+        
+        eligibleEvents.forEach(event => {
+            const option = document.createElement('option');
+            option.value = event.id;
+            option.textContent = `${event.title} (${event.date ? new Date(event.date).toLocaleDateString() : 'TBA'})`;
+            select.appendChild(option);
+        });
+
+        // Add change listener
+        select.addEventListener('change', (e) => {
+            if (e.target.value) {
+                loadEventCertificates(e.target.value);
+            }
+        });
+
+    } catch (error) {
+        console.error('Error loading events:', error);
+    }
+}
+
+// Load certificates for an event
+async function loadEventCertificates(eventId) {
+    try {
+        const container = document.getElementById('certificates-list');
+        if (!container) return;
+
+        container.innerHTML = `
+            <div class="text-center py-8">
+                <i class='bx bx-loader-circle bx-spin text-2xl text-blue-500'></i>
+            </div>
+        `;
+
+        const response = await fetch(`/api/certificates/event/${eventId}`);
+        const certificates = await response.json();
+
+        if (certificates.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-8">
+                    <i class='bx bx-certification text-4xl text-gray-500 mb-3'></i>
+                    <p class="text-gray-400">No certificates generated yet</p>
+                    <p class="text-gray-500 text-sm">Generate certificates for completed events</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="bg-black border border-gray-800 rounded-xl p-4 mb-4">
+                <div class="flex justify-between items-center">
+                    <span class="text-white">Total Certificates: ${certificates.length}</span>
+                    <button onclick="downloadAllCertificates(${eventId})" 
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
+                        <i class='bx bx-download mr-1'></i> Download All
+                    </button>
+                </div>
+            </div>
+            <div class="space-y-3">
+                ${certificates.map(cert => `
+                    <div class="bg-black border border-gray-800 rounded-lg p-4 flex justify-between items-center">
+                        <div>
+                            <h4 class="text-white font-medium">${cert.name}</h4>
+                            <p class="text-gray-400 text-sm">${cert.student_number} • ${cert.email}</p>
+                            <p class="text-gray-500 text-xs mt-1">
+                                Generated: ${new Date(cert.generated_at).toLocaleString()}
+                                ${cert.sent ? '<span class="ml-2 text-green-400">✓ Sent</span>' : '<span class="ml-2 text-yellow-400">⌛ Not Sent</span>'}
+                            </p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <a href="${cert.certificate_url}" target="_blank" 
+                               class="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors">
+                                <i class='bx bx-download'></i>
+                            </a>
+                            ${!cert.sent ? `
+                                <button onclick="sendCertificateEmail(${cert.id}, ${cert.user_id})" 
+                                        class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors">
+                                    <i class='bx bx-envelope'></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+    } catch (error) {
+        console.error('Error loading certificates:', error);
+        showError('Error loading certificates', 'Error');
+    }
+}
+
+// Upload template form handler
+function initCertificateUpload() {
+    const uploadBtn = document.getElementById('upload-template-btn');
+    const modal = document.getElementById('upload-template-modal');
+    const form = document.getElementById('upload-template-form');
+
+    if (uploadBtn) {
+        uploadBtn.addEventListener('click', () => {
+            modal.classList.remove('hidden');
+        });
+    }
+
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('name', document.getElementById('template-name').value);
+            formData.append('is_default', document.getElementById('template-default').checked);
+            
+            const fileInput = form.querySelector('input[type="file"]');
+            if (fileInput.files[0]) {
+                formData.append('template', fileInput.files[0]);
+            }
+
+            try {
+                const response = await fetch('/api/certificates/template', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showSuccess('Template uploaded successfully!', 'Success');
+                    modal.classList.add('hidden');
+                    form.reset();
+                    loadTemplates();
+                } else {
+                    showError(result.error || 'Failed to upload template', 'Error');
+                }
+            } catch (error) {
+                console.error('Error uploading template:', error);
+                showError('Error uploading template', 'Error');
+            }
+        });
+    }
+}
+
+// Generate certificates
+async function generateCertificates() {
+    const eventSelect = document.getElementById('certificate-event-select');
+    const eventId = eventSelect?.value;
+    
+    if (!eventId) {
+        showAlert('Please select an event first', 'warning', 'No Event Selected');
+        return;
+    }
+
+    // Get default template or let user choose
+    const defaultTemplate = currentTemplates.find(t => t.is_default);
+    const templateId = defaultTemplate ? defaultTemplate.id : null;
+
+    if (!templateId) {
+        showAlert('No default template found. Please upload and set a default template first.', 'warning', 'No Template');
+        return;
+    }
+
+    const confirmed = await showConfirm({
+        title: 'Generate Certificates',
+        message: 'This will generate certificates for all approved participants in this event. Continue?',
+        type: 'info',
+        confirmText: 'Yes, Generate',
+        cancelText: 'Cancel'
+    });
+
+    if (!confirmed) return;
+
+    try {
+        showAlert('Generating certificates... This may take a moment.', 'info', 'Processing');
+
+        const response = await fetch(`/api/certificates/generate/${eventId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ templateId })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showSuccess(`${result.generated} certificate(s) generated successfully!`, 'Success');
+            loadEventCertificates(eventId);
+        } else {
+            showError(result.error || 'Failed to generate certificates', 'Error');
+        }
+    } catch (error) {
+        console.error('Error generating certificates:', error);
+        showError('Error generating certificates', 'Error');
+    }
+}
+
+// Set default template
+async function setDefaultTemplate(templateId) {
+    try {
+        const response = await fetch(`/api/certificates/templates/${templateId}/default`, {
+            method: 'PUT'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showSuccess('Default template updated!', 'Success');
+            loadTemplates();
+        } else {
+            showError(result.error || 'Failed to update template', 'Error');
+        }
+    } catch (error) {
+        console.error('Error setting default template:', error);
+        showError('Error updating template', 'Error');
+    }
+}
+
+// Delete template
+async function deleteTemplate(templateId) {
+    const confirmed = await showConfirm({
+        title: 'Delete Template',
+        message: 'Are you sure you want to delete this template?',
+        type: 'warning',
+        confirmText: 'Yes, Delete',
+        cancelText: 'Cancel'
+    });
+
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(`/api/certificates/templates/${templateId}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showSuccess('Template deleted!', 'Success');
+            loadTemplates();
+        } else {
+            showError(result.error || 'Failed to delete template', 'Error');
+        }
+    } catch (error) {
+        console.error('Error deleting template:', error);
+        showError('Error deleting template', 'Error');
+    }
+}
+
+// Send certificate email
+async function sendCertificateEmail(certificateId, userId) {
+    try {
+        const response = await fetch(`/api/certificates/${certificateId}/send`, {
+            method: 'POST'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showSuccess('Certificate sent successfully!', 'Email Sent');
+            const eventSelect = document.getElementById('certificate-event-select');
+            if (eventSelect.value) {
+                loadEventCertificates(eventSelect.value);
+            }
+        } else {
+            showError(result.error || 'Failed to send certificate', 'Error');
+        }
+    } catch (error) {
+        console.error('Error sending certificate:', error);
+        showError('Error sending certificate', 'Error');
+    }
+}
+
+// Download all certificates
+function downloadAllCertificates(eventId) {
+    showAlert('This feature will download all certificates as a ZIP file', 'info', 'Coming Soon');
+}
+
+// Initialize certificate page
+function initCertificatePage() {
+    initCertificateUpload();
+    
+    const generateBtn = document.getElementById('generate-certificates-btn');
+    if (generateBtn) {
+        generateBtn.addEventListener('click', generateCertificates);
+    }
+
+    // Load data when certificate page is shown
+    const certLink = document.querySelector('[data-page="certificate"]');
+    if (certLink) {
+        certLink.addEventListener('click', () => {
+            setTimeout(loadCertificatePage, 100);
+        });
+    }
+}
+
 // Initialize modal event listeners
 function initializeModalListeners() {
     // Add Bus Modal
@@ -3793,3 +4194,8 @@ window.viewBusDetails = viewBusDetails;
 window.deleteBus = deleteBus;
 window.openEditBusModal = openEditBusModal;
 window.finishEvent = finishEvent;
+window.setDefaultTemplate = setDefaultTemplate;
+window.deleteTemplate = deleteTemplate;
+window.sendCertificateEmail = sendCertificateEmail;
+window.downloadAllCertificates = downloadAllCertificates;
+window.generateCertificates = generateCertificates;

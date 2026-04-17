@@ -5,6 +5,8 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const nodemailer = require('nodemailer');
+const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
+const fontkit = require('@pdf-lib/fontkit');
 require('dotenv').config();
 
 const app = express();
@@ -128,6 +130,26 @@ function createTables() {
             is_read BOOLEAN DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )`,
+
+        `CREATE TABLE IF NOT EXISTS certificates (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            event_id INT NOT NULL,
+            certificate_url VARCHAR(255),
+            template_id INT,
+            generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            sent BOOLEAN DEFAULT 0,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+        )`,
+
+        `CREATE TABLE IF NOT EXISTS certificate_templates (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            template_url VARCHAR(255) NOT NULL,
+            is_default BOOLEAN DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`
     ];
 
@@ -1669,6 +1691,7 @@ app.get('/api/buses/:id/assignments', (req, res) => {
         res.json(results);
     });
 });
+
 // Notifications endpoints
 
 // Create notification
@@ -1771,6 +1794,352 @@ app.get('/uploads/:filename', (req, res) => {
     }
 
     res.sendFile(filePath);
+});
+// Upload certificate template
+app.post('/api/certificates/template', upload.single('template'), (req, res) => {
+    const { name, is_default } = req.body;
+    const templateUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    
+    if (!templateUrl) {
+        return res.status(400).json({ error: 'Template file is required' });
+    }
+    
+    const defaultFlag = is_default === 'true' ? 1 : 0;
+    
+    // If setting as default, unset others
+    if (defaultFlag) {
+        db.query("UPDATE certificate_templates SET is_default = 0", (err) => {
+            if (err) console.error('Error unsetting defaults:', err);
+        });
+    }
+    
+    db.query(
+        "INSERT INTO certificate_templates (name, template_url, is_default) VALUES (?, ?, ?)",
+        [name || 'Default Template', templateUrl, defaultFlag],
+        (err, result) => {
+            if (err) {
+                console.error('Error uploading template:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            res.json({ success: true, templateId: result.insertId });
+        }
+    );
+});
+
+// Get all templates
+app.get('/api/certificates/templates', (req, res) => {
+    db.query("SELECT * FROM certificate_templates ORDER BY is_default DESC, created_at DESC", (err, results) => {
+        if (err) {
+            console.error('Error fetching templates:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json(results);
+    });
+});
+
+// Generate certificates for event
+app.post('/api/certificates/generate/:eventId', async (req, res) => {
+    const { eventId } = req.params;
+    const { templateId } = req.body;
+    
+    try {
+        // Get event details
+        const [eventResult] = await db.promise().query(
+            "SELECT * FROM events WHERE id = ?", [eventId]
+        );
+        
+        if (eventResult.length === 0) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+        
+        const event = eventResult[0];
+        
+        // Get template
+        let templateQuery = "SELECT * FROM certificate_templates WHERE id = ?";
+        let templateParams = [templateId];
+        
+        if (!templateId) {
+            templateQuery = "SELECT * FROM certificate_templates WHERE is_default = 1 LIMIT 1";
+            templateParams = [];
+        }
+        
+        const [templateResult] = await db.promise().query(templateQuery, templateParams);
+        
+        if (templateResult.length === 0) {
+            return res.status(400).json({ error: 'No certificate template found' });
+        }
+        
+        const template = templateResult[0];
+        const templatePath = path.join(__dirname, template.template_url);
+        
+        if (!fs.existsSync(templatePath)) {
+            return res.status(404).json({ error: 'Template file not found' });
+        }
+        
+        // Get approved participants
+        const [participants] = await db.promise().query(`
+            SELECT u.id, u.name, u.student_number, u.email, u.course, u.section, u.year
+            FROM users u
+            JOIN registration_requests rr ON u.id = rr.user_id
+            WHERE rr.event_id = ? AND rr.status = 'approved'
+            ORDER BY u.name
+        `, [eventId]);
+        
+        if (participants.length === 0) {
+            return res.status(400).json({ error: 'No approved participants found' });
+        }
+        
+        // Create output directory
+        const outputDir = path.join(__dirname, 'uploads', 'certificates', `event_${eventId}`);
+        if (!fs.existsSync(outputDir)) {
+            fs.mkdirSync(outputDir, { recursive: true });
+        }
+        
+        const generatedCertificates = [];
+        
+        // Load the template PDF once
+        const templateBytes = fs.readFileSync(templatePath);
+        
+        for (const participant of participants) {
+            try {
+                const pdfDoc = await PDFDocument.load(templateBytes);
+                pdfDoc.registerFontkit(fontkit);
+                
+                const pages = pdfDoc.getPages();
+                const firstPage = pages[0];
+                
+                // Try to load a nice font, fallback to standard
+                let font;
+                try {
+                    font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+                } catch {
+                    font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+                }
+                
+                const { width, height } = firstPage.getSize();
+                
+                // Parse name: "LASTNAME, FIRSTNAME MI" or just "Name"
+                let displayName = participant.name;
+                let lastName = '', firstName = '', middleInitial = '';
+                
+                // Try to parse LASTNAME, FIRSTNAME format
+                const nameParts = participant.name.split(',');
+                if (nameParts.length === 2) {
+                    lastName = nameParts[0].trim();
+                    const firstParts = nameParts[1].trim().split(' ');
+                    firstName = firstParts[0] || '';
+                    middleInitial = firstParts[1] ? firstParts[1].charAt(0) + '.' : '';
+                    displayName = `${lastName}, ${firstName} ${middleInitial}`.trim();
+                }
+                
+                // Format event date
+                const eventDate = event.date ? new Date(event.date).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                }) : '';
+                
+                // Add text to PDF
+                const centerX = width / 2;
+                
+                // Participant Name (centered, larger)
+                firstPage.drawText(displayName, {
+                    x: centerX - (displayName.length * 6),
+                    y: height / 2 + 20,
+                    size: 36,
+                    font: font,
+                    color: rgb(0.1, 0.1, 0.3)
+                });
+                
+                // Event Title
+                firstPage.drawText(event.title || '', {
+                    x: centerX - (event.title.length * 4),
+                    y: height / 2 - 40,
+                    size: 18,
+                    font: font,
+                    color: rgb(0.2, 0.2, 0.4)
+                });
+                
+                // Event Date
+                firstPage.drawText(eventDate, {
+                    x: centerX - (eventDate.length * 3),
+                    y: height / 2 - 70,
+                    size: 14,
+                    font: font,
+                    color: rgb(0.3, 0.3, 0.5)
+                });
+                
+                // Date of issuance
+                const today = new Date().toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                firstPage.drawText(`Issued: ${today}`, {
+                    x: 50,
+                    y: 50,
+                    size: 10,
+                    font: font,
+                    color: rgb(0.4, 0.4, 0.6)
+                });
+                
+                // Save the PDF
+                const pdfBytes = await pdfDoc.save();
+                const filename = `certificate_${participant.id}_${eventId}.pdf`;
+                const filePath = path.join(outputDir, filename);
+                fs.writeFileSync(filePath, pdfBytes);
+                
+                const certificateUrl = `/uploads/certificates/event_${eventId}/${filename}`;
+                
+                // Save to database
+                await db.promise().query(
+                    "INSERT INTO certificates (user_id, event_id, certificate_url, template_id) VALUES (?, ?, ?, ?)",
+                    [participant.id, eventId, certificateUrl, template.id]
+                );
+                
+                generatedCertificates.push({
+                    userId: participant.id,
+                    name: displayName,
+                    url: certificateUrl
+                });
+                
+            } catch (error) {
+                console.error(`Error generating certificate for ${participant.name}:`, error);
+            }
+        }
+        
+        res.json({
+            success: true,
+            generated: generatedCertificates.length,
+            total: participants.length,
+            certificates: generatedCertificates
+        });
+        
+    } catch (error) {
+        console.error('Error generating certificates:', error);
+        res.status(500).json({ error: 'Failed to generate certificates: ' + error.message });
+    }
+});
+
+// Get certificates for an event
+app.get('/api/certificates/event/:eventId', (req, res) => {
+    const { eventId } = req.params;
+    
+    const query = `
+        SELECT c.*, u.name, u.email, u.student_number
+        FROM certificates c
+        JOIN users u ON c.user_id = u.id
+        WHERE c.event_id = ?
+        ORDER BY u.name
+    `;
+    
+    db.query(query, [eventId], (err, results) => {
+        if (err) {
+            console.error('Error fetching certificates:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json(results);
+    });
+});
+
+// Get user's certificates
+app.get('/api/certificates/user/:userId', (req, res) => {
+    const { userId } = req.params;
+    
+    const query = `
+        SELECT c.*, e.title as event_title, e.date as event_date
+        FROM certificates c
+        JOIN events e ON c.event_id = e.id
+        WHERE c.user_id = ?
+        ORDER BY c.generated_at DESC
+    `;
+    
+    db.query(query, [userId], (err, results) => {
+        if (err) {
+            console.error('Error fetching user certificates:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json(results);
+    });
+});
+// Set default template
+app.put('/api/certificates/templates/:id/default', (req, res) => {
+    const { id } = req.params;
+    
+    // Unset all defaults
+    db.query("UPDATE certificate_templates SET is_default = 0", (err) => {
+        if (err) {
+            console.error('Error unsetting defaults:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        
+        // Set new default
+        db.query("UPDATE certificate_templates SET is_default = 1 WHERE id = ?", [id], (err, result) => {
+            if (err) {
+                console.error('Error setting default:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            res.json({ success: true });
+        });
+    });
+});
+
+// Delete template
+app.delete('/api/certificates/templates/:id', (req, res) => {
+    const { id } = req.params;
+    
+    db.query("DELETE FROM certificate_templates WHERE id = ?", [id], (err, result) => {
+        if (err) {
+            console.error('Error deleting template:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ success: true });
+    });
+});
+
+// Send certificate email
+app.post('/api/certificates/:id/send', async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        const [certResult] = await db.promise().query(`
+            SELECT c.*, u.name, u.email, e.title as event_title
+            FROM certificates c
+            JOIN users u ON c.user_id = u.id
+            JOIN events e ON c.event_id = e.id
+            WHERE c.id = ?
+        `, [id]);
+        
+        if (certResult.length === 0) {
+            return res.status(404).json({ error: 'Certificate not found' });
+        }
+        
+        const cert = certResult[0];
+        
+        if (transporter) {
+            await transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: cert.email,
+                subject: `Your Certificate for ${cert.event_title}`,
+                html: `
+                    <h2>Congratulations ${cert.name}!</h2>
+                    <p>Your certificate for ${cert.event_title} is ready.</p>
+                    <p>You can download it from your student portal.</p>
+                `,
+                attachments: [{
+                    filename: 'certificate.pdf',
+                    path: path.join(__dirname, cert.certificate_url)
+                }]
+            });
+        }
+        
+        await db.promise().query("UPDATE certificates SET sent = 1 WHERE id = ?", [id]);
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error sending certificate:', error);
+        res.status(500).json({ error: 'Failed to send certificate' });
+    }
 });
 // Health check endpoint
 app.get('/api/health', (req, res) => {

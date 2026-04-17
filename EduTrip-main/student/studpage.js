@@ -141,7 +141,7 @@ function initializePage() {
                         // Already has placeholder
                         break;
                     case 'certificate':
-                        // Already has placeholder
+                        loadCertificates();
                         break;
                 }
             }
@@ -684,6 +684,67 @@ function createBusCard(registration, busAssignment) {
         `;
     }
 }
+// Load student certificates
+async function loadCertificates() {
+    const container = document.getElementById('certificate-content');
+    if (!container || !currentUser?.id) return;
+
+    container.innerHTML = `
+        <div class="text-center py-10">
+            <i class='bx bx-loader-circle bx-spin text-4xl text-blue-500 mb-2'></i>
+            <p class="text-gray-400">Loading certificates...</p>
+        </div>
+    `;
+
+    try {
+        const response = await fetch(`/api/certificates/user/${currentUser.id}`);
+        const certificates = await response.json();
+
+        if (certificates.length === 0) {
+            container.innerHTML = `
+                <div class="bg-black border border-gray-800 rounded-xl p-8 text-center">
+                    <i class='bx bx-certification text-5xl text-gray-500 mb-4'></i>
+                    <h3 class="text-lg font-semibold text-white mb-2">No Certificates Yet</h3>
+                    <p class="text-gray-400">Your certificates will appear here after completing events.</p>
+                    <p class="text-gray-500 text-sm mt-2">Certificates are generated after the event ends.</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = certificates.map(cert => `
+            <div class="bg-black border border-green-800/50 rounded-xl p-6 hover:border-green-500/30 transition-all">
+                <div class="flex justify-between items-start">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-green-900/30 rounded-full flex items-center justify-center mr-4">
+                            <i class='bx bx-certification text-3xl text-green-400'></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-white">${cert.event_title}</h3>
+                            <p class="text-gray-400 text-sm">${cert.event_date ? new Date(cert.event_date).toLocaleDateString() : 'Date TBA'}</p>
+                            <p class="text-gray-500 text-xs mt-1">Generated: ${new Date(cert.generated_at).toLocaleDateString()}</p>
+                        </div>
+                    </div>
+                    <a href="${cert.certificate_url}" target="_blank" 
+                       class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors">
+                        <i class='bx bx-download mr-2'></i> Download
+                    </a>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Error loading certificates:', error);
+        container.innerHTML = `
+            <div class="bg-black border border-red-800/50 rounded-xl p-8 text-center">
+                <i class='bx bx-error text-5xl text-red-500 mb-4'></i>
+                <h3 class="text-lg font-semibold text-white mb-2">Error Loading Certificates</h3>
+                <p class="text-gray-400">Please try again later.</p>
+            </div>
+        `;
+    }
+}
+
 // Toast Modal System
 function showToast(options) {
     const {

@@ -772,6 +772,15 @@
     max-height: 90vh;
     overflow-y: auto;
 }
+#upload-template-modal {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+#upload-template-modal.hidden {
+    display: none !important;
+}
     </style>
 </head>
 
@@ -1174,136 +1183,78 @@
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-white">E-Certificate Management</h1>
         <div class="flex space-x-4">
-            <select id="certificate-event-filter" class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500">
-                <option value="all">All Events</option>
-                <!-- Events will be loaded here -->
-            </select>
-                <select id="participants-sort-filter" class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500">
-        <option value="name">Sort by Name</option>
-        <option value="course">Sort by Course</option>
-        <option value="year">Sort by Year</option>
-        <option value="section">Sort by Section</option>
-    </select>
-    <input type="text" id="participants-search" placeholder="Search participants..." 
-           class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500 w-64">
+            <button id="upload-template-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
+                <i class='bx bx-upload mr-2'></i> Upload Template
+            </button>
             <button id="generate-certificates-btn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors">
                 <i class='bx bx-certification mr-2'></i> Generate Certificates
             </button>
         </div>
     </div>
     
-    <!-- Certificate Status Overview -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div class="bg-black border border-gray-800 rounded-lg p-4">
-            <div class="text-center">
-                <div class="text-3xl font-bold text-blue-500">0</div>
-                <div class="text-gray-400 text-sm">Generated</div>
-            </div>
+    <!-- Templates Section -->
+    <div class="mb-8">
+        <h2 class="text-lg font-semibold text-white mb-4">Certificate Templates</h2>
+        <div id="templates-list" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="text-center py-8 text-gray-400">Loading templates...</div>
         </div>
-        <div class="bg-black border border-gray-800 rounded-lg p-4">
-            <div class="text-center">
-                <div class="text-3xl font-bold text-green-500">0</div>
-                <div class="text-gray-400 text-sm">Sent</div>
-            </div>
-        </div>
-        <div class="bg-black border border-gray-800 rounded-lg p-4">
-            <div class="text-center">
-                <div class="text-3xl font-bold text-yellow-500">0</div>
-                <div class="text-gray-400 text-sm">Pending</div>
-            </div>
-        </div>
-        <div class="bg-black border border-gray-800 rounded-lg p-4">
-            <div class="text-center">
-                <div class="text-3xl font-bold text-gray-500">0</div>
-                <div class="text-gray-400 text-sm">Total Participants</div>
-            </div>
+    </div>
+    
+    <!-- Event Selection for Generation -->
+    <div class="mb-8">
+        <h2 class="text-lg font-semibold text-white mb-4">Generate Certificates</h2>
+        <div class="flex space-x-4">
+            <select id="certificate-event-select" class="flex-1 bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                <option value="">Select an event</option>
+            </select>
         </div>
     </div>
     
     <!-- Certificates List -->
-    <div id="certificates-list" class="space-y-4">
-        <div class="text-center py-10">
-            <i class='bx bx-certification text-4xl text-gray-500 mb-3'></i>
-            <p class="text-gray-400">No certificates generated yet</p>
-            <p class="text-gray-500 text-sm">Generate certificates for approved event participants</p>
+    <div>
+        <h2 class="text-lg font-semibold text-white mb-4">Generated Certificates</h2>
+        <div id="certificates-list" class="space-y-4">
+            <div class="text-center py-8 text-gray-400">Select an event to view certificates</div>
         </div>
     </div>
-    
-    <!-- Generate Certificates Modal -->
-    <div id="generate-certificates-modal" class="fixed inset-0 bg-black bg-opacity-75 items-center justify-center z-50 hidden">
-        <div class="bg-gray-900 border border-gray-800 rounded-xl w-11/12 max-w-2xl">
-            <div class="sticky top-0 bg-gray-900 border-b border-gray-800 p-6 flex justify-between items-center">
-                <h3 class="text-xl font-semibold text-white">Generate E-Certificates</h3>
-                <button id="close-certificates-modal" class="text-gray-400 hover:text-white text-2xl">
-                    <i class='bx bx-x'></i>
+</div>
+
+<!-- Upload Template Modal -->
+<div id="upload-template-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-4">
+    <div class="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-md">
+        <div class="p-6 border-b border-gray-800 flex justify-between items-center">
+            <h3 class="text-xl font-semibold text-white">Upload Certificate Template</h3>
+            <button type="button" onclick="document.getElementById('upload-template-modal').classList.add('hidden')" class="text-gray-500 hover:text-white text-2xl">&times;</button>
+        </div>
+        <form id="upload-template-form" class="p-6 space-y-5" enctype="multipart/form-data">
+            <div>
+                <label class="block text-gray-300 mb-2">Template Name</label>
+                <input type="text" id="template-name" required 
+                       class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3"
+                       placeholder="e.g., Default Certificate">
+            </div>
+            <div>
+                <label class="block text-gray-300 mb-2">PDF Template</label>
+                <input type="file" name="template" accept=".pdf" required 
+                       class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3">
+                <p class="text-gray-500 text-xs mt-2">Upload a PDF template. Text will be added automatically.</p>
+            </div>
+            <div>
+                <label class="flex items-center">
+                    <input type="checkbox" id="template-default" class="mr-2">
+                    <span class="text-gray-300">Set as default template</span>
+                </label>
+            </div>
+            <div class="flex space-x-3 pt-4">
+                <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg">
+                    Upload Template
+                </button>
+                <button type="button" onclick="document.getElementById('upload-template-modal').classList.add('hidden')"
+                        class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg">
+                    Cancel
                 </button>
             </div>
-            
-            <div class="p-6">
-                <form id="generate-certificates-form" class="space-y-5">
-                    <div>
-                        <label class="block text-gray-300 mb-2">Select Event</label>
-                        <select id="certificate-event-select" required 
-                                class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
-                            <option value="">Select an event</option>
-                            <!-- Events will be loaded here -->
-                        </select>
-                    </div>
-                    
-                    <div id="certificate-event-info" class="p-4 bg-gray-800 rounded-lg hidden">
-                        <!-- Event info will be shown here -->
-                    </div>
-                    
-                    <div>
-                        <label class="block text-gray-300 mb-2">Certificate Template</label>
-                        <div class="space-y-2">
-                            <div class="flex items-center">
-                                <input type="radio" id="template-default" name="certificate-template" value="default" checked 
-                                       class="mr-2">
-                                <label for="template-default" class="text-gray-300">Default Template</label>
-                            </div>
-                            <div class="flex items-center">
-                                <input type="radio" id="template-premium" name="certificate-template" value="premium" 
-                                       class="mr-2">
-                                <label for="template-premium" class="text-gray-300">Premium Template</label>
-                            </div>
-                            <div class="flex items-center">
-                                <input type="radio" id="template-custom" name="certificate-template" value="custom" 
-                                       class="mr-2">
-                                <label for="template-custom" class="text-gray-300">Custom Template</label>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-gray-300 mb-2">Options</label>
-                        <div class="space-y-2">
-                            <div class="flex items-center">
-                                <input type="checkbox" id="send-email" checked 
-                                       class="mr-2">
-                                <label for="send-email" class="text-gray-300">Send via email to participants</label>
-                            </div>
-                            <div class="flex items-center">
-                                <input type="checkbox" id="download-all" checked 
-                                       class="mr-2">
-                                <label for="download-all" class="text-gray-300">Download all as ZIP file</label>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="flex space-x-4 pt-4">
-                        <button type="submit" 
-                                class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
-                            <i class='bx bx-certification mr-2'></i> Generate Certificates
-                        </button>
-                        <button type="button" id="cancel-certificates" 
-                                class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
-                            Cancel
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+        </form>
     </div>
 </div>
         <!-- Other pages (simplified) -->
