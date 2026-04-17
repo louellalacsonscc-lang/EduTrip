@@ -3,28 +3,28 @@ let editingEventId = null;
 let busFilterInitialized = false; // Track if bus filter is already initialized
 
 // Check authentication on page load
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Check if user is logged in
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    
+
     if (!user.id || !user.role) {
         console.log('No user found, redirecting to login');
         window.location.href = '/';
         return;
     }
-    
+
     if (user.role !== 'admin') {
         console.log('User is not an admin, redirecting');
         window.location.href = '/';
         return;
     }
-    
+
     currentUser = user;
     console.log('Admin logged in:', user.name);
-    
+
     // Initialize sidebar toggle FIRST
     initSidebarToggle();
-    
+
     // Initialize page navigation
     initializePage();
 
@@ -37,47 +37,47 @@ function initSidebarToggle() {
     const toggle = document.querySelector('.toggle');
     const sidebar = document.querySelector('.sidebar');
     const headerText = document.querySelector('.header-text');
-    
+
     console.log('Sidebar elements:', { toggle, sidebar, headerText });
-    
+
     if (toggle && sidebar) {
         toggle.addEventListener('click', () => {
             const isClosing = sidebar.classList.contains('w-64');
-            
+
             if (isClosing) {
                 // Close sidebar
                 sidebar.classList.remove('w-64');
                 sidebar.classList.add('w-20');
                 document.querySelector('main')?.classList.remove('ml-64');
                 document.querySelector('main')?.classList.add('ml-20');
-                
+
                 // Hide header text (logo stays visible naturally)
                 if (headerText) headerText.classList.add('hidden');
-                
+
                 // Hide menu text but keep everything else in place
                 document.querySelectorAll('.sidebar-item .text').forEach(text => {
                     text.classList.add('opacity-0', 'w-0', 'overflow-hidden');
                 });
-                
+
                 // Update toggle icon
                 toggle.classList.remove('bx-chevron-left');
                 toggle.classList.add('bx-chevron-right');
-                
+
             } else {
                 // Open sidebar
                 sidebar.classList.remove('w-20');
                 sidebar.classList.add('w-64');
                 document.querySelector('main')?.classList.remove('ml-20');
                 document.querySelector('main')?.classList.add('ml-64');
-                
+
                 // Show header text
                 if (headerText) headerText.classList.remove('hidden');
-                
+
                 // Show menu text
                 document.querySelectorAll('.sidebar-item .text').forEach(text => {
                     text.classList.remove('opacity-0', 'w-0', 'overflow-hidden');
                 });
-                
+
                 // Update toggle icon
                 toggle.classList.remove('bx-chevron-right');
                 toggle.classList.add('bx-chevron-left');
@@ -102,7 +102,7 @@ function initializePage() {
             if (p.id !== 'dashboard') p.classList.add('hidden');
         });
     }
-    
+
     navLinks.forEach(link => link.classList.remove('active', 'bg-blue-600'));
     // Set dashboard as active
     const dashboardLink = document.querySelector('[data-page="dashboard"]');
@@ -111,20 +111,20 @@ function initializePage() {
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            
+
             navLinks.forEach(l => l.classList.remove('active', 'bg-blue-600'));
             pages.forEach(page => page.classList.add('hidden'));
 
             link.classList.add('active', 'bg-blue-600');
-            
+
             // Show corresponding page
             const pageId = link.getAttribute('data-page');
             const targetPage = document.getElementById(pageId === 'participants' ? 'participants-page' : pageId);
             if (targetPage) {
                 targetPage.classList.remove('hidden');
-                
+
                 // Load data based on page
-                switch(pageId) {
+                switch (pageId) {
                     case 'requests':
                         loadRegistrationRequests();
                         break;
@@ -149,21 +149,21 @@ function initializePage() {
     const regRequestEl = document.getElementById('reg-request');
     const busRequestEl = document.getElementById('bus-request');
     const participantsEl = document.getElementById('participants');
-    
+
     if (regRequestEl) {
         regRequestEl.addEventListener('click', () => {
             const requestLink = Array.from(navLinks).find(link => link.getAttribute('data-page') === 'requests');
             if (requestLink) requestLink.click();
         });
     }
-    
+
     if (busRequestEl) {
         busRequestEl.addEventListener('click', () => {
             const requestLink = Array.from(navLinks).find(link => link.getAttribute('data-page') === 'bus');
             if (requestLink) requestLink.click();
         });
     }
-    
+
     if (participantsEl) {
         participantsEl.addEventListener('click', () => {
             const participantsLink = Array.from(navLinks).find(link => link.getAttribute('data-page') === 'participants');
@@ -171,37 +171,64 @@ function initializePage() {
         });
     }
 
-    // Handle create event form submission
-    const createEventForm = document.getElementById('create-event-form');
-    if (createEventForm) {
-        createEventForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const eventData = {
-                title: document.getElementById('event-title').value,
-                description: document.getElementById('event-description').value,
-                date: document.getElementById('event-date').value,
-                location: document.getElementById('event-location').value
-            };
-            
-            createEvent(eventData);
-        });
-    }
+// Handle create event form submission
+const createEventForm = document.getElementById('create-event-form');
+if (createEventForm) {
+    createEventForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const eventData = new FormData();
+        
+        // Get all elements safely
+        const titleEl = document.getElementById('event-title');
+        const descEl = document.getElementById('event-description');
+        const dateEl = document.getElementById('event-date');
+        const locationEl = document.getElementById('event-location');
+        const courseEl = document.getElementById('event-course');
+        const imageEl = document.getElementById('event-image');
+        
+        // Check if all required elements exist
+        if (!titleEl || !descEl || !dateEl || !locationEl || !courseEl) {
+            alert('Error: Form fields are missing. Please refresh the page.');
+            console.error('Missing form fields:', {
+                title: !!titleEl,
+                description: !!descEl,
+                date: !!dateEl,
+                location: !!locationEl,
+                course: !!courseEl
+            });
+            return;
+        }
+        
+        eventData.append('title', titleEl.value);
+        eventData.append('description', descEl.value);
+        eventData.append('date', dateEl.value);
+        eventData.append('location', locationEl.value);
+        eventData.append('course', courseEl.value);
+
+        if (imageEl?.files?.[0]) {
+            eventData.append('image', imageEl.files[0]);
+        }
+
+        createEvent(eventData);
+    });
+}
 
     // Handle edit event form submission
     const editEventForm = document.getElementById('edit-event-form');
     if (editEventForm) {
-        editEventForm.addEventListener('submit', function(e) {
+        editEventForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            
+
             const eventData = {
                 title: document.getElementById('edit-event-title').value,
                 description: document.getElementById('edit-event-description').value,
                 date: document.getElementById('edit-event-date').value,
                 location: document.getElementById('edit-event-location').value,
+                course: document.getElementById('edit-event-course').value,
                 status: document.getElementById('edit-event-status').value
             };
-            
+
             if (editingEventId) {
                 updateEvent(editingEventId, eventData);
             }
@@ -211,13 +238,13 @@ function initializePage() {
     // Close edit modal buttons
     const closeEditModal = document.getElementById('close-edit-modal');
     const cancelEdit = document.getElementById('cancel-edit');
-    
+
     if (closeEditModal) {
         closeEditModal.addEventListener('click', () => {
             document.getElementById('edit-event-modal').classList.add('hidden');
         });
     }
-    
+
     if (cancelEdit) {
         cancelEdit.addEventListener('click', () => {
             document.getElementById('edit-event-modal').classList.add('hidden');
@@ -250,7 +277,7 @@ function initializePage() {
     window.addEventListener('click', (e) => {
         const fileModal = document.getElementById('file-modal');
         const editModal = document.getElementById('edit-event-modal');
-        
+
         if (e.target === fileModal) {
             fileModal.classList.add('hidden');
         }
@@ -262,11 +289,11 @@ function initializePage() {
     // Status filter change handlers
     const statusFilter = document.getElementById('status-filter');
     const eventStatusFilter = document.getElementById('event-status-filter');
-    
+
     if (statusFilter) {
         statusFilter.addEventListener('change', loadRegistrationRequests);
     }
-    
+
     if (eventStatusFilter) {
         eventStatusFilter.addEventListener('change', loadRegistrationRequests);
     }
@@ -275,30 +302,30 @@ function initializePage() {
 async function updateDashboardStats() {
     try {
         console.log('Updating dashboard stats...');
-        
+
         // Get the refresh button
         const refreshBtn = document.getElementById('refresh-dashboard-btn');
         const refreshIcon = refreshBtn?.querySelector('i.bx-refresh');
-        
+
         if (refreshIcon) {
             refreshIcon.classList.add('bx-spin');
             refreshBtn.classList.add('refreshing');
             refreshBtn.disabled = true;
         }
-        
+
         // 1. Get registration request count (pending only)
         const regRequestsResponse = await fetch('/api/registration-requests');
         if (regRequestsResponse.ok) {
             const allRequests = await regRequestsResponse.json();
-            const pendingRequests = allRequests.filter(req => 
+            const pendingRequests = allRequests.filter(req =>
                 req.status === 'pending' && req.event_status !== 'cancelled'
             );
-            
+
             const regRequestElement = document.querySelector('#reg-request .text-3xl');
             if (regRequestElement) {
                 regRequestElement.textContent = pendingRequests.length;
             }
-            
+
             // Also update the text below
             const regRequestText = document.querySelector('#reg-request .text-gray-500');
             if (regRequestText && pendingRequests.length === 1) {
@@ -307,7 +334,7 @@ async function updateDashboardStats() {
                 regRequestText.textContent = 'pending requests';
             }
         }
-        
+
         // 2. Get bus assignment request count
         // This counts participants who are approved but not assigned to any bus
         let busRequestCount = 0;
@@ -316,10 +343,10 @@ async function updateDashboardStats() {
             const eventsResponse = await fetch('/api/events');
             if (eventsResponse.ok) {
                 const events = await eventsResponse.json();
-                const activeEvents = events.filter(event => 
+                const activeEvents = events.filter(event =>
                     event.status === 'active' || event.status === 'upcoming'
                 );
-                
+
                 // For each event, count eligible participants (approved but not assigned)
                 for (const event of activeEvents) {
                     try {
@@ -336,12 +363,12 @@ async function updateDashboardStats() {
         } catch (error) {
             console.error('Error calculating bus request count:', error);
         }
-        
+
         const busRequestElement = document.querySelector('#bus-request .text-3xl');
         if (busRequestElement) {
             busRequestElement.textContent = busRequestCount;
         }
-        
+
         // Update bus request text
         const busRequestText = document.querySelector('#bus-request .text-gray-500');
         if (busRequestText && busRequestCount === 1) {
@@ -349,14 +376,14 @@ async function updateDashboardStats() {
         } else if (busRequestText) {
             busRequestText.textContent = 'requests';
         }
-        
+
         // 3. Get total participants count (approved registrations across all events)
         let totalParticipants = 0;
         try {
             const requestsResponse = await fetch('/api/registration-requests');
             if (requestsResponse.ok) {
                 const allRequests = await requestsResponse.json();
-                const approvedRequests = allRequests.filter(req => 
+                const approvedRequests = allRequests.filter(req =>
                     req.status === 'approved' && req.event_status !== 'cancelled'
                 );
                 totalParticipants = approvedRequests.length;
@@ -364,12 +391,12 @@ async function updateDashboardStats() {
         } catch (error) {
             console.error('Error calculating total participants:', error);
         }
-        
+
         const participantsElement = document.querySelector('#participants .text-3xl');
         if (participantsElement) {
             participantsElement.textContent = totalParticipants;
         }
-        
+
         // Update participants text
         const participantsText = document.querySelector('#participants .text-gray-500');
         if (participantsText && totalParticipants === 1) {
@@ -377,20 +404,20 @@ async function updateDashboardStats() {
         } else if (participantsText) {
             participantsText.textContent = 'participants';
         }
-        
+
         console.log('Dashboard stats updated:', {
             pendingRequests: document.querySelector('#reg-request .text-3xl')?.textContent,
             busRequests: document.querySelector('#bus-request .text-3xl')?.textContent,
             totalParticipants: document.querySelector('#participants .text-3xl')?.textContent
         });
-        
+
     } catch (error) {
         console.error('Error updating dashboard stats:', error);
     } finally {
         // Always remove spinning animation regardless of success/failure
         const refreshBtn = document.getElementById('refresh-dashboard-btn');
         const refreshIcon = refreshBtn?.querySelector('i.bx-refresh');
-        
+
         if (refreshIcon) {
             // Wait a moment before removing the spin (makes it feel more natural)
             setTimeout(() => {
@@ -405,7 +432,7 @@ async function updateDashboardStats() {
 function initializeDashboardRefreshButton() {
     const refreshBtn = document.getElementById('refresh-dashboard-btn');
     if (refreshBtn) {
-        refreshBtn.addEventListener('click', function(e) {
+        refreshBtn.addEventListener('click', function (e) {
             e.preventDefault();
             updateDashboardStats();
         });
@@ -420,237 +447,12 @@ function animateNumberUpdate(element) {
     }
 }
 
-// Then update each number update section like this:
-// In the updateDashboardStats function, update each counter like this:
-
-// For registration requests:
-if (regRequestElement) {
-    const oldValue = parseInt(regRequestElement.textContent) || 0;
-    const newValue = pendingRequests.length;
-    regRequestElement.textContent = newValue;
-    if (oldValue !== newValue) {
-        animateNumberUpdate(regRequestElement);
-    }
-}
-
-// For bus requests:
-if (busRequestElement) {
-    const oldValue = parseInt(busRequestElement.textContent) || 0;
-    const newValue = busRequestCount;
-    busRequestElement.textContent = newValue;
-    if (oldValue !== newValue) {
-        animateNumberUpdate(busRequestElement);
-    }
-}
-
-// For participants:
-if (participantsElement) {
-    const oldValue = parseInt(participantsElement.textContent) || 0;
-    const newValue = totalParticipants;
-    participantsElement.textContent = newValue;
-    if (oldValue !== newValue) {
-        animateNumberUpdate(participantsElement);
-    }
-}
-
-// Update the initializePage function to call updateDashboardStats
-function initializePage() {
-    initParticipantsFilters();
-    initializeModalListeners();
-    // Navigation functionality
-    const navLinks = document.querySelectorAll('.sidebar-item');
-    const pages = document.querySelectorAll('.page-container');
-
-    // Initialize dashboard as active
-    const dashboardPage = document.getElementById('dashboard');
-    if (dashboardPage) {
-        dashboardPage.classList.remove('hidden');
-        document.querySelectorAll('.page-container').forEach(p => {
-            if (p.id !== 'dashboard') p.classList.add('hidden');
-        });
-        
-        // Update dashboard stats when dashboard is shown
-        updateDashboardStats();
-    }
-    
-    navLinks.forEach(link => link.classList.remove('active', 'bg-blue-600'));
-    // Set dashboard as active
-    const dashboardLink = document.querySelector('[data-page="dashboard"]');
-    if (dashboardLink) dashboardLink.classList.add('active', 'bg-blue-600');
-
-    navLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            
-            navLinks.forEach(l => l.classList.remove('active', 'bg-blue-600'));
-            pages.forEach(page => page.classList.add('hidden'));
-            
-            link.classList.add('active', 'bg-blue-600');
-            
-            // Show corresponding page
-            const pageId = link.getAttribute('data-page');
-            const targetPage = document.getElementById(pageId === 'participants' ? 'participants-page' : pageId);
-            if (targetPage) {
-                targetPage.classList.remove('hidden');
-                
-                // Load data based on page
-                switch(pageId) {
-                    case 'dashboard':
-                        updateDashboardStats(); // Update stats when returning to dashboard
-                        break;
-                    case 'requests':
-                        loadRegistrationRequests();
-                        break;
-                    case 'events':
-                        loadAdminEvents();
-                        break;
-                    case 'participants':
-                        loadParticipants();
-                        break;
-                    case 'bus':
-                        // Reset the bus filter initialization flag when coming back to bus page
-                        busFilterInitialized = false;
-                        // Initialize bus assignment when page is shown
-                        initializeBusAssignment();
-                        break;
-                }
-            }
-        });
-    });
-
-    // Dashboard item click handlers - ONLY IF ELEMENTS EXIST
-    const regRequestEl = document.getElementById('reg-request');
-    const busRequestEl = document.getElementById('bus-request');
-    const participantsEl = document.getElementById('participants');
-    
-    if (regRequestEl) {
-        regRequestEl.addEventListener('click', () => {
-            const requestLink = Array.from(navLinks).find(link => link.getAttribute('data-page') === 'requests');
-            if (requestLink) requestLink.click();
-        });
-    }
-    
-    if (busRequestEl) {
-        busRequestEl.addEventListener('click', () => {
-            const requestLink = Array.from(navLinks).find(link => link.getAttribute('data-page') === 'bus');
-            if (requestLink) requestLink.click();
-        });
-    }
-    
-    if (participantsEl) {
-        participantsEl.addEventListener('click', () => {
-            const participantsLink = Array.from(navLinks).find(link => link.getAttribute('data-page') === 'participants');
-            if (participantsLink) participantsLink.click();
-        });
-    }
-
-    // Handle create event form submission
-    const createEventForm = document.getElementById('create-event-form');
-    if (createEventForm) {
-        createEventForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const eventData = {
-                title: document.getElementById('event-title').value,
-                description: document.getElementById('event-description').value,
-                date: document.getElementById('event-date').value,
-                location: document.getElementById('event-location').value
-            };
-            
-            createEvent(eventData);
-        });
-    }
-
-    // Handle edit event form submission
-    const editEventForm = document.getElementById('edit-event-form');
-    if (editEventForm) {
-        editEventForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const eventData = {
-                title: document.getElementById('edit-event-title').value,
-                description: document.getElementById('edit-event-description').value,
-                date: document.getElementById('edit-event-date').value,
-                location: document.getElementById('edit-event-location').value,
-                status: document.getElementById('edit-event-status').value
-            };
-            
-            if (editingEventId) {
-                updateEvent(editingEventId, eventData);
-            }
-        });
-    }
-
-    // Close edit modal buttons
-    const closeEditModal = document.getElementById('close-edit-modal');
-    const cancelEdit = document.getElementById('cancel-edit');
-    
-    if (closeEditModal) {
-        closeEditModal.addEventListener('click', () => {
-            document.getElementById('edit-event-modal').classList.add('hidden');
-        });
-    }
-    
-    if (cancelEdit) {
-        cancelEdit.addEventListener('click', () => {
-            document.getElementById('edit-event-modal').classList.add('hidden');
-        });
-    }
-
-    // File modal setup
-    const fileModal = document.getElementById('file-modal');
-    const closeFileModal = document.getElementById('close-file-modal');
-    const closeModalBtn = document.getElementById('close-modal-btn');
-    const downloadAllBtn = document.getElementById('download-all-btn');
-
-    if (closeFileModal) {
-        closeFileModal.addEventListener('click', () => {
-            fileModal.classList.add('hidden');
-        });
-    }
-
-    if (closeModalBtn) {
-        closeModalBtn.addEventListener('click', () => {
-            fileModal.classList.add('hidden');
-        });
-    }
-
-    if (downloadAllBtn) {
-        downloadAllBtn.addEventListener('click', downloadAllFiles);
-    }
-
-    // Close modals when clicking outside
-    window.addEventListener('click', (e) => {
-        const fileModal = document.getElementById('file-modal');
-        const editModal = document.getElementById('edit-event-modal');
-        
-        if (e.target === fileModal) {
-            fileModal.classList.add('hidden');
-        }
-        if (e.target === editModal) {
-            editModal.classList.add('hidden');
-        }
-    });
-
-    // Status filter change handlers
-    const statusFilter = document.getElementById('status-filter');
-    const eventStatusFilter = document.getElementById('event-status-filter');
-    
-    if (statusFilter) {
-        statusFilter.addEventListener('change', loadRegistrationRequests);
-    }
-    
-    if (eventStatusFilter) {
-        eventStatusFilter.addEventListener('change', loadRegistrationRequests);
-    }
-}
-
 // Update the loadRegistrationRequests function to refresh dashboard stats when requests are updated
 async function updateRequestStatus(requestId, status) {
     if (!confirm(`Are you sure you want to ${status} this registration request?`)) {
         return;
     }
-    
+
     try {
         const response = await fetch(`/api/registration-requests/${requestId}`, {
             method: 'PUT',
@@ -659,9 +461,9 @@ async function updateRequestStatus(requestId, status) {
             },
             body: JSON.stringify({ status })
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             alert('Request status updated successfully!');
             loadRegistrationRequests();
@@ -680,14 +482,11 @@ async function createEvent(eventData) {
     try {
         const response = await fetch('/api/events', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(eventData)
+            body: eventData
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             alert('Event created successfully!');
             document.getElementById('create-event-form').reset();
@@ -707,14 +506,14 @@ async function deleteEvent(eventId) {
     if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
         return;
     }
-    
+
     try {
         const response = await fetch(`/api/events/${eventId}`, {
             method: 'DELETE'
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             alert('Event deleted successfully!');
             loadAdminEvents();
@@ -736,20 +535,20 @@ async function assignToBus(assignmentData) {
             alert('Please select a bus');
             return;
         }
-        
+
         const response = await fetch('/api/bus-assignments', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(assignmentData)
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             alert('✅ Participant assigned to bus successfully!');
             document.getElementById('assign-bus-form').reset();
             document.getElementById('assign-bus-modal').classList.add('hidden');
-            
+
             // Refresh data
             const eventId = document.getElementById('bus-event-filter').value;
             if (eventId) {
@@ -772,17 +571,17 @@ async function removeBusAssignment(assignmentId, userName) {
     if (!confirm(`Are you sure you want to remove ${userName} from their bus assignment?\n\nThis will free up their seat on the bus.`)) {
         return;
     }
-    
+
     try {
         const response = await fetch(`/api/bus-assignments/${assignmentId}`, {
             method: 'DELETE'
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             alert('✅ Bus assignment removed successfully!');
-            
+
             // Refresh data
             const eventId = document.getElementById('bus-event-filter').value;
             if (eventId) {
@@ -803,16 +602,18 @@ async function removeBusAssignment(assignmentId, userName) {
 function startDashboardAutoRefresh() {
     // Update stats immediately
     updateDashboardStats();
-    
+
     // Update every 30 seconds
     setInterval(updateDashboardStats, 30000);
 }
 // Event Management Functions
+let allEvents = []; // Store all events for filtering
+
 async function loadAdminEvents() {
     try {
         const eventsList = document.getElementById('admin-events-list');
         if (!eventsList) return;
-        
+
         eventsList.innerHTML = `
             <div class="flex items-center justify-center h-64">
                 <div class="text-center">
@@ -823,37 +624,23 @@ async function loadAdminEvents() {
         `;
 
         const response = await fetch('/api/events');
-        const events = await response.json();
-        
-        if (events.length === 0) {
-            eventsList.innerHTML = '<p class="text-gray-400 text-center py-8">No events created yet.</p>';
-            return;
+        allEvents = await response.json();
+
+        // Set up filter listener
+        const filterSelect = document.getElementById('admin-events-course-filter');
+        if (filterSelect) {
+            // Remove old listener and add new one
+            const newFilter = filterSelect.cloneNode(true);
+            filterSelect.parentNode.replaceChild(newFilter, filterSelect);
+            
+            newFilter.addEventListener('change', (e) => {
+                filterEventsByCourse(e.target.value);
+            });
         }
-        
-        eventsList.innerHTML = events.map(event => `
-            <div class="bg-gray-900 border border-gray-800 rounded-lg p-5 hover:border-blue-500/30 transition-colors">
-                <div class="flex justify-between items-start mb-3">
-                    <h3 class="text-lg font-semibold text-white">${event.title}</h3>
-                    <span class="px-3 py-1 ${event.status === 'cancelled' ? 'bg-red-900/30 text-red-400 border-red-800' : 'bg-green-900/30 text-green-400 border-green-800'} rounded-full text-xs font-medium">
-                        ${event.status || 'active'}
-                    </span>
-                </div>
-                <p class="text-gray-400 text-sm mb-3">${event.description || 'No description'}</p>
-                <div class="flex justify-between text-gray-500 text-sm mb-4">
-                    <span>${event.date ? new Date(event.date).toLocaleDateString() : 'TBA'}</span>
-                    <span>${event.location || 'TBA'}</span>
-                </div>
-                <div class="flex space-x-3">
-                    <button class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors" onclick="editEvent(${event.id})">
-                        Edit
-                    </button>
-                    <button class="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors" onclick="deleteEvent(${event.id})">
-                        Delete
-                    </button>
-                </div>
-            </div>
-        `).join('');
-        
+
+        // Initial render
+        filterEventsByCourse('ALL');
+
     } catch (error) {
         console.error('Error loading events:', error);
         const eventsList = document.getElementById('admin-events-list');
@@ -863,24 +650,177 @@ async function loadAdminEvents() {
     }
 }
 
+function filterEventsByCourse(course) {
+    const eventsList = document.getElementById('admin-events-list');
+    if (!eventsList) return;
+
+    const filteredEvents = course === 'ALL' 
+        ? allEvents 
+        : allEvents.filter(event => event.course === course || event.course === 'ALL');
+
+    if (filteredEvents.length === 0) {
+        eventsList.innerHTML = `
+            <div class="text-center py-8">
+                <i class='bx bx-calendar-x text-4xl text-gray-500 mb-3'></i>
+                <p class="text-gray-400">No events found for ${course}</p>
+            </div>
+        `;
+        return;
+    }
+
+    eventsList.innerHTML = filteredEvents.map(event => {
+        const isHidden = event.status === 'hidden';
+        const isCancelled = event.status === 'cancelled';
+        const isCompleted = event.status === 'completed';
+        const isActive = event.status === 'active' || event.status === 'upcoming' || !event.status;
+        
+        // Determine status badge HTML
+        let statusBadge = '';
+        let statusColor = '';
+        
+        if (isCancelled) {
+            statusBadge = 'CANCELLED';
+            statusColor = 'bg-red-900/30 text-red-400 border-red-800';
+        } else if (isCompleted) {
+            statusBadge = 'COMPLETED';
+            statusColor = 'bg-gray-900/30 text-gray-400 border-gray-800';
+        } else if (isHidden) {
+            statusBadge = 'HIDDEN';
+            statusColor = 'bg-yellow-900/30 text-yellow-400 border-yellow-800';
+        } else {
+            statusBadge = 'ACTIVE';
+            statusColor = 'bg-green-900/30 text-green-400 border-green-800';
+        }
+        
+        // Determine toggle button
+        const toggleButton = !isCancelled && !isCompleted ? `
+            <button class="px-3 py-2 ${isHidden ? 'bg-green-600 hover:bg-green-700' : 'bg-yellow-600 hover:bg-yellow-700'} text-white rounded-lg text-sm font-medium transition-colors" 
+                    onclick="toggleEventVisibility(${event.id}, ${isHidden})">
+                <i class='bx ${isHidden ? 'bx-show' : 'bx-hide'} mr-1'></i>
+                ${isHidden ? 'Show' : 'Hide'}
+            </button>
+        ` : '';
+        
+        return `
+            <div class="bg-gray-900 border ${isCancelled ? 'border-red-800/50' : isHidden ? 'border-yellow-800/50' : 'border-gray-800'} rounded-lg p-5 hover:border-blue-500/30 transition-colors ${isHidden ? 'opacity-75' : ''}">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <h3 class="text-lg font-semibold text-white">${event.title}</h3>
+                        <div class="text-xs text-gray-400 mt-1">Course: ${event.course || 'ALL'}</div>
+                    </div>
+                    <span class="px-3 py-1 ${statusColor} border rounded-full text-xs font-medium">
+                        ${statusBadge}
+                    </span>
+                </div>
+                <p class="text-gray-400 text-sm mb-3">${event.description || 'No description'}</p>
+                <div class="flex justify-between text-gray-500 text-sm mb-4">
+                    <span><i class='bx bx-calendar mr-1'></i>${event.date ? new Date(event.date).toLocaleDateString() : 'TBA'}</span>
+                    <span><i class='bx bx-map mr-1'></i>${event.location || 'TBA'}</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors" onclick="editEvent(${event.id})">
+                        <i class='bx bx-edit mr-1'></i>Edit
+                    </button>
+                    ${toggleButton}
+                    <button class="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors" onclick="deleteEvent(${event.id})">
+                        <i class='bx bx-trash mr-1'></i>Delete
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+async function toggleEventVisibility(eventId, currentlyHidden) {
+    const action = currentlyHidden ? 'show' : 'hide';
+    
+    if (!confirm(`Are you sure you want to ${action} this event?`)) {
+        return;
+    }
+
+    try {
+        // Get current event data
+        const response = await fetch(`/api/events/${eventId}`);
+        const event = await response.json();
+        
+        if (!event) {
+            throw new Error('Event not found');
+        }
+
+        // Toggle status: if currently hidden -> set to 'active', if currently active -> set to 'hidden'
+        const newStatus = currentlyHidden ? 'active' : 'hidden';
+        
+        console.log(`Toggling event ${eventId} from ${event.status} to ${newStatus}`);
+        
+        const updateResponse = await fetch(`/api/events/${eventId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: event.title,
+                description: event.description || '',
+                date: event.date,
+                location: event.location || '',
+                course: event.course || 'ALL',
+                status: newStatus
+            })
+        });
+
+        const result = await updateResponse.json();
+
+        if (result.success) {
+            alert(`Event ${action}n successfully!`);
+            
+            // Refresh events list
+            const eventsResponse = await fetch('/api/events');
+            allEvents = await eventsResponse.json();
+            
+            const courseFilter = document.getElementById('admin-events-course-filter');
+            filterEventsByCourse(courseFilter ? courseFilter.value : 'ALL');
+            
+            // Also refresh dashboard stats
+            updateDashboardStats();
+        } else {
+            alert('Error: ' + (result.error || 'Failed to update event'));
+        }
+    } catch (error) {
+        console.error('Error toggling event:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+// Make function globally available
+window.toggleEventVisibility = toggleEventVisibility;
+
 async function createEvent(eventData) {
     try {
+        // Add status=hidden to make events hidden by default
+        eventData.append('status', 'hidden');
+        
         const response = await fetch('/api/events', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(eventData)
+            body: eventData
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
-            alert('Event created successfully!');
-            document.getElementById('create-event-form').reset();
-            loadAdminEvents();
+            alert('✅ Event created successfully! It is currently HIDDEN from students. Use the "Show" button to make it visible.');
+            
+            // Reset form
+            const createEventForm = document.getElementById('create-event-form');
+            if (createEventForm) createEventForm.reset();
+            const eventImage = document.getElementById('event-image');
+            if (eventImage) eventImage.value = '';
+            
+            // Refresh events list
+            const eventsResponse = await fetch('/api/events');
+            allEvents = await eventsResponse.json();
+            
+            const courseFilter = document.getElementById('admin-events-course-filter');
+            filterEventsByCourse(courseFilter ? courseFilter.value : 'ALL');
+            
+            updateDashboardStats();
         } else {
-            alert('Error creating event: ' + result.error);
+            alert('Error creating event: ' + (result.error || 'Unknown error'));
         }
     } catch (error) {
         console.error('Error creating event:', error);
@@ -890,26 +830,27 @@ async function createEvent(eventData) {
 
 async function editEvent(eventId) {
     editingEventId = eventId;
-    
+
     try {
         const response = await fetch(`/api/events/${eventId}`);
         const event = await response.json();
-        
+
         if (!event) {
             throw new Error('Event not found');
         }
-        
-        // Populate form
+
+        // Populate form - make sure all these elements exist
         document.getElementById('edit-event-id').value = eventId;
         document.getElementById('edit-event-title').value = event.title || '';
         document.getElementById('edit-event-description').value = event.description || '';
         document.getElementById('edit-event-date').value = event.date || '';
         document.getElementById('edit-event-location').value = event.location || '';
+        document.getElementById('edit-event-course').value = event.course || 'ALL';
         document.getElementById('edit-event-status').value = event.status || 'active';
-        
+
         // Show modal
         document.getElementById('edit-event-modal').classList.remove('hidden');
-        
+
     } catch (error) {
         console.error('Error loading event for editing:', error);
         alert('Error loading event: ' + error.message);
@@ -921,17 +862,17 @@ async function updateEvent(eventId, eventData) {
         // Get original event to compare
         const originalResponse = await fetch(`/api/events/${eventId}`);
         const originalEvent = await originalResponse.json();
-        
+
         if (!originalEvent) {
             throw new Error('Original event not found');
         }
-        
+
         // Check for changes
         const changes = {};
         if (originalEvent.date !== eventData.date) changes.date = true;
         if (originalEvent.location !== eventData.location) changes.location = true;
         if (originalEvent.status !== eventData.status) changes.status = true;
-        
+
         // Ask for confirmation if there are important changes
         let shouldProceed = true;
         if (Object.keys(changes).length > 0) {
@@ -940,23 +881,23 @@ async function updateEvent(eventId, eventData) {
             if (changes.location) message += `• Location: ${originalEvent.location} → ${eventData.location}\n`;
             if (changes.status) message += `• Status: ${originalEvent.status} → ${eventData.status}\n`;
             message += `\nThis will affect registered students. Do you want to proceed?`;
-            
+
             shouldProceed = confirm(message);
         }
-        
+
         if (!shouldProceed) {
             return;
         }
-        
+
         // Update the event
         const response = await fetch(`/api/events/${eventId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(eventData)
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             alert('Event updated successfully!');
             document.getElementById('edit-event-modal').classList.add('hidden');
@@ -965,7 +906,7 @@ async function updateEvent(eventId, eventData) {
         } else {
             alert('Error updating event: ' + result.error);
         }
-        
+
     } catch (error) {
         console.error('Error updating event:', error);
         alert('Error updating event: ' + error.message);
@@ -976,14 +917,14 @@ async function deleteEvent(eventId) {
     if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
         return;
     }
-    
+
     try {
         const response = await fetch(`/api/events/${eventId}`, {
             method: 'DELETE'
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             alert('Event deleted successfully!');
             loadAdminEvents();
@@ -1001,10 +942,10 @@ async function loadRegistrationRequests() {
     try {
         const statusFilter = document.getElementById('status-filter')?.value || 'all';
         const eventStatusFilter = document.getElementById('event-status-filter')?.value || 'active';
-        
+
         const requestsList = document.getElementById('requests-list');
         if (!requestsList) return;
-        
+
         requestsList.innerHTML = `
             <div class="flex items-center justify-center h-64">
                 <div class="text-center">
@@ -1015,23 +956,23 @@ async function loadRegistrationRequests() {
         `;
 
         const response = await fetch('/api/registration-requests');
-        
+
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         let requests = await response.json();
-        
+
         // Filter based on event status
         if (eventStatusFilter === 'active') {
             requests = requests.filter(req => req.event_status !== 'cancelled');
         }
-        
+
         // Filter based on registration status
-        const filteredRequests = statusFilter === 'all' 
-            ? requests 
+        const filteredRequests = statusFilter === 'all'
+            ? requests
             : requests.filter(req => req.status === statusFilter);
-        
+
         if (filteredRequests.length === 0) {
             requestsList.innerHTML = `
                 <div class="text-center py-10">
@@ -1041,22 +982,22 @@ async function loadRegistrationRequests() {
             `;
             return;
         }
-        
+
         requestsList.innerHTML = filteredRequests.map(request => {
             // Create file links HTML
             let fileLinksHTML = '';
             const hasRegForm = request.registration_form && request.registration_form !== 'null' && request.registration_form !== '';
             const hasWaiverForm = request.waiver_form && request.waiver_form !== 'null' && request.waiver_form !== '';
-            
+
             // FIX: Use safer string escaping
             const safeName = request.name ? request.name.replace(/'/g, "\\'").replace(/"/g, '\\"') : 'Student';
             const safeRegForm = hasRegForm ? request.registration_form.replace(/'/g, "\\'").replace(/"/g, '\\"') : '';
             const safeWaiverForm = hasWaiverForm ? request.waiver_form.replace(/'/g, "\\'").replace(/"/g, '\\"') : '';
-            
+
             // FIX: Use double quotes for onclick to avoid escaping issues
             if (hasRegForm || hasWaiverForm) {
                 fileLinksHTML = '<div class="mt-3 space-y-2">';
-                
+
                 if (hasRegForm) {
                     fileLinksHTML += `
                         <p>
@@ -1069,7 +1010,7 @@ async function loadRegistrationRequests() {
                         </p>
                     `;
                 }
-                
+
                 if (hasWaiverForm) {
                     fileLinksHTML += `
                         <p>
@@ -1082,7 +1023,7 @@ async function loadRegistrationRequests() {
                         </p>
                     `;
                 }
-                
+
                 // Also add a "View All" button
                 fileLinksHTML += `
                     <div class="pt-2">
@@ -1092,18 +1033,18 @@ async function loadRegistrationRequests() {
                         </button>
                     </div>
                 `;
-                
+
                 fileLinksHTML += '</div>';
             }
-            
-            const eventStatusBadge = request.event_status === 'cancelled' 
-                ? `<span class="ml-2 px-2 py-1 bg-red-900/30 text-red-400 border border-red-800 rounded text-xs font-medium">Event Cancelled</span>` 
+
+            const eventStatusBadge = request.event_status === 'cancelled'
+                ? `<span class="ml-2 px-2 py-1 bg-red-900/30 text-red-400 border border-red-800 rounded text-xs font-medium">Event Cancelled</span>`
                 : '';
-            
+
             const statusColor = request.status === 'approved' ? 'bg-green-900/30 text-green-400 border-green-800' :
-                               request.status === 'rejected' ? 'bg-red-900/30 text-red-400 border-red-800' :
-                               'bg-yellow-900/30 text-yellow-400 border-yellow-800';
-            
+                request.status === 'rejected' ? 'bg-red-900/30 text-red-400 border-red-800' :
+                    'bg-yellow-900/30 text-yellow-400 border-yellow-800';
+
             return `
                 <div class="bg-black border ${request.event_status === 'cancelled' ? 'border-red-800/50' : 'border-gray-800'} rounded-lg p-5 hover:border-blue-500/30 transition-colors ${request.event_status === 'cancelled' ? 'opacity-80' : ''}">
                     <div class="flex justify-between items-start mb-4">
@@ -1148,7 +1089,7 @@ async function loadRegistrationRequests() {
                 </div>
             `;
         }).join('');
-        
+
     } catch (error) {
         console.error('Error loading registration requests:', error);
         const requestsList = document.getElementById('requests-list');
@@ -1170,7 +1111,7 @@ async function updateRequestStatus(requestId, status) {
     if (!confirm(`Are you sure you want to ${status} this registration request?`)) {
         return;
     }
-    
+
     try {
         const response = await fetch(`/api/registration-requests/${requestId}`, {
             method: 'PUT',
@@ -1179,9 +1120,9 @@ async function updateRequestStatus(requestId, status) {
             },
             body: JSON.stringify({ status })
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             alert('Request status updated successfully!');
             loadRegistrationRequests();
@@ -1199,9 +1140,9 @@ let currentRequestFiles = [];
 
 function openFileViewer(requestId, requestName, registrationForm, waiverForm) {
     console.log('Opening file viewer:', { requestId, requestName, registrationForm, waiverForm });
-    
+
     currentRequestFiles = [];
-    
+
     // Only add files that actually exist
     if (registrationForm && registrationForm.trim() !== '' && registrationForm !== 'null') {
         currentRequestFiles.push({
@@ -1212,7 +1153,7 @@ function openFileViewer(requestId, requestName, registrationForm, waiverForm) {
             url: `/api/uploads/${encodeURIComponent(registrationForm.trim())}`
         });
     }
-    
+
     if (waiverForm && waiverForm.trim() !== '' && waiverForm !== 'null') {
         currentRequestFiles.push({
             type: 'waiver',
@@ -1222,27 +1163,27 @@ function openFileViewer(requestId, requestName, registrationForm, waiverForm) {
             url: `/api/uploads/${encodeURIComponent(waiverForm.trim())}`
         });
     }
-    
+
     if (currentRequestFiles.length === 0) {
         alert('No files uploaded for this request.');
         return;
     }
-    
+
     // Set modal title
     document.querySelector('#file-modal h3').textContent = `Documents - ${requestName}`;
-    
+
     // Load file previews
     const previewContainer = document.getElementById('file-preview-container');
     previewContainer.innerHTML = '';
-    
+
     currentRequestFiles.forEach((file, index) => {
         const filePreview = createFilePreview(file, index);
         previewContainer.innerHTML += filePreview;
     });
-    
+
     // Show modal
     document.getElementById('file-modal').classList.remove('hidden');
-    
+
     // Load file content
     currentRequestFiles.forEach((file, index) => {
         loadFileContent(file, index);
@@ -1253,7 +1194,7 @@ function createFilePreview(file, index) {
     const fileExt = file.filename.split('.').pop().toLowerCase();
     const isImage = ['jpg', 'jpeg', 'png', 'gif', 'bmp'].includes(fileExt);
     const isPdf = fileExt === 'pdf';
-    
+
     return `
         <div class="mb-6" id="file-preview-${index}">
             <h4 class="text-lg font-semibold text-white mb-3">${file.title} 
@@ -1284,10 +1225,10 @@ function createFilePreview(file, index) {
 function loadFileContent(file, index) {
     const viewer = document.getElementById(`file-viewer-${index}`);
     const fileExt = file.filename.split('.').pop().toLowerCase();
-    
+
     const isImage = ['jpg', 'jpeg', 'png', 'gif', 'bmp'].includes(fileExt);
     const isPdf = fileExt === 'pdf';
-    
+
     if (isImage) {
         viewer.innerHTML = `<img src="${file.url}" alt="${file.title}" class="w-full h-auto max-h-[400px] object-contain" onerror="handleFileError(${index})">`;
     } else if (isPdf) {
@@ -1320,11 +1261,11 @@ function handleFileError(index) {
 
 function downloadAllFiles() {
     if (currentRequestFiles.length === 0) return;
-    
+
     // Show download progress
     let downloaded = 0;
     const total = currentRequestFiles.length;
-    
+
     currentRequestFiles.forEach(file => {
         const link = document.createElement('a');
         link.href = file.url;
@@ -1333,7 +1274,7 @@ function downloadAllFiles() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
+
         downloaded++;
         if (downloaded === total) {
             alert(`✅ Downloaded ${total} file(s) successfully!`);
@@ -1344,48 +1285,48 @@ function downloadAllFiles() {
 async function loadParticipants() {
     try {
         console.log('=== loadParticipants() called ===');
-        
+
         const participantsContent = document.getElementById('participants-content');
         const participantsLoading = document.getElementById('participants-loading');
         const noParticipants = document.getElementById('no-participants');
-        
+
         if (!participantsContent || !participantsLoading || !noParticipants) return;
-        
+
         // Show loading
         participantsContent.classList.add('hidden');
         noParticipants.classList.add('hidden');
         participantsLoading.classList.remove('hidden');
-        
+
         // Fetch all registration requests
         const response = await fetch('/api/registration-requests');
-        
+
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         let allRequests = await response.json();
         console.log('All requests:', allRequests);
-        
+
         // Filter for approved requests only
         const approvedRequests = allRequests.filter(req => req.status === 'approved' && req.event_status !== 'cancelled');
         console.log('Approved requests:', approvedRequests);
-        
+
         // Hide loading
         participantsLoading.classList.add('hidden');
-        
+
         if (approvedRequests.length === 0) {
             participantsContent.classList.add('hidden');
             noParticipants.classList.remove('hidden');
             updateEventFilter([]);
             return;
         }
-        
+
         // Group participants by event
         const eventsMap = {};
-        
+
         approvedRequests.forEach(request => {
             const eventId = request.event_id;
-            
+
             if (!eventsMap[eventId]) {
                 eventsMap[eventId] = {
                     event_id: eventId,
@@ -1395,7 +1336,7 @@ async function loadParticipants() {
                     participants: []
                 };
             }
-            
+
             eventsMap[eventId].participants.push({
                 id: request.user_id || request.id,
                 name: request.name || 'Unknown Student',
@@ -1406,64 +1347,64 @@ async function loadParticipants() {
                 waiver_form: request.waiver_form
             });
         });
-        
+
         // Convert to array and sort by event date
         const events = Object.values(eventsMap).sort((a, b) => {
             return new Date(a.event_date) - new Date(b.event_date);
         });
-        
+
         console.log('Events grouped:', events);
-        
+
         // Update event filter dropdown
         updateEventFilter(events);
-        
+
         // Get selected event filter and search filter
         const eventFilter = document.getElementById('participants-event-filter');
         const searchInput = document.getElementById('participants-search');
-        
+
         const selectedEventId = eventFilter ? eventFilter.value : 'all';
         const searchFilter = searchInput ? searchInput.value.toLowerCase().trim() : '';
-        
+
         console.log('Selected Event ID:', selectedEventId, 'Type:', typeof selectedEventId);
         console.log('Available events:', events.map(e => ({ id: e.event_id, title: e.event_title })));
-        
+
         // Filter events based on selection
         let filteredEvents = [...events];
-        
+
         if (selectedEventId && selectedEventId !== 'all') {
             console.log(`Filtering for event ID: ${selectedEventId}`);
             // Convert both to string for comparison
             filteredEvents = events.filter(event => String(event.event_id) === String(selectedEventId));
             console.log(`Found ${filteredEvents.length} events after filtering`);
-            
+
             if (filteredEvents.length === 0 && events.length > 0) {
                 console.warn('No events match the selected filter, showing all events');
                 filteredEvents = events;
             }
         }
-        
+
         // Apply search filter if exists
         if (searchFilter) {
             console.log(`Applying search filter: "${searchFilter}"`);
             filteredEvents = filteredEvents.map(event => {
-                const filteredParticipants = event.participants.filter(participant => 
+                const filteredParticipants = event.participants.filter(participant =>
                     participant.name.toLowerCase().includes(searchFilter) ||
                     participant.student_number.toLowerCase().includes(searchFilter) ||
                     participant.email.toLowerCase().includes(searchFilter)
                 );
-                
+
                 return {
                     ...event,
                     participants: filteredParticipants
                 };
             }).filter(event => event.participants.length > 0);
         }
-        
+
         console.log(`Total events to display: ${filteredEvents.length}`);
-        
+
         // Clear existing content
         participantsContent.innerHTML = '';
-        
+
         if (filteredEvents.length === 0) {
             console.log('No events to display');
             participantsContent.classList.add('hidden');
@@ -1477,14 +1418,14 @@ async function loadParticipants() {
             `;
             return;
         }
-        
+
         // Render each event
         filteredEvents.forEach(event => {
             console.log(`Rendering event: ${event.event_title} with ${event.participants.length} participants`);
-            
+
             const eventElement = document.createElement('div');
             eventElement.className = 'bg-black border border-gray-800 rounded-xl p-6 hover:border-blue-500/30 transition-colors mb-6';
-            
+
             eventElement.innerHTML = `
                 <div class="flex justify-between items-start mb-6">
                     <div>
@@ -1566,19 +1507,19 @@ async function loadParticipants() {
                     </div>
                 ` : ''}
             `;
-            
+
             participantsContent.appendChild(eventElement);
         });
-        
+
         participantsContent.classList.remove('hidden');
         console.log('Participants page rendered successfully');
-        
+
     } catch (error) {
         console.error('Error loading participants:', error);
-        
+
         const participantsLoading = document.getElementById('participants-loading');
         const participantsContent = document.getElementById('participants-content');
-        
+
         if (participantsLoading) participantsLoading.classList.add('hidden');
         if (participantsContent) {
             participantsContent.innerHTML = `
@@ -1600,7 +1541,7 @@ async function checkExistingBusAssignment(userId, eventId) {
     try {
         const response = await fetch(`/api/events/${eventId}/bus-assignments`);
         const assignments = await response.json();
-        
+
         return assignments.find(assignment => assignment.user_id == userId);
     } catch (error) {
         console.error('Error checking existing assignment:', error);
@@ -1613,10 +1554,10 @@ function checkEventFilterOptions() {
         console.error('Event filter not found');
         return;
     }
-    
+
     console.log('=== Event Filter Options ===');
     console.log('Current selected value:', eventFilter.value);
-    
+
     for (let i = 0; i < eventFilter.options.length; i++) {
         const option = eventFilter.options[i];
         console.log(`Option ${i}: value="${option.value}", text="${option.text}"`);
@@ -1629,15 +1570,15 @@ function updateEventFilter(events) {
         console.error('Event filter element not found!');
         return;
     }
-    
+
     // Save current selection
     const currentValue = eventFilter.value;
     console.log('Current filter value before update:', currentValue);
     console.log('Events to add to filter:', events.map(e => ({ id: e.event_id, title: e.event_title })));
-    
+
     // Clear existing options (keep "All Events")
     eventFilter.innerHTML = '<option value="all">All Events</option>';
-    
+
     // Add event options
     events.forEach(event => {
         const option = document.createElement('option');
@@ -1645,7 +1586,7 @@ function updateEventFilter(events) {
         option.textContent = `${event.event_title} (${event.participants.length})`;
         eventFilter.appendChild(option);
     });
-    
+
     // Restore selection if possible
     if (currentValue && events.some(event => String(event.event_id) === String(currentValue))) {
         eventFilter.value = currentValue;
@@ -1668,7 +1609,7 @@ function sendCertificate(userId, eventId) {
     if (!confirm('Send e-certificate to this participant?')) {
         return;
     }
-    
+
     alert(`Sending e-certificate to user ${userId} for event ${eventId}\n\nThis feature would:\n1. Generate an e-certificate\n2. Send it via email to the student\n3. Log the action in the database.`);
     // In a real implementation, you would:
     // 1. Call an API to generate and send certificate
@@ -1679,34 +1620,34 @@ function sendCertificate(userId, eventId) {
 function initParticipantsFilters() {
     const eventFilter = document.getElementById('participants-event-filter');
     const searchInput = document.getElementById('participants-search');
-    
+
     console.log('Initializing participants filters...');
     console.log('Event filter found:', !!eventFilter);
     console.log('Search input found:', !!searchInput);
-    
+
     if (eventFilter) {
 
         const newEventFilter = eventFilter.cloneNode(true);
         eventFilter.parentNode.replaceChild(newEventFilter, eventFilter);
-        
+
         // Re-get the element
         const freshEventFilter = document.getElementById('participants-event-filter');
-        freshEventFilter.addEventListener('change', function() {
+        freshEventFilter.addEventListener('change', function () {
             console.log('Event filter changed to:', this.value);
             console.log('Calling loadParticipants()...');
             loadParticipants();
         });
-        
+
         // Force initial load if on participants page
         if (document.getElementById('participants-page') && !document.getElementById('participants-page').classList.contains('hidden')) {
             console.log('On participants page, loading data...');
             loadParticipants();
         }
     }
-    
+
     if (searchInput) {
         let searchTimeout;
-        searchInput.addEventListener('input', function() {
+        searchInput.addEventListener('input', function () {
             console.log('Search input:', this.value);
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
@@ -1718,19 +1659,19 @@ function initParticipantsFilters() {
 }
 async function testApiConnection() {
     console.log('Testing API connection...');
-    
+
     const endpoints = [
         '/api/buses',
         '/api/events',
         '/api/registration-requests'
     ];
-    
+
     for (const endpoint of endpoints) {
         try {
             console.log(`Testing ${endpoint}...`);
             const response = await fetch(endpoint);
             console.log(`${endpoint}: ${response.status} ${response.statusText}`);
-            
+
             if (!response.ok) {
                 console.error(`❌ ${endpoint} failed: ${response.status}`);
             } else {
@@ -1740,7 +1681,7 @@ async function testApiConnection() {
             console.error(`❌ ${endpoint} error:`, error.message);
         }
     }
-    
+
     // Test specific bus assignments endpoint
     try {
         console.log('Testing bus assignments endpoint...');
@@ -1758,106 +1699,106 @@ async function testApiConnection() {
 
 function initializeBusAssignment() {
     console.log('initializeBusAssignment called, busFilterInitialized:', busFilterInitialized);
-    
+
     // Prevent multiple initializations
     if (busFilterInitialized) {
         console.log('Bus filter already initialized, skipping...');
         return;
     }
-    
+
     // Test API connection
     console.log('Testing API before initialization...');
     testApiConnection();
-    
+
     // Add Bus Button
     const addBusBtn = document.getElementById('add-bus-btn');
     if (addBusBtn) {
         const newAddBusBtn = addBusBtn.cloneNode(true);
         addBusBtn.parentNode.replaceChild(newAddBusBtn, addBusBtn);
-        
+
         document.getElementById('add-bus-btn').addEventListener('click', () => {
             console.log('Add bus button clicked');
             document.getElementById('add-bus-form').reset();
             document.getElementById('add-bus-modal').classList.remove('hidden');
         });
     }
-    
+
     // Initialize event filter
     initBusEventFilter();
-    
+
     // Initialize modal listeners
     initializeModalListeners();
-    
+
     // Set the flag to prevent re-initialization
     busFilterInitialized = true;
 }
 
 async function initBusEventFilter() {
     console.log('initBusEventFilter called');
-    
+
     const eventFilter = document.getElementById('bus-event-filter');
     if (!eventFilter) {
         console.error('Bus event filter not found');
         return;
     }
-    
+
     const newEventFilter = eventFilter.cloneNode(true);
     eventFilter.parentNode.replaceChild(newEventFilter, eventFilter);
-    
+
     // Get fresh reference
     const freshEventFilter = document.getElementById('bus-event-filter');
-    
+
     try {
         // Load events
         const response = await fetch('/api/events');
         const events = await response.json();
-        
+
         // Clear existing options
         freshEventFilter.innerHTML = '<option value="">Select Event</option>';
-        
+
         // Filter for active events
-        const activeEvents = events.filter(event => 
+        const activeEvents = events.filter(event =>
             event.status === 'active' || event.status === 'upcoming'
         );
-        
+
         activeEvents.forEach(event => {
             const option = document.createElement('option');
             option.value = event.id;
             const eventDate = event.date ? new Date(event.date).toLocaleDateString() : 'TBA';
-            
+
             // Truncate long event titles (max 50 characters)
             let displayTitle = event.title;
             if (displayTitle.length > 50) {
                 displayTitle = displayTitle.substring(0, 47) + '...';
             }
-            
+
             option.textContent = `${displayTitle} (${eventDate})`;
             option.title = `${event.title} (${eventDate})`; // Full title as tooltip
             freshEventFilter.appendChild(option);
         });
-        
+
         freshEventFilter.classList.add('max-w-xs', 'truncate');
-        
+
         // Event listener for filter change
-        freshEventFilter.addEventListener('change', function() {
+        freshEventFilter.addEventListener('change', function () {
             const eventId = this.value;
             console.log('Event filter changed to:', eventId);
             handleEventFilterChange(eventId);
         });
-        
+
         // Clear filter button listener
         const clearFilterBtn = document.getElementById('clear-event-filter');
         if (clearFilterBtn) {
 
             const newClearBtn = clearFilterBtn.cloneNode(true);
             clearFilterBtn.parentNode.replaceChild(newClearBtn, clearFilterBtn);
-            
+
             document.getElementById('clear-event-filter').addEventListener('click', () => {
                 freshEventFilter.value = '';
                 handleEventFilterChange('');
             });
         }
-        
+
         // Check if there's a saved filter value
         const savedFilter = localStorage.getItem('busEventFilter');
         if (savedFilter) {
@@ -1869,7 +1810,7 @@ async function initBusEventFilter() {
             // Load initial bus list
             loadBuses();
         }
-        
+
     } catch (error) {
         console.error('Error loading events for filter:', error);
         // Still load buses if event filter fails
@@ -1879,28 +1820,28 @@ async function initBusEventFilter() {
 
 function handleEventFilterChange(eventId) {
     console.log('handleEventFilterChange called with eventId:', eventId);
-    
+
     // Save filter selection
     if (eventId) {
         localStorage.setItem('busEventFilter', eventId);
     } else {
         localStorage.removeItem('busEventFilter');
     }
-    
+
     const fleetSection = document.getElementById('bus-fleet-section');
     const eventSection = document.getElementById('event-assignments-section');
     const clearFilterBtn = document.getElementById('clear-event-filter');
-    
+
     if (eventId) {
         // Hide bus fleet, show event assignments
         if (fleetSection) fleetSection.classList.add('hidden');
         if (eventSection) eventSection.classList.remove('hidden');
         if (clearFilterBtn) clearFilterBtn.classList.remove('hidden');
-        
+
         // Load event-specific data
         loadEventBusAssignments(eventId);
         loadEligibleParticipants(eventId);
-        
+
         // Update page title or add event info
         updateEventTitle(eventId);
     } else {
@@ -1908,10 +1849,10 @@ function handleEventFilterChange(eventId) {
         if (fleetSection) fleetSection.classList.remove('hidden');
         if (eventSection) eventSection.classList.add('hidden');
         if (clearFilterBtn) clearFilterBtn.classList.add('hidden');
-        
+
         // Load all buses
         loadBuses();
-        
+
         // Reset page title
         const pageTitle = document.querySelector('#bus h1');
         if (pageTitle) {
@@ -1924,11 +1865,11 @@ async function updateEventTitle(eventId) {
     try {
         const response = await fetch(`/api/events/${eventId}`);
         const event = await response.json();
-        
+
         const pageTitle = document.querySelector('#bus h1');
         if (pageTitle && event) {
             const eventDate = event.date ? new Date(event.date).toLocaleDateString() : 'TBA';
-            
+
             // Truncate long titles with CSS instead of JavaScript
             pageTitle.innerHTML = `
                 <div class="flex flex-col">
@@ -1948,7 +1889,7 @@ async function loadBuses() {
     try {
         const busList = document.getElementById('bus-list');
         if (!busList) return;
-        
+
         busList.innerHTML = `
             <div class="col-span-3 flex items-center justify-center h-48">
                 <div class="text-center">
@@ -1960,7 +1901,7 @@ async function loadBuses() {
 
         const response = await fetch('/api/buses');
         const buses = await response.json();
-        
+
         if (buses.length === 0) {
             busList.innerHTML = `
                 <div class="col-span-3 text-center py-10">
@@ -1971,14 +1912,14 @@ async function loadBuses() {
                     </button>
                 </div>
             `;
-            
+
             document.getElementById('add-first-bus')?.addEventListener('click', () => {
                 document.getElementById('add-bus-modal').classList.remove('hidden');
             });
-            
+
             return;
         }
-        
+
         busList.innerHTML = buses.map(bus => `
             <div class="bg-black border border-gray-800 rounded-xl p-5 hover:border-blue-500/30 transition-colors">
                 <div class="flex justify-between items-start mb-4">
@@ -2014,7 +1955,7 @@ async function loadBuses() {
                 </div>
             </div>
         `).join('');
-        
+
     } catch (error) {
         console.error('Error loading buses:', error);
         const busList = document.getElementById('bus-list');
@@ -2042,7 +1983,7 @@ async function loadEventBusAssignments(eventId) {
     try {
         const container = document.getElementById('bus-assignments-container');
         if (!container) return;
-        
+
         container.innerHTML = `
             <div class="flex items-center justify-center h-48">
                 <div class="text-center">
@@ -2057,10 +1998,10 @@ async function loadEventBusAssignments(eventId) {
             fetch(`/api/events/${eventId}`),
             fetch(`/api/events/${eventId}/bus-assignments`)
         ]);
-        
+
         const event = await eventResponse.json();
         const assignments = await assignmentsResponse.json();
-        
+
         if (assignments.length === 0) {
             const eventDate = event.date ? new Date(event.date).toLocaleDateString() : 'TBA';
             container.innerHTML = `
@@ -2074,7 +2015,7 @@ async function loadEventBusAssignments(eventId) {
             `;
             return;
         }
-        
+
         // Group assignments by bus
         const assignmentsByBus = {};
         assignments.forEach(assignment => {
@@ -2089,10 +2030,10 @@ async function loadEventBusAssignments(eventId) {
             }
             assignmentsByBus[busId].assignments.push(assignment);
         });
-        
+
         // Show event info
-const eventDate = event.date ? new Date(event.date).toLocaleDateString() : 'TBA';
-container.innerHTML = `
+        const eventDate = event.date ? new Date(event.date).toLocaleDateString() : 'TBA';
+        container.innerHTML = `
     <div class="mb-6 p-4 bg-gray-900/50 rounded-lg border border-gray-800">
         <div class="flex flex-col">
             <h3 class="text-lg font-semibold text-white mb-1 truncate" title="${event.title}">
@@ -2160,7 +2101,7 @@ container.innerHTML = `
                 `).join('')}
             </div>
         `;
-        
+
     } catch (error) {
         console.error('Error loading event bus assignments:', error);
         const container = document.getElementById('bus-assignments-container');
@@ -2184,7 +2125,7 @@ async function loadEligibleParticipants(eventId) {
         const list = document.getElementById('eligible-participants-list');
         const section = document.getElementById('eligible-participants-section');
         if (!list || !section) return;
-        
+
         list.innerHTML = `
             <div class="text-center py-8">
                 <i class='bx bx-loader-circle bx-spin text-2xl text-blue-500 mb-2'></i>
@@ -2194,7 +2135,7 @@ async function loadEligibleParticipants(eventId) {
 
         const response = await fetch(`/api/events/${eventId}/eligible-participants`);
         const participants = await response.json();
-        
+
         if (participants.length === 0) {
             list.innerHTML = `
                 <div class="text-center py-6 bg-gray-900/50 rounded-lg">
@@ -2204,7 +2145,7 @@ async function loadEligibleParticipants(eventId) {
             `;
             return;
         }
-        
+
         list.innerHTML = participants.map(participant => `
             <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 flex justify-between items-center">
                 <div>
@@ -2220,9 +2161,9 @@ async function loadEligibleParticipants(eventId) {
                 </button>
             </div>
         `).join('');
-        
+
         section.classList.remove('hidden');
-        
+
     } catch (error) {
         console.error('Error loading eligible participants:', error);
         const list = document.getElementById('eligible-participants-list');
@@ -2240,18 +2181,18 @@ async function loadEligibleParticipants(eventId) {
 async function openAssignBusModal(userId, eventId, userName, studentNumber, userEmail) {
     try {
         console.log('Opening assign modal for:', { userId, eventId, userName });
-        
+
         // First verify the user can be assigned
         console.log('Verifying assignment eligibility...');
-        
+
         const verifyResponse = await fetch(`/api/debug/assignment/${userId}/${eventId}`);
         const verification = await verifyResponse.json();
-        
+
         console.log('Verification result:', verification);
-        
+
         if (!verification.summary.canAssign) {
             let errorMessage = `Cannot assign ${userName} to a bus:\n\n`;
-            
+
             if (!verification.summary.userExists) {
                 errorMessage += "• User does not exist\n";
             }
@@ -2265,28 +2206,28 @@ async function openAssignBusModal(userId, eventId, userName, studentNumber, user
                 const assignment = verification.checks.assignment.data;
                 errorMessage += `• User is already assigned to Bus ${assignment.bus_number}\n`;
             }
-            
+
             alert(errorMessage);
             return;
         }
-        
+
         // Load available buses
         console.log('Loading available buses...');
         const response = await fetch('/api/buses');
         const buses = await response.json();
-        
+
         const select = document.getElementById('assign-bus-select');
         select.innerHTML = '<option value="">Select a bus</option>';
-        
+
         // Filter buses with available capacity
         const availableBuses = buses.filter(bus => {
             const available = bus.capacity - bus.current_passengers;
             console.log(`Bus ${bus.bus_number}: ${bus.current_passengers}/${bus.capacity} (${available} available)`);
             return available > 0;
         });
-        
+
         console.log(`Found ${availableBuses.length} available buses`);
-        
+
         if (availableBuses.length === 0) {
             select.innerHTML = '<option value="">No available buses</option>';
             select.disabled = true;
@@ -2300,11 +2241,11 @@ async function openAssignBusModal(userId, eventId, userName, studentNumber, user
             });
             select.disabled = false;
         }
-        
+
         // Set participant info
         document.getElementById('assign-user-id').value = userId;
         document.getElementById('assign-event-id').value = eventId;
-        
+
         const infoDiv = document.getElementById('assign-participant-info');
         infoDiv.innerHTML = `
             <div class="flex items-center mb-2">
@@ -2316,10 +2257,10 @@ async function openAssignBusModal(userId, eventId, userName, studentNumber, user
                 </div>
             </div>
         `;
-        
+
         // Show capacity info when bus is selected
         const capacityInfo = document.getElementById('bus-capacity-info');
-        select.addEventListener('change', function() {
+        select.addEventListener('change', function () {
             const selectedBus = buses.find(bus => bus.id == this.value);
             if (selectedBus) {
                 const available = selectedBus.capacity - selectedBus.current_passengers;
@@ -2333,10 +2274,10 @@ async function openAssignBusModal(userId, eventId, userName, studentNumber, user
                 capacityInfo.textContent = '';
             }
         });
-        
+
         // Show modal
         document.getElementById('assign-bus-modal').classList.remove('hidden');
-        
+
     } catch (error) {
         console.error('Error opening assign bus modal:', error);
         alert('Error: ' + error.message + '\n\nCheck console for details.');
@@ -2348,10 +2289,10 @@ async function openMoveBusModal(assignmentId, currentBusId, userId, userName, cu
         // Load all buses except current one
         const response = await fetch('/api/buses');
         const buses = await response.json();
-        
+
         const select = document.getElementById('move-bus-select');
         select.innerHTML = '<option value="">Select a new bus</option>';
-        
+
         buses.forEach(bus => {
             if (bus.id != currentBusId) {
                 const option = document.createElement('option');
@@ -2361,20 +2302,20 @@ async function openMoveBusModal(assignmentId, currentBusId, userId, userName, cu
                 select.appendChild(option);
             }
         });
-        
+
         // Set form data
         document.getElementById('move-assignment-id').value = assignmentId;
         document.getElementById('move-current-bus-id').value = currentBusId;
-        
+
         const infoDiv = document.getElementById('move-participant-info');
         infoDiv.innerHTML = `
             <p class="text-white font-medium">${userName}</p>
             <p class="text-gray-400 text-sm">Currently on: ${currentBusNumber}</p>
         `;
-        
+
         // Show modal
         document.getElementById('move-bus-modal').classList.remove('hidden');
-        
+
     } catch (error) {
         console.error('Error opening move bus modal:', error);
         alert('Error loading bus information');
@@ -2388,9 +2329,9 @@ async function addBus(busData) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(busData)
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             alert('Bus added successfully!');
             document.getElementById('add-bus-form').reset();
@@ -2412,22 +2353,22 @@ async function assignToBus(assignmentData) {
             alert('Please select a bus');
             return;
         }
-        
+
         console.log('Sending assignment to simple endpoint:', assignmentData);
-        
+
         const response = await fetch('/api/bus-assignments-simple', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(assignmentData)
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             alert('✅ Participant assigned to bus successfully!');
             document.getElementById('assign-bus-form').reset();
             document.getElementById('assign-bus-modal').classList.add('hidden');
-            
+
             // Refresh data
             const eventId = document.getElementById('bus-event-filter').value;
             if (eventId) {
@@ -2451,20 +2392,20 @@ async function moveBusAssignment(assignmentId, newBusId, reason) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ new_bus_id: newBusId, notes: reason })
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             alert('Participant moved to new bus successfully!');
             document.getElementById('move-bus-form').reset();
             document.getElementById('move-bus-modal').classList.add('hidden');
-            
+
             // Refresh assignments
             const eventId = document.getElementById('bus-event-filter').value;
             if (eventId) {
                 loadEventBusAssignments(eventId);
             }
-            
+
             loadBuses(); // Refresh bus list
         } else {
             alert('Error: ' + result.error);
@@ -2479,24 +2420,24 @@ async function removeBusAssignment(assignmentId, userName) {
     if (!confirm(`Are you sure you want to remove ${userName} from their bus assignment?`)) {
         return;
     }
-    
+
     try {
         const response = await fetch(`/api/bus-assignments/${assignmentId}`, {
             method: 'DELETE'
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             alert('Bus assignment removed successfully!');
-            
+
             // Refresh assignments and eligible participants
             const eventId = document.getElementById('bus-event-filter').value;
             if (eventId) {
                 loadEventBusAssignments(eventId);
                 loadEligibleParticipants(eventId);
             }
-            
+
             loadBuses(); // Refresh bus list
         } else {
             alert('Error: ' + result.error);
@@ -2511,12 +2452,12 @@ async function viewBusAssignments(busId) {
     try {
         const response = await fetch(`/api/buses/${busId}/assignments`);
         const assignments = await response.json();
-        
+
         if (assignments.length === 0) {
             alert('No assignments for this bus yet.');
             return;
         }
-        
+
         let message = `Bus Assignments:\n\n`;
         assignments.forEach((assignment, index) => {
             message += `${index + 1}. ${assignment.user_name} (${assignment.student_number})\n`;
@@ -2524,7 +2465,7 @@ async function viewBusAssignments(busId) {
             message += `   Date: ${new Date(assignment.event_date).toLocaleDateString()}\n`;
             message += `   Assigned: ${new Date(assignment.assignment_date).toLocaleDateString()}\n\n`;
         });
-        
+
         alert(message);
     } catch (error) {
         console.error('Error viewing bus assignments:', error);
@@ -2536,32 +2477,32 @@ async function editBus(busId) {
     try {
         const response = await fetch(`/api/buses/${busId}`);
         const bus = await response.json();
-        
+
         const newBusNumber = prompt('Enter new bus number:', bus.bus_number);
         if (!newBusNumber) return;
-        
+
         const newCapacity = prompt('Enter new capacity:', bus.capacity);
         if (!newCapacity) return;
-        
+
         const capacityNum = parseInt(newCapacity);
         if (isNaN(capacityNum) || capacityNum <= 0) {
             alert('Please enter a valid capacity number greater than 0');
             return;
         }
-        
+
         if (capacityNum < bus.current_passengers) {
             alert(`Cannot set capacity lower than current passengers (${bus.current_passengers})`);
             return;
         }
-        
+
         const updateResponse = await fetch(`/api/buses/${busId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ bus_number: newBusNumber, capacity: capacityNum })
         });
-        
+
         const result = await updateResponse.json();
-        
+
         if (result.success) {
             alert('Bus updated successfully!');
             loadBuses();
@@ -2578,14 +2519,14 @@ async function deleteBus(busId) {
     if (!confirm('Are you sure you want to delete this bus? This action cannot be undone.')) {
         return;
     }
-    
+
     try {
         const response = await fetch(`/api/buses/${busId}`, {
             method: 'DELETE'
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             alert('Bus deleted successfully!');
             loadBuses();
@@ -2603,7 +2544,7 @@ async function loadBuses() {
     try {
         const busList = document.getElementById('bus-list');
         if (!busList) return;
-        
+
         busList.innerHTML = `
             <div class="col-span-3 flex items-center justify-center h-48">
                 <div class="text-center">
@@ -2615,7 +2556,7 @@ async function loadBuses() {
 
         const response = await fetch('/api/buses');
         const buses = await response.json();
-        
+
         if (buses.length === 0) {
             busList.innerHTML = `
                 <div class="col-span-3 text-center py-10">
@@ -2626,14 +2567,14 @@ async function loadBuses() {
                     </button>
                 </div>
             `;
-            
+
             document.getElementById('add-first-bus')?.addEventListener('click', () => {
                 document.getElementById('add-bus-modal').classList.remove('hidden');
             });
-            
+
             return;
         }
-        
+
         busList.innerHTML = buses.map(bus => `
             <div class="bg-black border border-gray-800 rounded-xl p-5 hover:border-blue-500/30 transition-colors">
                 <div class="flex justify-between items-start mb-4">
@@ -2670,7 +2611,7 @@ async function loadBuses() {
                 </div>
             </div>
         `).join('');
-        
+
     } catch (error) {
         console.error('Error loading buses:', error);
         const busList = document.getElementById('bus-list');
@@ -2697,9 +2638,9 @@ async function addBus(busData) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(busData)
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             alert('Bus added successfully!');
             document.getElementById('add-bus-form').reset();
@@ -2720,47 +2661,47 @@ async function editBus(busId) {
         // Fetch current bus details
         const response = await fetch(`/api/buses/${busId}`);
         const bus = await response.json();
-        
+
         // Create a modal for editing
         const newBusNumber = prompt('Enter new bus number:', bus.bus_number);
         if (!newBusNumber || newBusNumber.trim() === '') {
             alert('Bus number cannot be empty');
             return;
         }
-        
+
         const newCapacity = prompt('Enter new capacity:', bus.capacity);
         if (!newCapacity) return;
-        
+
         const capacityNum = parseInt(newCapacity);
         if (isNaN(capacityNum) || capacityNum <= 0) {
             alert('Please enter a valid capacity number greater than 0');
             return;
         }
-        
+
         if (capacityNum < bus.current_passengers) {
             alert(`Cannot set capacity lower than current passengers (${bus.current_passengers})`);
             return;
         }
-        
+
         if (!confirm(`Change bus ${bus.bus_number} to ${newBusNumber} with capacity ${capacityNum}?`)) {
             return;
         }
-        
+
         const updateResponse = await fetch(`/api/buses/${busId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                bus_number: newBusNumber, 
-                capacity: capacityNum 
+            body: JSON.stringify({
+                bus_number: newBusNumber,
+                capacity: capacityNum
             })
         });
-        
+
         const result = await updateResponse.json();
-        
+
         if (result.success) {
             alert('Bus updated successfully!');
             loadBuses();
-            
+
             // Refresh bus assignments if viewing an event
             const eventFilter = document.getElementById('bus-event-filter');
             if (eventFilter && eventFilter.value) {
@@ -2780,14 +2721,14 @@ async function deleteBus(busId) {
     if (!confirm('Are you sure you want to delete this bus? This will remove all assignments to this bus.')) {
         return;
     }
-    
+
     try {
         const response = await fetch(`/api/buses/${busId}`, {
             method: 'DELETE'
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             alert('Bus deleted successfully!');
             loadBuses();
@@ -2805,25 +2746,25 @@ async function loadEventsForBusFilter() {
     try {
         const eventFilter = document.getElementById('bus-event-filter');
         if (!eventFilter) return;
-        
+
         const response = await fetch('/api/events');
         const events = await response.json();
-        
+
         // Clear existing options except first
         eventFilter.innerHTML = '<option value="">Select Event</option>';
-        
+
         // Filter for active events
-        const activeEvents = events.filter(event => 
+        const activeEvents = events.filter(event =>
             event.status === 'active' || event.status === 'upcoming'
         );
-        
+
         activeEvents.forEach(event => {
             const option = document.createElement('option');
             option.value = event.id;
             option.textContent = `${event.title} (${new Date(event.date).toLocaleDateString()})`;
             eventFilter.appendChild(option);
         });
-        
+
     } catch (error) {
         console.error('Error loading events for filter:', error);
     }
@@ -2834,7 +2775,7 @@ async function loadEventBusAssignments(eventId) {
     try {
         const container = document.getElementById('bus-assignments-container');
         if (!container) return;
-        
+
         container.innerHTML = `
             <div class="flex items-center justify-center h-48">
                 <div class="text-center">
@@ -2846,7 +2787,7 @@ async function loadEventBusAssignments(eventId) {
 
         const response = await fetch(`/api/events/${eventId}/bus-assignments`);
         const assignments = await response.json();
-        
+
         if (assignments.length === 0) {
             container.innerHTML = `
                 <div class="text-center py-10 bg-gray-900/50 rounded-lg">
@@ -2857,7 +2798,7 @@ async function loadEventBusAssignments(eventId) {
             `;
             return;
         }
-        
+
         // Group assignments by bus
         const assignmentsByBus = {};
         assignments.forEach(assignment => {
@@ -2872,7 +2813,7 @@ async function loadEventBusAssignments(eventId) {
             }
             assignmentsByBus[busId].assignments.push(assignment);
         });
-        
+
         container.innerHTML = Object.values(assignmentsByBus).map(bus => `
             <div class="bg-black border border-gray-800 rounded-xl p-5 mb-4">
                 <div class="flex justify-between items-center mb-4">
@@ -2922,7 +2863,7 @@ async function loadEventBusAssignments(eventId) {
                 </div>
             </div>
         `).join('');
-        
+
     } catch (error) {
         console.error('Error loading event bus assignments:', error);
         const container = document.getElementById('bus-assignments-container');
@@ -2945,12 +2886,12 @@ async function loadEventBusAssignments(eventId) {
 async function loadEligibleParticipants(eventId) {
     try {
         console.log(`Loading eligible participants for event ${eventId}...`);
-        
+
         const list = document.getElementById('eligible-participants-list');
         const section = document.getElementById('eligible-participants-section');
-        
+
         if (!list || !section) return;
-        
+
         list.innerHTML = `
             <div class="text-center py-8">
                 <i class='bx bx-loader-circle bx-spin text-2xl text-blue-500 mb-2'></i>
@@ -2960,15 +2901,15 @@ async function loadEligibleParticipants(eventId) {
 
         // Load participants
         const response = await fetch(`/api/events/${eventId}/eligible-participants`);
-        
+
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
+
         const participants = await response.json();
-        
+
         console.log(`Received ${participants.length} participants from server`);
-        
+
         if (participants.length === 0) {
             list.innerHTML = `
                 <div class="text-center py-6 bg-gray-900/50 rounded-lg">
@@ -2983,12 +2924,12 @@ async function loadEligibleParticipants(eventId) {
             `;
             return;
         }
-        
+
         // Render participants
         list.innerHTML = participants.map(participant => {
             // Safety check: Log each participant
             console.log(`Rendering participant: ${participant.name} (ID: ${participant.id})`);
-            
+
             return `
                 <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 flex justify-between items-center hover:bg-gray-800/50 transition-colors mb-3">
                     <div class="flex-1">
@@ -3011,7 +2952,7 @@ async function loadEligibleParticipants(eventId) {
                 </div>
             `;
         }).join('');
-        
+
         list.innerHTML += `
             <div class="text-center mt-4">
                 <button onclick="refreshEligibleList()" 
@@ -3020,10 +2961,10 @@ async function loadEligibleParticipants(eventId) {
                 </button>
             </div>
         `;
-        
+
         section.classList.remove('hidden');
         console.log('Eligible participants list rendered successfully');
-        
+
     } catch (error) {
         console.error('❌ Error loading eligible participants:', error);
         const list = document.getElementById('eligible-participants-list');
@@ -3056,16 +2997,16 @@ function refreshEligibleList() {
 async function openAssignBusModal(userId, eventId, userName, studentNumber, userEmail) {
     try {
         console.log('Opening assign modal for:', { userId, eventId, userName });
-        
+
         // First check if user already has a bus assignment for this event
         try {
             const checkResponse = await fetch(`/api/events/${eventId}/bus-assignments`);
             const assignments = await checkResponse.json();
-            
-            const existingAssignment = assignments.find(assignment => 
+
+            const existingAssignment = assignments.find(assignment =>
                 assignment.user_id == userId
             );
-            
+
             if (existingAssignment) {
                 alert(`⚠️ ${userName} is already assigned to Bus ${existingAssignment.bus_number}.\n\nUse the "Move" option instead.`);
                 return;
@@ -3073,17 +3014,17 @@ async function openAssignBusModal(userId, eventId, userName, studentNumber, user
         } catch (checkError) {
             console.warn('Could not check existing assignments:', checkError);
         }
-        
+
         // Load available buses
         const response = await fetch('/api/buses');
         const buses = await response.json();
-        
+
         const select = document.getElementById('assign-bus-select');
         select.innerHTML = '<option value="">Select a bus</option>';
-        
+
         // Filter buses with available capacity
         const availableBuses = buses.filter(bus => bus.current_passengers < bus.capacity);
-        
+
         if (availableBuses.length === 0) {
             select.innerHTML = '<option value="">No available buses</option>';
             select.disabled = true;
@@ -3097,11 +3038,11 @@ async function openAssignBusModal(userId, eventId, userName, studentNumber, user
             });
             select.disabled = false;
         }
-        
+
         // Set participant info
         document.getElementById('assign-user-id').value = userId;
         document.getElementById('assign-event-id').value = eventId;
-        
+
         const infoDiv = document.getElementById('assign-participant-info');
         infoDiv.innerHTML = `
             <div class="flex items-center mb-2">
@@ -3112,10 +3053,10 @@ async function openAssignBusModal(userId, eventId, userName, studentNumber, user
                 </div>
             </div>
         `;
-        
+
         // Show modal
         document.getElementById('assign-bus-modal').classList.remove('hidden');
-        
+
     } catch (error) {
         console.error('Error opening assign bus modal:', error);
         alert('Error loading bus information: ' + error.message);
@@ -3128,15 +3069,15 @@ async function openMoveBusModal(assignmentId, currentBusId, userId, userName, cu
         // Load all buses except current one
         const response = await fetch('/api/buses');
         const buses = await response.json();
-        
+
         const select = document.getElementById('move-bus-select');
         select.innerHTML = '<option value="">Select a new bus</option>';
-        
+
         // Filter buses with available capacity (excluding current bus)
-        const availableBuses = buses.filter(bus => 
+        const availableBuses = buses.filter(bus =>
             bus.id != currentBusId && bus.current_passengers < bus.capacity
         );
-        
+
         if (availableBuses.length === 0) {
             select.innerHTML = '<option value="">No available buses</option>';
             select.disabled = true;
@@ -3150,11 +3091,11 @@ async function openMoveBusModal(assignmentId, currentBusId, userId, userName, cu
             });
             select.disabled = false;
         }
-        
+
         // Set form data
         document.getElementById('move-assignment-id').value = assignmentId;
         document.getElementById('move-current-bus-id').value = currentBusId;
-        
+
         const infoDiv = document.getElementById('move-participant-info');
         infoDiv.innerHTML = `
             <div class="flex items-center">
@@ -3165,13 +3106,13 @@ async function openMoveBusModal(assignmentId, currentBusId, userId, userName, cu
                 </div>
             </div>
         `;
-        
+
         // Reset form
         document.getElementById('move-reason').value = '';
-        
+
         // Show modal
         document.getElementById('move-bus-modal').classList.remove('hidden');
-        
+
     } catch (error) {
         console.error('Error opening move bus modal:', error);
         alert('Error loading bus information: ' + error.message);
@@ -3186,20 +3127,20 @@ async function assignToBus(assignmentData) {
             alert('Please select a bus');
             return;
         }
-        
+
         const response = await fetch('/api/bus-assignments', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(assignmentData)
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             alert('✅ Participant assigned to bus successfully!');
             document.getElementById('assign-bus-form').reset();
             document.getElementById('assign-bus-modal').classList.add('hidden');
-            
+
             // Refresh data
             const eventId = document.getElementById('bus-event-filter').value;
             if (eventId) {
@@ -3220,36 +3161,36 @@ async function assignToBus(assignmentData) {
 async function moveBusAssignment(assignmentId, newBusId, reason) {
     try {
         console.log('Moving assignment:', { assignmentId, newBusId, reason });
-        
+
         // Validate bus selection
         if (!newBusId) {
             alert('Please select a new bus');
             return;
         }
-        
+
         // Validate assignmentId is a number
         const assignmentIdNum = parseInt(assignmentId);
         const newBusIdNum = parseInt(newBusId);
-        
+
         if (isNaN(assignmentIdNum) || isNaN(newBusIdNum)) {
             alert('Invalid assignment or bus ID');
             return;
         }
-        
-        const payload = { 
-            new_bus_id: newBusIdNum, 
-            notes: reason ? `Moved: ${reason}` : 'Moved to different bus' 
+
+        const payload = {
+            new_bus_id: newBusIdNum,
+            notes: reason ? `Moved: ${reason}` : 'Moved to different bus'
         };
-        
+
         console.log('Sending move request to:', `/api/bus-assignments/${assignmentIdNum}`);
         console.log('Payload:', payload);
-        
+
         // Try to call the API
         let response;
         try {
             response = await fetch(`/api/bus-assignments/${assignmentIdNum}`, {
                 method: 'PUT',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
@@ -3259,17 +3200,17 @@ async function moveBusAssignment(assignmentId, newBusId, reason) {
             console.error('Fetch error:', fetchError);
             throw new Error(`Network error: ${fetchError.message}. Please check if the server is running.`);
         }
-        
+
         console.log('Response status:', response.status, response.statusText);
-        
+
         // Check if we got a response
         if (!response.ok) {
             let errorMessage = `Server error: ${response.status} ${response.statusText}`;
-            
+
             try {
                 const errorText = await response.text();
                 console.error('Error response text:', errorText);
-                
+
                 // Try to parse as JSON
                 try {
                     const errorJson = JSON.parse(errorText);
@@ -3281,16 +3222,16 @@ async function moveBusAssignment(assignmentId, newBusId, reason) {
             } catch (textError) {
                 console.error('Could not read error response:', textError);
             }
-            
+
             throw new Error(errorMessage);
         }
-        
+
         // Try to parse successful response
         let result;
         try {
             const responseText = await response.text();
             console.log('Response text:', responseText);
-            
+
             if (responseText) {
                 result = JSON.parse(responseText);
             } else {
@@ -3300,12 +3241,12 @@ async function moveBusAssignment(assignmentId, newBusId, reason) {
             console.error('Failed to parse response:', parseError);
             throw new Error('Server returned invalid JSON response');
         }
-        
+
         if (result.success) {
             alert('✅ Participant moved to new bus successfully!');
             document.getElementById('move-bus-form').reset();
             document.getElementById('move-bus-modal').classList.add('hidden');
-            
+
             // Refresh data
             const eventId = document.getElementById('bus-event-filter').value;
             if (eventId) {
@@ -3317,10 +3258,10 @@ async function moveBusAssignment(assignmentId, newBusId, reason) {
         }
     } catch (error) {
         console.error('Error moving bus assignment:', error);
-        
+
         // Show detailed error message
         let userMessage = error.message;
-        
+
         // Provide more helpful messages based on error type
         if (error.message.includes('Network error') || error.message.includes('Failed to fetch')) {
             userMessage = `Cannot connect to server. Please check:\n
@@ -3332,7 +3273,7 @@ async function moveBusAssignment(assignmentId, newBusId, reason) {
         } else if (error.message.includes('500')) {
             userMessage = 'Server internal error. Check backend logs for details.';
         }
-        
+
         alert(`❌ Error moving bus assignment:\n\n${userMessage}`);
     }
 }
@@ -3342,17 +3283,17 @@ async function removeBusAssignment(assignmentId, userName) {
     if (!confirm(`Are you sure you want to remove ${userName} from their bus assignment?\n\nThis will free up their seat on the bus.`)) {
         return;
     }
-    
+
     try {
         const response = await fetch(`/api/bus-assignments/${assignmentId}`, {
             method: 'DELETE'
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             alert('✅ Bus assignment removed successfully!');
-            
+
             // Refresh data
             const eventId = document.getElementById('bus-event-filter').value;
             if (eventId) {
@@ -3376,14 +3317,14 @@ async function viewBusDetails(busId) {
             fetch(`/api/buses/${busId}`),
             fetch(`/api/buses/${busId}/assignments`)
         ]);
-        
+
         const bus = await busResponse.json();
         const assignments = await assignmentsResponse.json();
-        
+
         let message = `🚌 **Bus ${bus.bus_number}**\n`;
         message += `Capacity: ${bus.current_passengers}/${bus.capacity}\n`;
         message += `Availability: ${bus.capacity - bus.current_passengers} seats\n\n`;
-        
+
         if (assignments.length > 0) {
             message += `**Current Assignments (${assignments.length}):**\n\n`;
             assignments.forEach((assignment, index) => {
@@ -3400,7 +3341,7 @@ async function viewBusDetails(busId) {
         } else {
             message += `No assignments for this bus.\n`;
         }
-        
+
         alert(message);
     } catch (error) {
         console.error('Error viewing bus details:', error);
@@ -3413,59 +3354,59 @@ function initializeModalListeners() {
     // Add Bus Modal
     const addBusForm = document.getElementById('add-bus-form');
     if (addBusForm) {
-        addBusForm.addEventListener('submit', function(e) {
+        addBusForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            
+
             const busData = {
                 bus_number: document.getElementById('bus-number').value.trim(),
                 capacity: parseInt(document.getElementById('bus-capacity').value)
             };
-            
+
             if (!busData.bus_number) {
                 alert('Please enter a bus number');
                 return;
             }
-            
+
             if (isNaN(busData.capacity) || busData.capacity < 1) {
                 alert('Please enter a valid capacity (minimum 1)');
                 return;
             }
-            
+
             addBus(busData);
         });
     }
-    
+
     // Assign Bus Modal
     const assignBusForm = document.getElementById('assign-bus-form');
     if (assignBusForm) {
-        assignBusForm.addEventListener('submit', function(e) {
+        assignBusForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            
+
             const assignmentData = {
                 user_id: parseInt(document.getElementById('assign-user-id').value),
                 event_id: parseInt(document.getElementById('assign-event-id').value),
                 bus_id: parseInt(document.getElementById('assign-bus-select').value),
                 notes: document.getElementById('assign-notes').value.trim()
             };
-            
+
             assignToBus(assignmentData);
         });
     }
-    
+
     // Move Bus Modal
     const moveBusForm = document.getElementById('move-bus-form');
     if (moveBusForm) {
-        moveBusForm.addEventListener('submit', function(e) {
+        moveBusForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            
+
             const assignmentId = parseInt(document.getElementById('move-assignment-id').value);
             const newBusId = parseInt(document.getElementById('move-bus-select').value);
             const reason = document.getElementById('move-reason').value.trim();
-            
+
             moveBusAssignment(assignmentId, newBusId, reason);
         });
     }
-    
+
     // Modal close buttons
     const closeButtons = [
         ['close-add-bus-modal', 'add-bus-modal'],
@@ -3475,7 +3416,7 @@ function initializeModalListeners() {
         ['close-move-bus-modal', 'move-bus-modal'],
         ['cancel-move-bus', 'move-bus-modal']
     ];
-    
+
     closeButtons.forEach(([buttonId, modalId]) => {
         const button = document.getElementById(buttonId);
         const modal = document.getElementById(modalId);
@@ -3483,7 +3424,7 @@ function initializeModalListeners() {
             button.addEventListener('click', () => modal.classList.add('hidden'));
         }
     });
-    
+
     // Close modals when clicking outside
     const modals = ['add-bus-modal', 'assign-bus-modal', 'move-bus-modal'];
     modals.forEach(modalId => {
