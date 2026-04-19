@@ -207,8 +207,7 @@ document.getElementById('resend-verification')?.addEventListener('click', async 
         alert('❌ Network error. Please try again.');
     }
 });
-// Forgot Password Functionality
-// Forgot Password Flow - Modal Sequence
+// Forgot Password
 document.addEventListener('DOMContentLoaded', function () {
     const forgotPasswordLink = document.getElementById('forgot-password');
     const forgotPasswordModal = document.getElementById('forgot-password-modal');
@@ -369,7 +368,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    email: email, // We're sending email, not user_id
+                    email: email,
                     reset_token: resetToken
                 })
             });
@@ -573,6 +572,5 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 document.getElementById('switch-to-login')?.addEventListener('click', function () {
-    // Trigger a click on the login toggle button
     document.getElementById('login-toggle').click();
 });

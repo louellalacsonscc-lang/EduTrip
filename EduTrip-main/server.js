@@ -1,3 +1,4 @@
+process.env.TZ = 'Asia/Manila';
 const express = require('express');
 const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
@@ -18,10 +19,11 @@ const db = mysql.createConnection({
     port: process.env.DB_PORT || 3306,
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'edutrip',
+    database: process.env.DB_NAME || 'eduevent',
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0
+    queueLimit: 0,
+    timezone: '+08:00'
 });
 
 // Connect to MySQL
@@ -31,6 +33,16 @@ db.connect((err) => {
         process.exit(1);
     }
     console.log('✅ Connected to MySQL database');
+    
+    // Set session timezone to Philippines
+    db.query("SET time_zone = '+08:00'", (err) => {
+        if (err) {
+            console.error('❌ Error setting timezone:', err);
+        } else {
+            console.log('✅ MySQL timezone set to Asia/Manila (GMT+8)');
+        }
+    });
+    
     createTables();
 });
 
@@ -81,7 +93,9 @@ function createTables() {
             date DATE,
             location VARCHAR(255),
             course VARCHAR(50) DEFAULT 'ALL',
+            target_year VARCHAR(20) DEFAULT 'ALL',
             image_url VARCHAR(255),
+            external_url VARCHAR(500),
             max_participants INT,
             current_participants INT DEFAULT 0,
             status VARCHAR(50) DEFAULT 'active',
@@ -121,12 +135,37 @@ function createTables() {
             UNIQUE KEY unique_user_event (user_id, event_id)
         )`,
 
-        `CREATE TABLE IF NOT EXISTS notifications (
+        `CREATE TABLE IF NOT EXISTS announcements (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            message TEXT NOT NULL,
+            type VARCHAR(50) DEFAULT 'info',
+            target_type VARCHAR(50) DEFAULT 'all',
+            target_course VARCHAR(50),
+            target_event_id INT,
+            created_by INT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (target_event_id) REFERENCES events(id) ON DELETE CASCADE,
+            FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+        )`,
+
+        `CREATE TABLE IF NOT EXISTS announcement_reads (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            announcement_id INT NOT NULL,
+            user_id INT NOT NULL,
+            read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_announcement_user (announcement_id, user_id),
+            FOREIGN KEY (announcement_id) REFERENCES announcements(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )`,
+
+                `CREATE TABLE IF NOT EXISTS notifications (
             id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT NOT NULL,
             title VARCHAR(255) NOT NULL,
             message TEXT NOT NULL,
             type VARCHAR(50) DEFAULT 'info',
+            link VARCHAR(255),
             is_read BOOLEAN DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -149,6 +188,7 @@ function createTables() {
             name VARCHAR(255) NOT NULL,
             template_url VARCHAR(255) NOT NULL,
             is_default BOOLEAN DEFAULT 0,
+            name_position TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`
     ];
@@ -169,13 +209,18 @@ function createTables() {
         `ALTER TABLE users ADD COLUMN IF NOT EXISTS year VARCHAR(20)`,
         `ALTER TABLE users ADD COLUMN IF NOT EXISTS birthdate DATE`,
         `ALTER TABLE users ADD COLUMN IF NOT EXISTS age INT`,
-        `ALTER TABLE users ADD COLUMN IF NOT EXISTS sex VARCHAR(10)`
+        `ALTER TABLE users ADD COLUMN IF NOT EXISTS sex VARCHAR(10)`,
+        `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS link VARCHAR(255)`,
+        `ALTER TABLE certificate_templates ADD COLUMN IF NOT EXISTS name_position TEXT`,
+        `ALTER TABLE events ADD COLUMN IF NOT EXISTS external_url VARCHAR(500)`,
+        `ALTER TABLE events ADD COLUMN IF NOT EXISTS target_year VARCHAR(20)`
     ];
 
+    // Execute each ALTER statement
     tableUpdates.forEach((sql) => {
         db.query(sql, (err) => {
-            if (err && err.code !== 'ER_DUP_FIELDNAME') {
-                console.error('Error updating users table schema:', err);
+            if (err && err.code !== 'ER_DUP_FIELDNAME' && err.code !== 'ER_BAD_FIELD_ERROR') {
+                console.error('Error updating table schema:', err);
             }
         });
     });
@@ -205,7 +250,7 @@ function createTables() {
 
         // Insert admin
         db.query(`INSERT IGNORE INTO users (name, email, password, role, verified) VALUES (?, ?, ?, ?, 1)`,
-            ['Admin', 'admin@edutrip.com', adminHash, 'admin'], (err) => {
+            ['Admin', 'admin@eduevent.com', adminHash, 'admin'], (err) => {
                 if (err) {
                     if (err.code === 'ER_DUP_ENTRY') {
                         console.log('✅ Admin user already exists');
@@ -227,7 +272,7 @@ function createTables() {
 
         // Insert student
         db.query(`INSERT IGNORE INTO users (name, student_number, email, password, role, verified) VALUES (?, ?, ?, ?, ?, 1)`,
-            ['John Student', 'S123456', 'student@edutrip.com', studentHash, 'student'], (err) => {
+            ['John Student', 'S123456', 'student@eduevent.com', studentHash, 'student'], (err) => {
                 if (err) {
                     if (err.code === 'ER_DUP_ENTRY') {
                         console.log('✅ Student user already exists');
@@ -309,17 +354,17 @@ async function sendVerificationEmail(email, verificationCode, userName) {
         const mailOptions = {
             from: process.env.EMAIL_USER,
             to: email,
-            subject: 'Verify Your EduTrip Account',
+            subject: 'Verify Your EduEvent Account',
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <div style="background: #1f2937; padding: 20px; text-align: center;">
-                        <h1 style="color: #3b82f6; margin: 0;">EduTrip</h1>
+                        <h1 style="color: #3b82f6; margin: 0;">EduEvent</h1>
                         <p style="color: #9ca3af; margin: 5px 0;">Educational Trips & Events Platform</p>
                     </div>
                     <div style="padding: 30px; background: #111827; color: #e5e7eb;">
                         <h2 style="color: white; margin-top: 0;">Email Verification Required</h2>
                         <p>Hello ${userName},</p>
-                        <p>Thank you for registering with EduTrip! Please use the verification code below to complete your registration:</p>
+                        <p>Thank you for registering with EduEvent! Please use the verification code below to complete your registration:</p>
                         
                         <div style="background: #1f2937; padding: 20px; margin: 30px 0; text-align: center; border-radius: 8px;">
                             <div style="font-size: 32px; font-weight: bold; color: #3b82f6; letter-spacing: 10px;">
@@ -328,16 +373,16 @@ async function sendVerificationEmail(email, verificationCode, userName) {
                             <p style="color: #9ca3af; margin-top: 10px;">This code will expire in 24 hours</p>
                         </div>
                         
-                        <p>If you didn't create an account with EduTrip, please ignore this email.</p>
-                        <p>Best regards,<br>The EduTrip Team</p>
+                        <p>If you didn't create an account with EduEvent, please ignore this email.</p>
+                        <p>Best regards,<br>The EduEvent Team</p>
                     </div>
                     <div style="background: #030712; padding: 20px; text-align: center; color: #6b7280; font-size: 12px;">
-                        <p>© 2025 EduTrip. Educational Seminars & Tours Platform.</p>
+                        <p>© 2025 EduEvent. Educational Seminars & Tours Platform.</p>
                         <p>This is an automated email, please do not reply.</p>
                     </div>
                 </div>
             `,
-            text: `Hello ${userName},\n\nThank you for registering with EduTrip! Your verification code is: ${verificationCode}\n\nThis code will expire in 24 hours.\n\nBest regards,\nThe EduTrip Team`
+            text: `Hello ${userName},\n\nThank you for registering with EduEvent! Your verification code is: ${verificationCode}\n\nThis code will expire in 24 hours.\n\nBest regards,\nThe EduEvent Team`
         };
 
         await transporter.sendMail(mailOptions);
@@ -733,16 +778,16 @@ app.get('/api/frontpage-events', (req, res) => {
     });
 });
 
-// Get all events - ADMIN NEEDS ALL EVENTS, students only see active ones
+// Get all events - filter by course and year
 app.get('/api/events', (req, res) => {
     const course = req.query.course ? req.query.course.toString().toUpperCase() : null;
+    const year = req.query.year ? req.query.year.toString() : null;
     const validCourses = ['BSCS', 'BSHM', 'BSTM', 'BAPOLSCI', 'BSED', 'BSBA', 'ALL'];
-    const includeAll = req.query.all === 'true'; // New parameter for admin
+    const includeAll = req.query.all === 'true';
 
     let sql = "SELECT * FROM events WHERE 1=1";
     const params = [];
 
-    // If not admin request, only show active events
     if (!includeAll) {
         sql += " AND status = 'active'";
     }
@@ -750,6 +795,12 @@ app.get('/api/events', (req, res) => {
     if (course && validCourses.includes(course)) {
         sql += " AND (course = ? OR course = 'ALL')";
         params.push(course);
+    }
+    
+    // ADD YEAR FILTER
+    if (year) {
+        sql += " AND (target_year = ? OR target_year = 'ALL')";
+        params.push(year);
     }
 
     sql += " ORDER BY date";
@@ -835,13 +886,13 @@ app.post('/api/forgot-password', async (req, res) => {
 
                 try {
                     const mailOptions = {
-                        from: process.env.EMAIL_USER || 'edutrip@example.com',
+                        from: process.env.EMAIL_USER || 'eduevent@example.com',
                         to: email,
-                        subject: 'Reset Your EduTrip Password',
+                        subject: 'Reset Your EduEvent Password',
                         html: `
                             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                                 <div style="background: #1f2937; padding: 20px; text-align: center;">
-                                    <h1 style="color: #3b82f6; margin: 0;">EduTrip</h1>
+                                    <h1 style="color: #3b82f6; margin: 0;">EduEvent</h1>
                                     <p style="color: #9ca3af; margin: 5px 0;">Password Reset Request</p>
                                 </div>
                                 <div style="padding: 30px; background: #111827; color: #e5e7eb;">
@@ -861,15 +912,15 @@ app.post('/api/forgot-password', async (req, res) => {
                                     </p>
                                     
                                     <p>If you didn't request a password reset, please ignore this email.</p>
-                                    <p>Best regards,<br>The EduTrip Team</p>
+                                    <p>Best regards,<br>The EduEvent Team</p>
                                 </div>
                                 <div style="background: #030712; padding: 20px; text-align: center; color: #6b7280; font-size: 12px;">
-                                    <p>© 2024 EduTrip. Educational platform for trips and events.</p>
+                                    <p>© 2025 EduEvent. Educational platform for trips and events.</p>
                                     <p>This is an automated email, please do not reply.</p>
                                 </div>
                             </div>
                         `,
-                        text: `Hello ${user.name},\n\nWe received a request to reset your password. Use this code: ${resetToken}\n\nThis code will expire in 1 hour.\n\nImportant: After resetting your password, you will need to verify your email again.\n\nIf you didn't request a password reset, please ignore this email.\n\nBest regards,\nThe EduTrip Team`
+                        text: `Hello ${user.name},\n\nWe received a request to reset your password. Use this code: ${resetToken}\n\nThis code will expire in 1 hour.\n\nImportant: After resetting your password, you will need to verify your email again.\n\nIf you didn't request a password reset, please ignore this email.\n\nBest regards,\nThe EduEvent Team`
                     };
 
                     await transporter.sendMail(mailOptions);
@@ -1054,12 +1105,14 @@ app.post('/api/registration-requests', upload.fields([
         });
 });
 
-// Get all registration requests (admin) - UPDATED with file URLs
+// Get all registration requests (admin) - UPDATED with file URLs and user details
 app.get('/api/registration-requests', (req, res) => {
     console.log('Fetching registration requests...');
 
     const query = `
-        SELECT rr.*, u.name, u.email, u.student_number, 
+        SELECT rr.*, 
+               u.name, u.email, u.student_number, 
+               u.course, u.year, u.section, u.sex, u.age,
                e.title as event_title, e.date as event_date, 
                e.location as event_location, e.status as event_status
         FROM registration_requests rr
@@ -1074,7 +1127,7 @@ app.get('/api/registration-requests', (req, res) => {
             return res.status(500).json({ error: 'Database error: ' + err.message });
         }
 
-        // Add full file URLs to each request
+        // File URLs
         const requestsWithFileUrls = results.map(request => {
             return {
                 ...request,
@@ -1096,15 +1149,14 @@ app.get('/api/registration-requests', (req, res) => {
 
 // Create new event
 app.post('/api/events', upload.single('image'), (req, res) => {
-    const { title, description, date, location, course, status } = req.body;
+    const { title, description, date, location, course, target_year, status, external_url } = req.body;
     const normalizedCourse = typeof course === 'string' ? course.toUpperCase() : 'ALL';
+    const normalizedTargetYear = target_year || 'ALL';
     const validCourses = ['BSCS', 'BSHM', 'BSTM', 'BAPOLSCI', 'BSED', 'BSBA', 'ALL'];
     const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
-    
-    // Default to 'hidden' if not provided (new events start hidden)
     const eventStatus = status || 'hidden';
     
-    console.log('📅 Creating event with date:', date); // Add this log
+    console.log('📅 Creating event with date:', date);
 
     if (!title || !description || !date || !location || !normalizedCourse) {
         return res.status(400).json({ error: 'All fields are required' });
@@ -1115,14 +1167,56 @@ app.post('/api/events', upload.single('image'), (req, res) => {
     }
 
     db.query(
-        "INSERT INTO events (title, description, date, location, course, image_url, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        [title, description, date, location, normalizedCourse, imageUrl, eventStatus], 
+        "INSERT INTO events (title, description, date, location, course, target_year, image_url, external_url, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [title, description, date, location, normalizedCourse, normalizedTargetYear, imageUrl, external_url || null, eventStatus], 
         (err, result) => {
             if (err) {
                 console.error('Database error creating event:', err);
                 return res.status(500).json({ error: 'Database error' });
             }
-            res.json({ success: true, message: 'Event created successfully', eventId: result.insertId });
+            
+            const eventId = result.insertId;
+            
+            // Only create announcement if event is active
+            if (eventStatus === 'active' || eventStatus === 'upcoming') {
+                const eventDateFormatted = new Date(date).toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+                
+                let targetType = 'all';
+                let targetCourse = null;
+                
+                if (normalizedCourse !== 'ALL') {
+                    targetType = 'course';
+                    targetCourse = normalizedCourse;
+                }
+                
+                const announcementTitle = `📢 New Event: ${title}`;
+                const announcementMessage = `A new event has been added!\n\n` +
+                    `📌 Event: ${title}\n` +
+                    `📝 Description: ${description}\n` +
+                    `📅 Date: ${eventDateFormatted}\n` +
+                    `📍 Location: ${location}\n` +
+                    `🎓 Course: ${normalizedCourse}\n\n` +
+                    `Register now to secure your spot!`;
+                
+                db.query(
+                    `INSERT INTO announcements (title, message, type, target_type, target_course, target_event_id, created_by) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                    [announcementTitle, announcementMessage, 'info', targetType, targetCourse, eventId, null],
+                    (err) => {
+                        if (err) {
+                            console.error('Error creating event announcement:', err);
+                        } else {
+                            console.log(`✅ Announcement created for new event: ${title}`);
+                        }
+                    }
+                );
+            }
+            
+            res.json({ success: true, message: 'Event created successfully', eventId: eventId });
         }
     );
 });
@@ -1178,6 +1272,7 @@ setTimeout(() => {
 
 // Run auto-complete every day (24 hours)
 setInterval(autoCompleteEvents, 24 * 60 * 60 * 1000);
+
 // Update registration request status
 app.put('/api/registration-requests/:id', async (req, res) => {
     const { id } = req.params;
@@ -1210,6 +1305,26 @@ app.put('/api/registration-requests/:id', async (req, res) => {
         // If approved, try to auto-assign to a bus
         if (status === 'approved') {
             await autoAssignToBus(request.user_id, request.event_id);
+            
+            // Notify user of approval
+            await createNotification(
+                request.user_id,
+                'Registration Approved',
+                `Your registration for the event has been approved!`,
+                'success',
+                '/my-registrations'
+            );
+        }
+        
+        // When rejecting a request
+        if (status === 'rejected') {
+            await createNotification(
+                request.user_id,
+                'Registration Update',
+                `Your registration request was not approved.`,
+                'warning',
+                '/my-registrations'
+            );
         }
 
         res.json({ success: true, message: 'Request updated successfully' });
@@ -1273,58 +1388,161 @@ async function autoAssignToBus(userId, eventId) {
 // Update event
 app.put('/api/events/:id', (req, res) => {
     const { id } = req.params;
-    const { title, description, date, location, status, course } = req.body;
+    const { title, description, date, location, status, course, target_year, external_url } = req.body;
     
-    // Build dynamic UPDATE query based on provided fields
-    const updates = [];
-    const params = [];
-    
-    if (title !== undefined) {
-        updates.push('title = ?');
-        params.push(title);
-    }
-    if (description !== undefined) {
-        updates.push('description = ?');
-        params.push(description);
-    }
-    if (date !== undefined) {
-        updates.push('date = ?');
-        params.push(date);
-    }
-    if (location !== undefined) {
-        updates.push('location = ?');
-        params.push(location);
-    }
-    if (status !== undefined) {
-        const validStatuses = ['active', 'hidden', 'cancelled', 'completed', 'upcoming'];
-        if (validStatuses.includes(status)) {
-            updates.push('status = ?');
-            params.push(status);
-        }
-    }
-    if (course !== undefined) {
-        const normalizedCourse = typeof course === 'string' ? course.toUpperCase() : 'ALL';
-        const validCourses = ['BSCS', 'BSHM', 'BSTM', 'BAPOLSCI', 'BSED', 'BSBA', 'ALL'];
-        if (validCourses.includes(normalizedCourse)) {
-            updates.push('course = ?');
-            params.push(normalizedCourse);
-        }
-    }
-    
-    if (updates.length === 0) {
-        return res.status(400).json({ error: 'No valid fields to update' });
-    }
-    
-    params.push(id);
-    
-    const sql = `UPDATE events SET ${updates.join(', ')} WHERE id = ?`;
-    
-    db.query(sql, params, (err, result) => {
+    // First, get the current event status
+    db.query("SELECT status, title, description, date, location, course FROM events WHERE id = ?", [id], (err, results) => {
         if (err) {
-            console.log('Database error updating event:', err);
+            console.log('Database error fetching event:', err);
             return res.status(500).json({ error: 'Database error' });
         }
-        res.json({ success: true, message: 'Event updated successfully' });
+        
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+        
+        const oldEvent = results[0];
+        const wasHidden = oldEvent.status === 'hidden';
+        const isNowVisible = status === 'active' || status === 'upcoming';
+        
+        // Build dynamic UPDATE query based on provided fields
+        const updates = [];
+        const params = [];
+        
+        if (title !== undefined) {
+            updates.push('title = ?');
+            params.push(title);
+        }
+        if (description !== undefined) {
+            updates.push('description = ?');
+            params.push(description);
+        }
+        if (date !== undefined) {
+            updates.push('date = ?');
+            params.push(date);
+        }
+        if (location !== undefined) {
+            updates.push('location = ?');
+            params.push(location);
+        }
+        if (status !== undefined) {
+            const validStatuses = ['active', 'hidden', 'cancelled', 'completed', 'upcoming'];
+            if (validStatuses.includes(status)) {
+                updates.push('status = ?');
+                params.push(status);
+            }
+        }
+        if (course !== undefined) {
+            const normalizedCourse = typeof course === 'string' ? course.toUpperCase() : 'ALL';
+            const validCourses = ['BSCS', 'BSHM', 'BSTM', 'BAPOLSCI', 'BSED', 'BSBA', 'ALL'];
+            if (validCourses.includes(normalizedCourse)) {
+                updates.push('course = ?');
+                params.push(normalizedCourse);
+            }
+        }
+        if (target_year !== undefined) {
+        updates.push('target_year = ?');
+        params.push(target_year || 'ALL');
+        }
+        if (external_url !== undefined) {
+        updates.push('external_url = ?');
+        params.push(external_url || null);
+        }
+        if (updates.length === 0) {
+            return res.status(400).json({ error: 'No valid fields to update' });
+        }
+        
+        params.push(id);
+        
+        const sql = `UPDATE events SET ${updates.join(', ')} WHERE id = ?`;
+        
+        db.query(sql, params, (err, result) => {
+            if (err) {
+                console.log('Database error updating event:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            // If event was hidden and is now visible
+            if (wasHidden && isNowVisible) {
+                const updatedTitle = title || oldEvent.title;
+                const updatedDesc = description || oldEvent.description;
+                const updatedDate = date || oldEvent.date;
+                const updatedLocation = location || oldEvent.location;
+                const updatedCourse = course ? course.toUpperCase() : oldEvent.course;
+                
+                const eventDateFormatted = new Date(updatedDate).toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+                
+                let targetType = 'all';
+                let targetCourse = null;
+                
+                if (updatedCourse !== 'ALL') {
+                    targetType = 'course';
+                    targetCourse = updatedCourse;
+                }
+                
+                const announcementTitle = `📢 New Event Available: ${updatedTitle}`;
+                const announcementMessage = `A new event is now open for registration!\n\n` +
+                    `📌 Event: ${updatedTitle}\n` +
+                    `📝 Description: ${updatedDesc}\n` +
+                    `📅 Date: ${eventDateFormatted}\n` +
+                    `📍 Location: ${updatedLocation}\n` +
+                    `🎓 Course: ${updatedCourse}\n\n` +
+                    `Register now to secure your spot!`;
+                
+                db.query(
+                    `INSERT INTO announcements (title, message, type, target_type, target_course, target_event_id, created_by) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                    [announcementTitle, announcementMessage, 'info', targetType, targetCourse, id, null],
+                    (err) => {
+                        if (err) {
+                            console.error('Error creating visibility announcement:', err);
+                        } else {
+                            console.log(`✅ Announcement created for newly visible event: ${updatedTitle}`);
+                        }
+                    }
+                );
+            }
+            
+            //If event is cancelled
+            const isNowCancelled = status === 'cancelled' && oldEvent.status !== 'cancelled';
+            if (isNowCancelled) {
+                const updatedTitle = title || oldEvent.title;
+                const updatedCourse = course ? course.toUpperCase() : oldEvent.course;
+                
+                let targetType = 'all';
+                let targetCourse = null;
+                
+                if (updatedCourse !== 'ALL') {
+                    targetType = 'course';
+                    targetCourse = updatedCourse;
+                }
+                
+                const announcementTitle = `⚠️ Event Cancelled: ${updatedTitle}`;
+                const announcementMessage = `The following event has been cancelled:\n\n` +
+                    `📌 Event: ${updatedTitle}\n` +
+                    `🎓 Course: ${updatedCourse}\n\n` +
+                    `We apologize for any inconvenience. Please check other available events.`;
+                
+                db.query(
+                    `INSERT INTO announcements (title, message, type, target_type, target_course, target_event_id, created_by) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                    [announcementTitle, announcementMessage, 'warning', targetType, targetCourse, id, null],
+                    (err) => {
+                        if (err) {
+                            console.error('Error creating cancellation announcement:', err);
+                        } else {
+                            console.log(`✅ Announcement created for cancelled event: ${updatedTitle}`);
+                        }
+                    }
+                );
+            }
+            
+            res.json({ success: true, message: 'Event updated successfully' });
+        });
     });
 });
 
@@ -1347,7 +1565,7 @@ app.post('/api/buses', (req, res) => {
             if (err) {
                 console.error('Error creating bus:', err);
                 if (err.code === 'ER_DUP_ENTRY') {
-                    return res.status(400).json({ error: 'Bus number already exists' });
+                    return res.status(400).json({ error: `Bus number "${bus_number}" already exists. Please use a different bus number.` });
                 }
                 return res.status(500).json({ error: 'Database error' });
             }
@@ -1475,14 +1693,26 @@ app.post('/api/bus-assignments', (req, res) => {
 
             console.log(`✅ Assignment created with ID: ${result.insertId}`);
 
-            // 6. Update bus passenger count
-            console.log(`🔄 Updating bus ${busId} passenger count...`);
-            const [updateResult] = await db.promise().query(
-                "UPDATE buses SET current_passengers = current_passengers + 1 WHERE id = ?",
-                [busId]
+            // 6. Update bus passenger count by recalculating
+            console.log(`🔄 Recalculating bus ${busId} passenger count...`);
+            await db.promise().query(
+                `UPDATE buses b 
+                SET b.current_passengers = (
+                    SELECT COUNT(*) FROM bus_assignments WHERE bus_id = ?
+                ) WHERE b.id = ?`,
+                [busId, busId]
             );
 
-            console.log(`✅ Bus ${busId} passenger count updated (changed: ${updateResult.affectedRows})`);
+            console.log(`✅ Bus ${busId} passenger count recalculated`);
+
+            // 🔔 NOTIFY USER OF BUS ASSIGNMENT
+            await createNotification(
+                userId,
+                'Bus Assignment',
+                `You have been assigned to Bus ${busData.bus_number} for the event.`,
+                'success',
+                '/bus'
+            );
 
             console.log('🎉 BUS ASSIGNMENT SUCCESSFUL!');
             res.json({
@@ -1538,6 +1768,159 @@ app.get('/api/events/:event_id/bus-assignments', (req, res) => {
     });
 });
 
+// Move participant to different bus
+app.put('/api/bus-assignments/:id', async (req, res) => {
+    const { id } = req.params;
+    const { new_bus_id, notes } = req.body;
+    
+    if (!new_bus_id) {
+        return res.status(400).json({ error: 'New bus ID is required' });
+    }
+    
+    try {
+        // Get current assignment details
+        const [assignmentResult] = await db.promise().query(
+            `SELECT ba.*, b.bus_number as old_bus_number, b.id as old_bus_id
+             FROM bus_assignments ba
+             JOIN buses b ON ba.bus_id = b.id
+             WHERE ba.id = ?`,
+            [id]
+        );
+        
+        if (assignmentResult.length === 0) {
+            return res.status(404).json({ error: 'Assignment not found' });
+        }
+        
+        const assignment = assignmentResult[0];
+        
+        // Get new bus details
+        const [newBusResult] = await db.promise().query(
+            "SELECT * FROM buses WHERE id = ?",
+            [new_bus_id]
+        );
+        
+        if (newBusResult.length === 0) {
+            return res.status(404).json({ error: 'New bus not found' });
+        }
+        
+        const newBus = newBusResult[0];
+        
+        // Check capacity
+        const [countResult] = await db.promise().query(
+            "SELECT COUNT(*) as count FROM bus_assignments WHERE bus_id = ?",
+            [new_bus_id]
+        );
+        
+        if (countResult[0].count >= newBus.capacity) {
+            return res.status(400).json({ error: 'New bus is at full capacity' });
+        }
+        
+        // Update assignment
+        await db.promise().query(
+            "UPDATE bus_assignments SET bus_id = ?, notes = ? WHERE id = ?",
+            [new_bus_id, notes || 'Moved to different bus', id]
+        );
+        
+        // Recalculate BOTH bus passenger counts from scratch
+        // Update old bus count
+        await db.promise().query(
+            `UPDATE buses b 
+             SET b.current_passengers = (
+                 SELECT COUNT(*) FROM bus_assignments WHERE bus_id = ?
+             ) WHERE b.id = ?`,
+            [assignment.old_bus_id, assignment.old_bus_id]
+        );
+        
+        // Update new bus count
+        await db.promise().query(
+            `UPDATE buses b 
+             SET b.current_passengers = (
+                 SELECT COUNT(*) FROM bus_assignments WHERE bus_id = ?
+             ) WHERE b.id = ?`,
+            [new_bus_id, new_bus_id]
+        );
+        
+        // 🔔 NOTIFY USER OF BUS MOVE
+        const [userResult] = await db.promise().query(
+            "SELECT name FROM users WHERE id = ?", [assignment.user_id]
+        );
+        const userName = userResult[0]?.name || 'User';
+        
+        await createNotification(
+            assignment.user_id,
+            'Bus Assignment Updated',
+            `Your bus assignment has been changed from Bus ${assignment.old_bus_number} to Bus ${newBus.bus_number}.`,
+            'warning',
+            '/bus'
+        );
+        
+        res.json({ success: true, message: 'Participant moved successfully' });
+        
+    } catch (error) {
+        console.error('Error moving bus assignment:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Remove bus assignment
+app.delete('/api/bus-assignments/:id', async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        // Get assignment details before deleting
+        const [assignmentResult] = await db.promise().query(
+            `SELECT ba.*, b.bus_number, b.id as bus_id
+             FROM bus_assignments ba
+             JOIN buses b ON ba.bus_id = b.id
+             WHERE ba.id = ?`,
+            [id]
+        );
+        
+        if (assignmentResult.length === 0) {
+            return res.status(404).json({ error: 'Assignment not found' });
+        }
+        
+        const assignment = assignmentResult[0];
+        const busId = assignment.bus_id;
+        
+        // Delete the assignment
+        await db.promise().query(
+            "DELETE FROM bus_assignments WHERE id = ?",
+            [id]
+        );
+        
+        // 🔥 Recalculate bus passenger count from scratch
+        await db.promise().query(
+            `UPDATE buses b 
+             SET b.current_passengers = (
+                 SELECT COUNT(*) FROM bus_assignments WHERE bus_id = ?
+             ) WHERE b.id = ?`,
+            [busId, busId]
+        );
+        
+        // Get user name for notification
+        const [userResult] = await db.promise().query(
+            "SELECT name FROM users WHERE id = ?", [assignment.user_id]
+        );
+        const userName = userResult[0]?.name || 'User';
+        
+        // 🔔 NOTIFY USER OF BUS REMOVAL
+        await createNotification(
+            assignment.user_id,
+            'Bus Assignment Removed',
+            `You have been removed from Bus ${assignment.bus_number}. Please contact admin for details.`,
+            'warning',
+            '/bus'
+        );
+        
+        res.json({ success: true, message: 'Bus assignment removed successfully' });
+        
+    } catch (error) {
+        console.error('Error removing bus assignment:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
 // Get eligible participants for bus assignment
 app.get('/api/events/:event_id/eligible-participants', (req, res) => {
     const { event_id } = req.params;
@@ -1580,6 +1963,68 @@ app.get('/api/events/:event_id/eligible-participants', (req, res) => {
         res.json(results);
     });
 });
+
+// Delete registration request
+app.delete('/api/registration-requests/:id', async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        // Get the request details first
+        const [requestResult] = await db.promise().query(
+            "SELECT * FROM registration_requests WHERE id = ?", [id]
+        );
+        
+        if (requestResult.length === 0) {
+            return res.status(404).json({ error: 'Request not found' });
+        }
+        
+        const request = requestResult[0];
+        
+        // Check if there's a bus assignment
+        const [assignmentResult] = await db.promise().query(
+            "SELECT id FROM bus_assignments WHERE user_id = ? AND event_id = ?",
+            [request.user_id, request.event_id]
+        );
+        
+        // Delete bus assignment if exists
+        if (assignmentResult.length > 0) {
+            await db.promise().query(
+                "DELETE FROM bus_assignments WHERE id = ?",
+                [assignmentResult[0].id]
+            );
+            
+            // Update bus passenger count
+            await db.promise().query(
+                `UPDATE buses b 
+                 SET b.current_passengers = (
+                     SELECT COUNT(*) FROM bus_assignments WHERE bus_id = b.id
+                 )`
+            );
+        }
+        
+        // Delete the registration request
+        await db.promise().query(
+            "DELETE FROM registration_requests WHERE id = ?",
+            [id]
+        );
+        
+        // Notify user
+        await createNotification(
+            request.user_id,
+            'Registration Removed',
+            `Your registration for the event has been removed by an administrator.`,
+            'warning',
+            '/my-registrations'
+        );
+        
+        res.json({ success: true, message: 'Registration request deleted successfully' });
+        
+    } catch (error) {
+        console.error('Error deleting registration request:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
 // Update bus
 app.put('/api/buses/:id', (req, res) => {
     const { id } = req.params;
@@ -1692,51 +2137,283 @@ app.get('/api/buses/:id/assignments', (req, res) => {
     });
 });
 
-// Notifications endpoints
+// ========== ANNOUNCEMENTS ==========
 
-// Create notification
-app.post('/api/notifications', (req, res) => {
-    const { user_id, title, message, type } = req.body;
-
-    if (!user_id || !title || !message) {
-        return res.status(400).json({ error: 'Missing required fields' });
+// Create announcement
+app.post('/api/announcements', (req, res) => {
+    const { title, message, type, target_type, target_course, target_event_id, created_by } = req.body;
+    
+    if (!title || !message) {
+        return res.status(400).json({ error: 'Title and message are required' });
     }
-
-    db.query("INSERT INTO notifications (user_id, title, message, type) VALUES (?, ?, ?, ?)",
-        [user_id, title, message, type || 'info'], (err, result) => {
+    
+    db.query(
+        "INSERT INTO announcements (title, message, type, target_type, target_course, target_event_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [title, message, type || 'info', target_type || 'all', target_course || null, target_event_id || null, created_by || null],
+        (err, result) => {
             if (err) {
-                console.error('Error creating notification:', err);
+                console.error('Error creating announcement:', err);
                 return res.status(500).json({ error: 'Database error' });
             }
-            res.json({ success: true, notificationId: result.insertId });
-        });
+            res.json({ success: true, announcementId: result.insertId });
+        }
+    );
 });
 
-// Get user notifications
-app.get('/api/notifications/user/:user_id', (req, res) => {
-    const { user_id } = req.params;
-
-    db.query("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC",
-        [user_id], (err, results) => {
+// Update announcement
+app.put('/api/announcements/:id', (req, res) => {
+    const { id } = req.params;
+    const { title, message, type, target_type, target_course, target_event_id } = req.body;
+    
+    if (!title || !message) {
+        return res.status(400).json({ error: 'Title and message are required' });
+    }
+    
+    db.query(
+        `UPDATE announcements 
+         SET title = ?, message = ?, type = ?, target_type = ?, target_course = ?, target_event_id = ?
+         WHERE id = ?`,
+        [title, message, type || 'info', target_type || 'all', target_course || null, target_event_id || null, id],
+        (err, result) => {
             if (err) {
-                console.error('Error fetching user notifications:', err);
+                console.error('Error updating announcement:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ error: 'Announcement not found' });
+            }
+            
+            res.json({ success: true, message: 'Announcement updated successfully' });
+        }
+    );
+});
+
+// Get announcements for a user (filtered by their course and events)
+app.get('/api/announcements/user/:userId', (req, res) => {
+    const { userId } = req.params;
+    
+    // First get user's course and registered events
+    db.query("SELECT course FROM users WHERE id = ?", [userId], (err, userResult) => {
+        if (err) {
+            console.error('Error fetching user:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        
+        const userCourse = userResult[0]?.course;
+        
+        // Get user's registered events
+        db.query(
+            "SELECT event_id FROM registration_requests WHERE user_id = ? AND status = 'approved'",
+            [userId],
+            (err, eventResult) => {
+                if (err) {
+                    console.error('Error fetching user events:', err);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+                
+                const userEventIds = eventResult.map(e => e.event_id);
+                
+                // Build query to get announcements
+                let query = `
+                    SELECT a.*, 
+                           CASE WHEN ar.id IS NOT NULL THEN 1 ELSE 0 END as is_read,
+                           u.name as creator_name
+                    FROM announcements a
+                    LEFT JOIN announcement_reads ar ON a.id = ar.announcement_id AND ar.user_id = ?
+                    LEFT JOIN users u ON a.created_by = u.id
+                    WHERE 
+                `;
+                
+                const params = [userId];
+                
+                // Target conditions
+                const conditions = [];
+                
+                // 1. Announcements for all users
+                conditions.push("a.target_type = 'all'");
+                
+                // 2. Announcements for user's course
+                if (userCourse) {
+                    conditions.push("(a.target_type = 'course' AND a.target_course = ?)");
+                    params.push(userCourse);
+                }
+                
+                // 3. Announcements for user's events
+                if (userEventIds.length > 0) {
+                    conditions.push(`(a.target_type = 'event' AND a.target_event_id IN (${userEventIds.map(() => '?').join(',')}))`);
+                    params.push(...userEventIds);
+                }
+                
+                query += conditions.join(' OR ');
+                query += " ORDER BY a.created_at DESC";
+                
+                db.query(query, params, (err, results) => {
+                    if (err) {
+                        console.error('Error fetching announcements:', err);
+                        return res.status(500).json({ error: 'Database error' });
+                    }
+                    res.json(results);
+                });
+            }
+        );
+    });
+});
+
+// Get all announcements (admin)
+app.get('/api/announcements', (req, res) => {
+    db.query(
+        `SELECT a.*, u.name as creator_name 
+         FROM announcements a
+         LEFT JOIN users u ON a.created_by = u.id
+         ORDER BY a.created_at DESC`,
+        (err, results) => {
+            if (err) {
+                console.error('Error fetching announcements:', err);
                 return res.status(500).json({ error: 'Database error' });
             }
             res.json(results);
-        });
+        }
+    );
+});
+
+// Mark announcement as read
+app.post('/api/announcements/:id/read', (req, res) => {
+    const { id } = req.params;
+    const { user_id } = req.body;
+    
+    if (!user_id) {
+        return res.status(400).json({ error: 'User ID required' });
+    }
+    
+    db.query(
+        "INSERT IGNORE INTO announcement_reads (announcement_id, user_id) VALUES (?, ?)",
+        [id, user_id],
+        (err) => {
+            if (err) {
+                console.error('Error marking announcement as read:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            res.json({ success: true });
+        }
+    );
+});
+
+// Delete announcement (admin)
+app.delete('/api/announcements/:id', (req, res) => {
+    const { id } = req.params;
+    
+    db.query("DELETE FROM announcements WHERE id = ?", [id], (err) => {
+        if (err) {
+            console.error('Error deleting announcement:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ success: true });
+    });
+});
+
+// ========== NOTIFICATIONS ==========
+
+// Create notification
+function createNotification(userId, title, message, type = 'info', link = null) {
+    return new Promise((resolve, reject) => {
+        db.query(
+            "INSERT INTO notifications (user_id, title, message, type, link) VALUES (?, ?, ?, ?, ?)",
+            [userId, title, message, type, link],
+            (err, result) => {
+                if (err) {
+                    console.error('Error creating notification:', err);
+                    reject(err);
+                } else {
+                    resolve(result.insertId);
+                }
+            }
+        );
+    });
+}
+
+// API: Create notification
+app.post('/api/notifications', async (req, res) => {
+    const { user_id, title, message, type, link } = req.body;
+    
+    if (!user_id || !title || !message) {
+        return res.status(400).json({ error: 'User ID, title, and message are required' });
+    }
+    
+    try {
+        const notificationId = await createNotification(user_id, title, message, type, link);
+        res.json({ success: true, notificationId });
+    } catch (error) {
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Get user notifications
+app.get('/api/notifications/user/:userId', (req, res) => {
+    const { userId } = req.params;
+    
+    db.query(
+        "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
+        [userId],
+        (err, results) => {
+            if (err) {
+                console.error('Error fetching notifications:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            res.json(results);
+        }
+    );
+});
+
+// Get unread notification count
+app.get('/api/notifications/unread/:userId', (req, res) => {
+    const { userId } = req.params;
+    
+    db.query(
+        "SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0",
+        [userId],
+        (err, results) => {
+            if (err) {
+                console.error('Error fetching unread count:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            res.json({ count: results[0].count });
+        }
+    );
 });
 
 // Mark notification as read
 app.put('/api/notifications/:id/read', (req, res) => {
     const { id } = req.params;
-
-    db.query("UPDATE notifications SET is_read = 1 WHERE id = ?", [id], (err, result) => {
-        if (err) {
-            console.error('Error marking notification as read:', err);
-            return res.status(500).json({ error: 'Database error' });
+    
+    db.query(
+        "UPDATE notifications SET is_read = 1 WHERE id = ?",
+        [id],
+        (err) => {
+            if (err) {
+                console.error('Error marking notification as read:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            res.json({ success: true });
         }
-        res.json({ success: true });
-    });
+    );
+});
+
+// Mark all notifications as read
+app.put('/api/notifications/read-all/:userId', (req, res) => {
+    const { userId } = req.params;
+    
+    db.query(
+        "UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0",
+        [userId],
+        (err) => {
+            if (err) {
+                console.error('Error marking all notifications as read:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            res.json({ success: true });
+        }
+    );
 });
 
 // Serve uploaded files
@@ -1784,7 +2461,6 @@ app.get('/api/uploads/:filename', (req, res) => {
     fileStream.pipe(res);
 });
 
-// Also add a direct access route (just in case)
 app.get('/uploads/:filename', (req, res) => {
     const { filename } = req.params;
     const filePath = path.join(__dirname, 'uploads', filename);
@@ -1825,6 +2501,68 @@ app.post('/api/certificates/template', upload.single('template'), (req, res) => 
         }
     );
 });
+// Update template positions
+app.put('/api/certificates/templates/:id/positions', (req, res) => {
+    const { id } = req.params;
+    const { name_position, event_position, date_position } = req.body;
+    
+    console.log(`Updating template ${id} positions:`, { name_position });
+    
+    // Build dynamic update query based on what was sent
+    const updates = [];
+    const params = [];
+    
+    if (name_position !== undefined) {
+        updates.push('name_position = ?');
+        params.push(name_position);
+    }
+    if (event_position !== undefined) {
+        updates.push('event_position = ?');
+        params.push(event_position);
+    }
+    if (date_position !== undefined) {
+        updates.push('date_position = ?');
+        params.push(date_position);
+    }
+    
+    if (updates.length === 0) {
+        return res.status(400).json({ error: 'No position data provided' });
+    }
+    
+    params.push(id);
+    
+    const sql = `UPDATE certificate_templates SET ${updates.join(', ')} WHERE id = ?`;
+    
+    db.query(sql, params, (err, result) => {
+        if (err) {
+            console.error('Error updating template positions:', err);
+            return res.status(500).json({ error: 'Database error: ' + err.message });
+        }
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Template not found' });
+        }
+        
+        console.log(`✅ Template ${id} positions updated successfully`);
+        res.json({ success: true });
+    });
+});
+
+// Get single template
+app.get('/api/certificates/templates/:id', (req, res) => {
+    const { id } = req.params;
+    
+    db.query("SELECT * FROM certificate_templates WHERE id = ?", [id], (err, results) => {
+        if (err) {
+            console.error('Error fetching template:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Template not found' });
+        }
+        res.json(results[0]);
+    });
+});
 
 // Get all templates
 app.get('/api/certificates/templates', (req, res) => {
@@ -1854,7 +2592,7 @@ app.post('/api/certificates/generate/:eventId', async (req, res) => {
         
         const event = eventResult[0];
         
-        // Get template
+        // Get template with saved positions
         let templateQuery = "SELECT * FROM certificate_templates WHERE id = ?";
         let templateParams = [templateId];
         
@@ -1874,6 +2612,18 @@ app.post('/api/certificates/generate/:eventId', async (req, res) => {
         
         if (!fs.existsSync(templatePath)) {
             return res.status(404).json({ error: 'Template file not found' });
+        }
+        
+        // Parse saved name position (if any)
+        let namePosition = { x: 50, y: 50, size: 36, color: '#1a1a4d' };
+        if (template.name_position) {
+            try {
+                const saved = JSON.parse(template.name_position);
+                namePosition = { ...namePosition, ...saved };
+                console.log('✅ Using saved position:', namePosition);
+            } catch (e) {
+                console.error('❌ Error parsing saved position:', e);
+            }
         }
         
         // Get approved participants
@@ -1908,7 +2658,7 @@ app.post('/api/certificates/generate/:eventId', async (req, res) => {
                 const pages = pdfDoc.getPages();
                 const firstPage = pages[0];
                 
-                // Try to load a nice font, fallback to standard
+                // Try to load a font
                 let font;
                 try {
                     font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -1918,69 +2668,40 @@ app.post('/api/certificates/generate/:eventId', async (req, res) => {
                 
                 const { width, height } = firstPage.getSize();
                 
-                // Parse name: "LASTNAME, FIRSTNAME MI" or just "Name"
+                // Format participant name
                 let displayName = participant.name;
-                let lastName = '', firstName = '', middleInitial = '';
                 
                 // Try to parse LASTNAME, FIRSTNAME format
                 const nameParts = participant.name.split(',');
                 if (nameParts.length === 2) {
-                    lastName = nameParts[0].trim();
+                    const lastName = nameParts[0].trim();
                     const firstParts = nameParts[1].trim().split(' ');
-                    firstName = firstParts[0] || '';
-                    middleInitial = firstParts[1] ? firstParts[1].charAt(0) + '.' : '';
+                    const firstName = firstParts[0] || '';
+                    const middleInitial = firstParts[1] ? firstParts[1].charAt(0) + '.' : '';
                     displayName = `${lastName}, ${firstName} ${middleInitial}`.trim();
                 }
                 
-                // Format event date
-                const eventDate = event.date ? new Date(event.date).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                }) : '';
+                // Calculate position using saved percentages
+                const textX = (width * namePosition.x / 100);
+                const textY = height - (height * namePosition.y / 100);
                 
-                // Add text to PDF
-                const centerX = width / 2;
+                // Convert hex color to RGB
+                const hexColor = namePosition.color.replace('#', '');
+                const r = parseInt(hexColor.substring(0, 2), 16) / 255;
+                const g = parseInt(hexColor.substring(2, 4), 16) / 255;
+                const b = parseInt(hexColor.substring(4, 6), 16) / 255;
                 
-                // Participant Name (centered, larger)
+                // Center the text at the X position
+                const textWidth = font.widthOfTextAtSize(displayName, namePosition.size);
+                const centeredX = textX - (textWidth / 2);
+                
+                // Add participant name at saved position
                 firstPage.drawText(displayName, {
-                    x: centerX - (displayName.length * 6),
-                    y: height / 2 + 20,
-                    size: 36,
+                    x: centeredX,
+                    y: textY,
+                    size: namePosition.size,
                     font: font,
-                    color: rgb(0.1, 0.1, 0.3)
-                });
-                
-                // Event Title
-                firstPage.drawText(event.title || '', {
-                    x: centerX - (event.title.length * 4),
-                    y: height / 2 - 40,
-                    size: 18,
-                    font: font,
-                    color: rgb(0.2, 0.2, 0.4)
-                });
-                
-                // Event Date
-                firstPage.drawText(eventDate, {
-                    x: centerX - (eventDate.length * 3),
-                    y: height / 2 - 70,
-                    size: 14,
-                    font: font,
-                    color: rgb(0.3, 0.3, 0.5)
-                });
-                
-                // Date of issuance
-                const today = new Date().toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
-                firstPage.drawText(`Issued: ${today}`, {
-                    x: 50,
-                    y: 50,
-                    size: 10,
-                    font: font,
-                    color: rgb(0.4, 0.4, 0.6)
+                    color: rgb(r, g, b)
                 });
                 
                 // Save the PDF
@@ -2195,10 +2916,10 @@ app.get('/api/debug/db-state', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 EduTrip server running on http://localhost:${PORT}`);
-    console.log(`📊 Using MySQL database: ${process.env.DB_NAME || 'edutrip'}`);
+    console.log(`🚀 EduEvent server running on http://localhost:${PORT}`);
+    console.log(`📊 Using MySQL database: ${process.env.DB_NAME || 'eduevent'}`);
     console.log(`🔑 Test credentials:`);
-    console.log(`   Admin: admin@edutrip.com / admin123`);
-    console.log(`   Student: student@edutrip.com / student123`);
+    console.log(`   Admin: admin@eduevent.com / admin123`);
+    console.log(`   Student: student@eduevent.com / student123`);
     console.log(`🐛 Debug endpoint available: http://localhost:${PORT}/api/debug/db-state`);
 });

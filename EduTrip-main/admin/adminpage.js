@@ -2,6 +2,50 @@ let currentUser = null;
 let editingEventId = null;
 let busFilterInitialized = false; // Track if bus filter is already initialized
 
+// Format date for Philippines timezone (GMT+8)
+function formatPHDate(dateString, options = {}) {
+    if (!dateString) return 'TBA';
+    
+    const date = new Date(dateString);
+    
+    // Default options for date display
+    const defaultOptions = {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Manila'
+    };
+    
+    return date.toLocaleString('en-PH', { ...defaultOptions, ...options });
+}
+
+// Short date format (MM/DD/YYYY)
+function formatPHDateShort(dateString) {
+    if (!dateString) return 'TBA';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-PH', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        timeZone: 'Asia/Manila'
+    });
+}
+
+// Time only format
+function formatPHTime(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-PH', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Manila'
+    });
+}
+
 // Helper function to display dates without timezone shift
 function formatDateForDisplay(dateString) {
     if (!dateString) return 'TBA';
@@ -106,11 +150,14 @@ function initSidebarToggle() {
 }
 
 function initializePage() {
+    initializeDashboardRefreshButton();
     initParticipantsFilters();
     initializeModalListeners();
     initializeEditBusForm();
-    initializeDashboardRefreshButton();
+    initAnnouncementForm();
+    initAnnouncementFeatures();
     initCertificatePage();
+    
     // Navigation functionality
     const navLinks = document.querySelectorAll('.sidebar-item');
     const pages = document.querySelectorAll('.page-container');
@@ -122,6 +169,28 @@ function initializePage() {
         dashboardPage.classList.remove('hidden');
         document.querySelectorAll('.page-container').forEach(p => {
             if (p.id !== 'dashboard') p.classList.add('hidden');
+        });
+    }
+
+    // Status filter
+    const statusFilter = document.getElementById('status-filter');
+    if (statusFilter) {
+        statusFilter.addEventListener('change', loadRegistrationRequests);
+    }
+
+    // Event filter
+    const eventFilter = document.getElementById('event-filter');
+    if (eventFilter) {
+        eventFilter.addEventListener('change', loadRegistrationRequests);
+    }
+
+    // Search input
+    const requestsSearch = document.getElementById('requests-search');
+    if (requestsSearch) {
+        let searchTimeout;
+        requestsSearch.addEventListener('input', function () {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => loadRegistrationRequests(), 300);
         });
     }
 
@@ -148,6 +217,7 @@ function initializePage() {
                 // Load data based on page
                 switch (pageId) {
                     case 'requests':
+                        loadEventsForRequestFilter();
                         loadRegistrationRequests();
                         break;
                     case 'events':
@@ -161,6 +231,9 @@ function initializePage() {
                         busFilterInitialized = false;
                         // Initialize bus assignment when page is shown
                         initializeBusAssignment();
+                        break;
+                    case 'announcement':
+                        loadAnnouncements();
                         break;
                 }
             }
@@ -201,29 +274,32 @@ if (createEventForm) {
 
         const eventData = new FormData();
         
-        // Get all elements safely
         const titleEl = document.getElementById('event-title');
         const descEl = document.getElementById('event-description');
         const dateEl = document.getElementById('event-date');
         const locationEl = document.getElementById('event-location');
         const courseEl = document.getElementById('event-course');
+        const targetYearEl = document.getElementById('event-target-year');
         const imageEl = document.getElementById('event-image');
+        const urlEl = document.getElementById('event-url');
         
-        // Check if all required elements exist
         if (!titleEl || !descEl || !dateEl || !locationEl || !courseEl) {
             showError('Error: Form fields are missing. Please refresh the page.');
             return;
         }
         
-        // Get the date value as-is from the input (already in YYYY-MM-DD format)
         const selectedDate = dateEl.value;
-        console.log('📅 Creating event with date:', selectedDate);
         
         eventData.append('title', titleEl.value);
         eventData.append('description', descEl.value);
-        eventData.append('date', selectedDate); // Send as YYYY-MM-DD
+        eventData.append('date', selectedDate);
         eventData.append('location', locationEl.value);
         eventData.append('course', courseEl.value);
+        eventData.append('target_year', targetYearEl.value);
+        
+        if (urlEl && urlEl.value.trim()) {
+            eventData.append('external_url', urlEl.value.trim());
+        }
 
         if (imageEl?.files?.[0]) {
             eventData.append('image', imageEl.files[0]);
@@ -305,17 +381,6 @@ if (createEventForm) {
         }
     });
 
-    // Status filter change handlers
-    const statusFilter = document.getElementById('status-filter');
-    const eventStatusFilter = document.getElementById('event-status-filter');
-
-    if (statusFilter) {
-        statusFilter.addEventListener('change', loadRegistrationRequests);
-    }
-
-    if (eventStatusFilter) {
-        eventStatusFilter.addEventListener('change', loadRegistrationRequests);
-    }
         initializeAutoAssignButton();
     
     // Add sort filter listener
@@ -324,6 +389,7 @@ if (createEventForm) {
         sortFilter.addEventListener('change', loadParticipants);
     }
 }
+
 // Update the updateDashboardStats function to handle spinner animation
 async function updateDashboardStats() {
     try {
@@ -581,36 +647,41 @@ async function assignToBus(assignmentData) {
     }
 }
 
-// Update the removeBusAssignment function
+// Remove bus assignment
 async function removeBusAssignment(assignmentId, userName) {
     const confirmed = await showConfirm({
-        title: 'Remove Assignment',
-        message: `Are you sure you want to remove ${userName} from their bus assignment?\n\nThis will free up their seat on the bus.`,
+        title: 'Remove Bus Assignment',
+        message: `Are you sure you want to remove ${userName} from their bus assignment?\n\nThis will free up their seat on the bus and they will need to be reassigned.`,
         type: 'warning',
         confirmText: 'Yes, Remove',
         cancelText: 'Cancel'
     });
+    
     if (!confirmed) return;
 
     try {
-        const response = await fetch(`/api/bus-assignments/${assignmentId}`, { method: 'DELETE' });
+        const response = await fetch(`/api/bus-assignments/${assignmentId}`, {
+            method: 'DELETE'
+        });
+
         const result = await response.json();
 
         if (result.success) {
-            showSuccess('✅ Bus assignment removed successfully!');
+            showSuccess(`✅ ${userName} has been removed from the bus assignment!`, 'Assignment Removed');
+
+            // Refresh data
             const eventId = document.getElementById('bus-event-filter').value;
             if (eventId) {
                 loadEventBusAssignments(eventId);
                 loadEligibleParticipants(eventId);
             }
             loadBuses();
-            updateDashboardStats();
         } else {
-            showError('❌ Error: ' + result.error);
+            showError('❌ Error: ' + (result.error || 'Failed to remove assignment'), 'Error');
         }
     } catch (error) {
         console.error('Error removing bus assignment:', error);
-        showError('❌ Error removing bus assignment: ' + error.message);
+        showError('❌ Error removing bus assignment: ' + error.message, 'Error');
     }
 }
 
@@ -727,22 +798,23 @@ function filterEventsByCourse(course) {
             </button>
         ` : '';
         
-        // Determine finish button - only show if event has passed and not already completed/cancelled
-        const finishButton = !isCancelled && !isCompleted && hasEventPassed ? `
-            <button class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors" 
-                    onclick="finishEvent(${event.id})">
-                <i class='bx bx-check-circle mr-1'></i>Finish
-            </button>
-        ` : '';
-        
-        // Locked finish button - show if event hasn't passed yet
-        const lockedFinishButton = !isCancelled && !isCompleted && !hasEventPassed ? `
-            <button class="px-3 py-2 bg-gray-700 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed" 
-                    onclick="showAlert('This event cannot be finished until after its scheduled date', 'info', 'Event Not Finished')"
-                    title="Event date hasn't passed yet">
-                <i class='bx bx-lock-alt mr-1'></i>Finish
-            </button>
-        ` : '';
+            // Determine finish button - only show if event has passed and not already completed/cancelled
+            // AND all participants are assigned (we'll check this when clicked, but show a warning indicator)
+            const finishButton = !isCancelled && !isCompleted && hasEventPassed ? `
+                <button class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors" 
+                        onclick="finishEvent(${event.id})">
+                    <i class='bx bx-check-circle mr-1'></i>Finish
+                </button>
+            ` : '';
+
+            // Locked finish button - show if event hasn't passed yet
+            const lockedFinishButton = !isCancelled && !isCompleted && !hasEventPassed ? `
+                <button class="px-3 py-2 bg-gray-700 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed" 
+                        onclick="showAlert('This event cannot be finished until after its scheduled date', 'info', 'Event Not Finished')"
+                        title="Event date hasn't passed yet">
+                    <i class='bx bx-lock-alt mr-1'></i>Finish
+                </button>
+            ` : '';
         
         return `
             <div class="bg-gray-900 border ${isCancelled ? 'border-red-800/50' : isHidden ? 'border-yellow-800/50' : 'border-gray-800'} rounded-lg p-5 hover:border-blue-500/30 transition-colors ${isHidden ? 'opacity-75' : ''}">
@@ -757,7 +829,7 @@ function filterEventsByCourse(course) {
                 </div>
                 <p class="text-gray-400 text-sm mb-3">${event.description || 'No description'}</p>
                 <div class="flex justify-between text-gray-500 text-sm mb-4">
-                    <span><i class='bx bx-calendar mr-1'></i>${event.date ? new Date(event.date).toLocaleDateString() : 'TBA'}</span>
+                    <span><i class='bx bx-calendar mr-1'></i>${event.date ? formatPHDateShort(event.date) : 'TBA'}</span>
                     <span><i class='bx bx-map mr-1'></i>${event.location || 'TBA'}</span>
                 </div>
                 <div class="flex space-x-2">
@@ -807,17 +879,69 @@ async function finishEvent(eventId) {
         return;
     }
     
-    const confirmed = await showConfirm({
-        title: 'Finish Event',
-        message: `Are you sure you want to mark "${event.title}" as completed?\n\nThis will:\n• Move the event to completed status\n• Prevent new registrations\n• Allow certificate generation`,
-        type: 'info',
-        confirmText: 'Yes, Finish Event',
-        cancelText: 'Cancel'
-    });
-    
-    if (!confirmed) return;
-    
     try {
+        // Check if all approved participants are assigned to buses
+        console.log('Checking bus assignments for event:', eventId);
+        
+        // Get eligible participants (approved but NOT assigned)
+        const eligibleResponse = await fetch(`/api/events/${eventId}/eligible-participants`);
+        const eligibleParticipants = await eligibleResponse.json();
+        
+        // Get total approved participants count
+        const requestsResponse = await fetch('/api/registration-requests');
+        const allRequests = await requestsResponse.json();
+        const approvedForEvent = allRequests.filter(req => 
+            req.event_id == eventId && req.status === 'approved'
+        );
+        
+        // Get assigned participants count
+        const assignmentsResponse = await fetch(`/api/events/${eventId}/bus-assignments`);
+        const assignments = await assignmentsResponse.json();
+        
+        const unassignedCount = eligibleParticipants.length;
+        const assignedCount = assignments.length;
+        const totalApproved = approvedForEvent.length;
+        
+        console.log(`Event ${eventId} stats: ${assignedCount} assigned, ${unassignedCount} unassigned, ${totalApproved} total approved`);
+        
+        // If there are approved participants but none are assigned, block
+        if (totalApproved > 0 && assignedCount === 0) {
+            showError(
+                `Cannot finish this event because none of the ${totalApproved} approved participant(s) have been assigned to a bus.\n\n` +
+                `Please assign all approved participants to buses first.`,
+                'Bus Assignment Required'
+            );
+            return;
+        }
+        
+        // If there are unassigned participants, block
+        if (unassignedCount > 0) {
+            showError(
+                `Cannot finish this event because ${unassignedCount} approved participant(s) have not been assigned to a bus.\n\n` +
+                `Assigned: ${assignedCount}/${totalApproved}\n` +
+                `Unassigned: ${unassignedCount}\n\n` +
+                `Please assign all approved participants to buses before finishing the event.`,
+                'Bus Assignment Required'
+            );
+            return;
+        }
+        
+        // All checks passed, proceed with finishing the event
+        const confirmed = await showConfirm({
+            title: 'Finish Event',
+            message: `Are you sure you want to mark "${event.title}" as completed?\n\n` +
+                `This will:\n` +
+                `• Move the event to completed status\n` +
+                `• Prevent new registrations\n` +
+                `• Allow certificate generation\n\n` +
+                `✅ All ${totalApproved} approved participant(s) are assigned to buses.`,
+            type: 'info',
+            confirmText: 'Yes, Finish Event',
+            cancelText: 'Cancel'
+        });
+        
+        if (!confirmed) return;
+        
         const response = await fetch(`/api/events/${eventId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -846,6 +970,7 @@ async function finishEvent(eventId) {
         showError('Error: ' + error.message, 'Error');
     }
 }
+
 async function autoCompleteOldEvents() {
     // Count eligible events first
     const today = new Date();
@@ -998,16 +1123,16 @@ async function editEvent(eventId) {
             throw new Error('Event not found');
         }
 
-        // Populate form - make sure all these elements exist
         document.getElementById('edit-event-id').value = eventId;
         document.getElementById('edit-event-title').value = event.title || '';
         document.getElementById('edit-event-description').value = event.description || '';
         document.getElementById('edit-event-date').value = event.date || '';
         document.getElementById('edit-event-location').value = event.location || '';
         document.getElementById('edit-event-course').value = event.course || 'ALL';
+        document.getElementById('edit-event-target-year').value = event.target_year || 'ALL';  // ADD THIS
         document.getElementById('edit-event-status').value = event.status || 'active';
+        document.getElementById('edit-event-url').value = event.external_url || '';
 
-        // Show modal
         document.getElementById('edit-event-modal').classList.remove('hidden');
 
     } catch (error) {
@@ -1018,9 +1143,18 @@ async function editEvent(eventId) {
 
 async function updateEvent(eventId, eventData) {
     try {
-        // Make sure date stays as YYYY-MM-DD string
         if (eventData.date && typeof eventData.date === 'string') {
             eventData.date = eventData.date.split('T')[0];
+        }
+
+        const urlEl = document.getElementById('edit-event-url');
+        if (urlEl) {
+            eventData.external_url = urlEl.value.trim() || null;
+        }
+
+        const targetYearEl = document.getElementById('edit-event-target-year');
+        if (targetYearEl) {
+            eventData.target_year = targetYearEl.value;
         }
 
         const response = await fetch(`/api/events/${eventId}`, {
@@ -1049,9 +1183,11 @@ async function updateEvent(eventId, eventData) {
 async function loadRegistrationRequests() {
     try {
         const statusFilter = document.getElementById('status-filter')?.value || 'all';
-        const eventStatusFilter = document.getElementById('event-status-filter')?.value || 'active';
+        const eventFilter = document.getElementById('event-filter')?.value || 'all';
+        const searchInput = document.getElementById('requests-search')?.value.toLowerCase().trim() || '';
 
         const requestsList = document.getElementById('requests-list');
+        const resultCountDiv = document.getElementById('requests-result-count');
         if (!requestsList) return;
 
         requestsList.innerHTML = `
@@ -1071,21 +1207,53 @@ async function loadRegistrationRequests() {
 
         let requests = await response.json();
 
-        // Filter based on event status
-        if (eventStatusFilter === 'active') {
-            requests = requests.filter(req => req.event_status !== 'cancelled');
+        // Filter by event
+        if (eventFilter !== 'all') {
+            requests = requests.filter(req => req.event_id == eventFilter);
         }
 
-        // Filter based on registration status
-        const filteredRequests = statusFilter === 'all'
+        // Filter by status
+        let filteredRequests = statusFilter === 'all'
             ? requests
             : requests.filter(req => req.status === statusFilter);
+            
+        // Apply search filter
+        if (searchInput) {
+            filteredRequests = filteredRequests.filter(request => {
+                const name = (request.name || '').toLowerCase();
+                const email = (request.email || '').toLowerCase();
+                const studentNumber = (request.student_number || '').toLowerCase();
+                
+                return name.includes(searchInput) || 
+                       email.includes(searchInput) || 
+                       studentNumber.includes(searchInput);
+            });
+        }
+
+        // Update result count
+        if (resultCountDiv) {
+            const totalCount = filteredRequests.length;
+            const pendingCount = filteredRequests.filter(r => r.status === 'pending').length;
+            const approvedCount = filteredRequests.filter(r => r.status === 'approved').length;
+            const rejectedCount = filteredRequests.filter(r => r.status === 'rejected').length;
+            
+            resultCountDiv.innerHTML = `
+                <div class="flex items-center space-x-4">
+                    <span>Total: <span class="text-white font-medium">${totalCount}</span> requests</span>
+                    <span class="text-yellow-400"><i class='bx bx-time mr-1'></i>${pendingCount} Pending</span>
+                    <span class="text-green-400"><i class='bx bx-check-circle mr-1'></i>${approvedCount} Approved</span>
+                    <span class="text-red-400"><i class='bx bx-x-circle mr-1'></i>${rejectedCount} Rejected</span>
+                    ${searchInput ? `<span class="text-blue-400"><i class='bx bx-search mr-1'></i>Search: "${searchInput}"</span>` : ''}
+                </div>
+            `;
+        }
 
         if (filteredRequests.length === 0) {
             requestsList.innerHTML = `
                 <div class="text-center py-10">
                     <i class='bx bx-inbox text-4xl text-gray-500 mb-3'></i>
                     <p class="text-gray-400">No registration requests found</p>
+                    <p class="text-gray-500 text-sm">${searchInput || eventFilter !== 'all' ? 'Try adjusting your filters' : ''}</p>
                 </div>
             `;
             return;
@@ -1097,12 +1265,26 @@ async function loadRegistrationRequests() {
             const hasRegForm = request.registration_form && request.registration_form !== 'null' && request.registration_form !== '';
             const hasWaiverForm = request.waiver_form && request.waiver_form !== 'null' && request.waiver_form !== '';
 
-            // FIX: Use safer string escaping
             const safeName = request.name ? request.name.replace(/'/g, "\\'").replace(/"/g, '\\"') : 'Student';
             const safeRegForm = hasRegForm ? request.registration_form.replace(/'/g, "\\'").replace(/"/g, '\\"') : '';
             const safeWaiverForm = hasWaiverForm ? request.waiver_form.replace(/'/g, "\\'").replace(/"/g, '\\"') : '';
 
-            // FIX: Use double quotes for onclick to avoid escaping issues
+            // Highlight search term
+            let displayName = request.name || 'Unknown Student';
+            let displayEmail = request.email || 'N/A';
+            let displayStudentNumber = request.student_number || 'N/A';
+            
+            if (searchInput) {
+                const highlightText = (text) => {
+                    if (!text) return text;
+                    const regex = new RegExp(`(${searchInput.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                    return text.replace(regex, '<mark class="bg-yellow-600/50 text-white px-1 rounded">$1</mark>');
+                };
+                displayName = highlightText(displayName);
+                displayEmail = highlightText(displayEmail);
+                displayStudentNumber = highlightText(displayStudentNumber);
+            }
+
             if (hasRegForm || hasWaiverForm) {
                 fileLinksHTML = '<div class="mt-3 space-y-2">';
 
@@ -1111,8 +1293,7 @@ async function loadRegistrationRequests() {
                         <p>
                             <a href="/api/uploads/${encodeURIComponent(request.registration_form)}" 
                                target="_blank"
-                               class="text-blue-400 hover:text-blue-300 text-sm inline-flex items-center"
-                               title="View/download registration form">
+                               class="text-blue-400 hover:text-blue-300 text-sm inline-flex items-center">
                                 <i class='bx bx-file mr-1'></i> Registration Form
                             </a>
                         </p>
@@ -1124,15 +1305,13 @@ async function loadRegistrationRequests() {
                         <p>
                             <a href="/api/uploads/${encodeURIComponent(request.waiver_form)}" 
                                target="_blank"
-                               class="text-blue-400 hover:text-blue-300 text-sm inline-flex items-center"
-                               title="View/download waiver form">
+                               class="text-blue-400 hover:text-blue-300 text-sm inline-flex items-center">
                                 <i class='bx bx-file mr-1'></i> Waiver Form
                             </a>
                         </p>
                     `;
                 }
 
-                // Also add a "View All" button
                 fileLinksHTML += `
                     <div class="pt-2">
                         <button onclick="openFileViewer(${request.id}, '${safeName}', '${safeRegForm}', '${safeWaiverForm}')"
@@ -1157,12 +1336,11 @@ async function loadRegistrationRequests() {
                 <div class="bg-black border ${request.event_status === 'cancelled' ? 'border-red-800/50' : 'border-gray-800'} rounded-lg p-5 hover:border-blue-500/30 transition-colors ${request.event_status === 'cancelled' ? 'opacity-80' : ''}">
                     <div class="flex justify-between items-start mb-4">
                         <div>
-                            <h3 class="text-lg font-semibold text-white">${request.name || 'Unknown Student'} ${eventStatusBadge}</h3>
-                            <p class="text-gray-400 text-sm mt-1"><strong>Student #:</strong> ${request.student_number || 'N/A'}</p>
-                            <p class="text-gray-400 text-sm"><strong>Email:</strong> ${request.email || 'N/A'}</p>
+                            <h3 class="text-lg font-semibold text-white">${displayName} ${eventStatusBadge}</h3>
+                            <p class="text-gray-400 text-sm mt-1"><strong>Student #:</strong> ${displayStudentNumber}</p>
+                            <p class="text-gray-400 text-sm"><strong>Email:</strong> ${displayEmail}</p>
                             <p class="text-gray-400 text-sm"><strong>Event:</strong> ${request.event_title || 'Unknown Event'}</p>
-                            <p class="text-gray-400 text-sm"><strong>Date:</strong> ${request.event_date ? new Date(request.event_date).toLocaleDateString() : 'N/A'}</p>
-                            <p class="text-gray-400 text-sm"><strong>Location:</strong> ${request.event_location || 'N/A'}</p>
+                            <p class="text-gray-400 text-sm"><strong>Event Date:</strong> ${request.event_date ? formatPHDateShort(request.event_date) : 'N/A'}</p>
                             <p class="text-gray-400 text-sm"><strong>Submitted:</strong> ${request.created_at ? new Date(request.created_at).toLocaleString() : 'N/A'}</p>
                             
                             ${fileLinksHTML}
@@ -1175,23 +1353,23 @@ async function loadRegistrationRequests() {
                         <div class="flex space-x-3">
                             ${request.status !== 'approved' ? `
                                 <button class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors" onclick="updateRequestStatus(${request.id}, 'approved')">
-                                    Approve
+                                    <i class='bx bx-check mr-1'></i> Approve
                                 </button>
                             ` : ''}
                             ${request.status !== 'rejected' ? `
                                 <button class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors" onclick="updateRequestStatus(${request.id}, 'rejected')">
-                                    Reject
+                                    <i class='bx bx-x mr-1'></i> Reject
                                 </button>
                             ` : ''}
                             ${request.status !== 'pending' ? `
                                 <button class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors" onclick="updateRequestStatus(${request.id}, 'pending')">
-                                    Set Pending
+                                    <i class='bx bx-time mr-1'></i> Set Pending
                                 </button>
                             ` : ''}
                         </div>
                     ` : `
                         <div class="text-center p-3 bg-red-900/20 border border-red-800/30 rounded-lg">
-                            <p class="text-red-400 text-sm">Event Cancelled - No Actions Available</p>
+                            <p class="text-red-400 text-sm"><i class='bx bx-error mr-1'></i> Event Cancelled - No Actions Available</p>
                         </div>
                     `}
                 </div>
@@ -1207,7 +1385,7 @@ async function loadRegistrationRequests() {
                     <i class='bx bx-error text-4xl text-red-500 mb-3'></i>
                     <p class="text-gray-400">Error loading registration requests</p>
                     <button class="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors" onclick="loadRegistrationRequests()">
-                        Retry
+                        <i class='bx bx-refresh mr-2'></i> Retry
                     </button>
                 </div>
             `;
@@ -1361,6 +1539,94 @@ function downloadAllFiles() {
         }
     });
 }
+// Load events for request filter dropdown
+async function loadEventsForRequestFilter() {
+    try {
+        const eventFilter = document.getElementById('event-filter');
+        if (!eventFilter) return;
+        
+        const response = await fetch('/api/events?all=true');
+        const events = await response.json();
+        
+        // Clear existing options except "All Events"
+        eventFilter.innerHTML = '<option value="all">All Events</option>';
+        
+        // Sort events by date (most recent first)
+        const sortedEvents = events.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        sortedEvents.forEach(event => {
+            const option = document.createElement('option');
+            option.value = event.id;
+            option.textContent = `${event.title} (${event.date ? formatPHDateShort(event.date) : 'TBA'})`;
+            eventFilter.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading events for filter:', error);
+    }
+}
+
+// Remove participant from event
+async function removeParticipantFromEvent(userId, eventId, userName) {
+    const confirmed = await showConfirm({
+        title: 'Remove Participant',
+        message: `Are you sure you want to remove ${userName} from this event?\n\nThis will:\n• Delete their registration request\n• Remove them from any bus assignment\n• They will need to register again to rejoin`,
+        type: 'warning',
+        confirmText: 'Yes, Remove',
+        cancelText: 'Cancel'
+    });
+    
+    if (!confirmed) return;
+    
+    try {
+        // First, find the registration request ID
+        const requestsResponse = await fetch('/api/registration-requests');
+        const requests = await requestsResponse.json();
+        
+        const request = requests.find(req => 
+            req.user_id == userId && req.event_id == eventId
+        );
+        
+        if (!request) {
+            showError('Registration request not found', 'Error');
+            return;
+        }
+        
+        // Check if participant has a bus assignment
+        const assignmentsResponse = await fetch(`/api/events/${eventId}/bus-assignments`);
+        const assignments = await assignmentsResponse.json();
+        
+        const assignment = assignments.find(a => a.user_id == userId);
+        
+        // Remove bus assignment if exists
+        if (assignment) {
+            await fetch(`/api/bus-assignments/${assignment.id}`, {
+                method: 'DELETE'
+            });
+        }
+        
+        // Delete the registration request
+        const deleteResponse = await fetch(`/api/registration-requests/${request.id}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await deleteResponse.json();
+        
+        if (result.success) {
+            showSuccess(`✅ ${userName} has been removed from the event!`, 'Participant Removed');
+            
+            // Refresh the participants list
+            loadParticipants();
+            
+            // Refresh dashboard stats
+            updateDashboardStats();
+        } else {
+            showError(result.error || 'Failed to remove participant', 'Error');
+        }
+    } catch (error) {
+        console.error('Error removing participant:', error);
+        showError('Error removing participant: ' + error.message, 'Error');
+    }
+}
 
 async function loadParticipants() {
     try {
@@ -1422,6 +1688,8 @@ async function loadParticipants() {
                 name: request.name || 'Unknown Student',
                 student_number: request.student_number || 'N/A',
                 email: request.email || 'N/A',
+                course: request.course || 'N/A',
+                year: request.year || '',
                 approved_at: request.updated_at || request.created_at,
                 registration_form: request.registration_form,
                 waiver_form: request.waiver_form
@@ -1453,7 +1721,6 @@ async function loadParticipants() {
 
         if (selectedEventId && selectedEventId !== 'all') {
             console.log(`Filtering for event ID: ${selectedEventId}`);
-            // Convert both to string for comparison
             filteredEvents = events.filter(event => String(event.event_id) === String(selectedEventId));
             console.log(`Found ${filteredEvents.length} events after filtering`);
 
@@ -1493,11 +1760,24 @@ async function loadParticipants() {
                 <div class="text-center py-10">
                     <i class='bx bx-search text-4xl text-gray-500 mb-3'></i>
                     <p class="text-gray-400">No participants found</p>
-                    <p class="text-gray-500 text-sm">Try selecting a different event or check if participants are approved</p>
+                    <p class="text-gray-500 text-sm">${searchFilter ? 'Try a different search term' : 'Try selecting a different event or check if participants are approved'}</p>
                 </div>
             `;
             return;
         }
+
+        // Show result summary
+        const totalParticipants = filteredEvents.reduce((sum, event) => sum + event.participants.length, 0);
+        const summaryDiv = document.createElement('div');
+        summaryDiv.className = 'mb-4 text-gray-400 text-sm';
+        summaryDiv.innerHTML = `
+            <div class="flex items-center space-x-4">
+                <span>Total: <span class="text-white font-medium">${totalParticipants}</span> participant${totalParticipants !== 1 ? 's' : ''}</span>
+                <span class="text-green-400"><i class='bx bx-check-circle mr-1'></i>${filteredEvents.length} event${filteredEvents.length !== 1 ? 's' : ''}</span>
+                ${searchFilter ? `<span class="text-blue-400"><i class='bx bx-search mr-1'></i>Search: "${searchFilter}"</span>` : ''}
+            </div>
+        `;
+        participantsContent.appendChild(summaryDiv);
 
         // Render each event
         filteredEvents.forEach(event => {
@@ -1543,13 +1823,30 @@ async function loadParticipants() {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${event.participants.map(participant => `
+                                ${event.participants.map(participant => {
+                                    // Highlight search terms
+                                    let displayName = participant.name;
+                                    let displayStudentNumber = participant.student_number;
+                                    let displayEmail = participant.email;
+                                    
+                                    if (searchFilter) {
+                                        const highlightText = (text) => {
+                                            if (!text) return text;
+                                            const regex = new RegExp(`(${searchFilter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                                            return text.replace(regex, '<mark class="bg-yellow-600/50 text-white px-1 rounded">$1</mark>');
+                                        };
+                                        displayName = highlightText(displayName);
+                                        displayStudentNumber = highlightText(displayStudentNumber);
+                                        displayEmail = highlightText(displayEmail);
+                                    }
+                                    
+                                    return `
                                     <tr class="border-b border-gray-800/50 hover:bg-gray-900/50 transition-colors">
                                         <td class="py-4">
-                                            <div class="text-white font-medium">${participant.name}</div>
+                                            <div class="text-white font-medium">${displayName}</div>
                                         </td>
-                                        <td class="py-4 text-gray-300">${participant.student_number}</td>
-                                        <td class="py-4 text-gray-300">${participant.email}</td>
+                                        <td class="py-4 text-gray-300">${displayStudentNumber}</td>
+                                        <td class="py-4 text-gray-300">${displayEmail}</td>
                                         <td class="py-4">
                                             <div class="text-gray-300 text-sm">
                                                 ${participant.approved_at ? new Date(participant.approved_at).toLocaleString() : 'Unknown'}
@@ -1563,14 +1860,14 @@ async function loadParticipants() {
                                                         <i class='bx bx-file mr-1'></i> Docs
                                                     </button>
                                                 ` : ''}
-                                                <button onclick="sendCertificate(${participant.id}, ${event.event_id})"
-                                                        class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium transition-colors">
-                                                    <i class='bx bx-envelope mr-1'></i> Cert
+                                                <button onclick="removeParticipantFromEvent(${participant.id}, ${event.event_id}, '${participant.name.replace(/'/g, "\\'")}')"
+                                                        class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium transition-colors">
+                                                    <i class='bx bx-user-x mr-1'></i> Remove
                                                 </button>
                                             </div>
                                         </td>
                                     </tr>
-                                `).join('')}
+                                `}).join('')}
                             </tbody>
                         </table>
                     </div>
@@ -1590,13 +1887,15 @@ async function loadParticipants() {
 
             participantsContent.appendChild(eventElement);
         });
+        
         // Get sort filter
         const sortFilter = document.getElementById('participants-sort-filter')?.value || 'name';
         
-        // Sort participants before rendering
+        // Sort participants before rendering (already done above, but keeping for consistency)
         filteredEvents.forEach(event => {
             event.participants = sortParticipants(event.participants, sortFilter);
         });
+        
         participantsContent.classList.remove('hidden');
         console.log('Participants page rendered successfully');
 
@@ -1693,12 +1992,191 @@ function updateEventFilter(events) {
     }
 }
 
-function exportParticipants(eventId) {
-    showAlert(`Exporting participants list for event ID: ${eventId}\n\nThis feature would generate a CSV/Excel file with all approved participants for this event.`);
-    // In a real implementation, you would:
-    // 1. Fetch participants for this specific event
-    // 2. Format them as CSV/Excel
-    // 3. Trigger download
+// Export participants list as CSV
+async function exportParticipants(eventId) {
+    try {
+        // Show loading
+        showAlert('Preparing export...', 'info', 'Exporting');
+        
+        // Fetch all registration requests with full user details
+        const response = await fetch('/api/registration-requests');
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch participants');
+        }
+        
+        const allRequests = await response.json();
+        
+        // Filter for approved requests for this event
+        const approvedRequests = allRequests.filter(req => 
+            req.event_id == eventId && 
+            req.status === 'approved' && 
+            req.event_status !== 'cancelled'
+        );
+        
+        if (approvedRequests.length === 0) {
+            showAlert('No approved participants to export', 'warning', 'No Data');
+            return;
+        }
+        
+        // Get event details
+        const eventResponse = await fetch(`/api/events/${eventId}`);
+        const event = await eventResponse.json();
+        
+        // Create CSV content
+        let csvContent = '';
+        
+        // Add event info as header rows
+        csvContent += `"EVENT:","${event.title || 'Unknown Event'}"\n`;
+        csvContent += `"DATE:","${event.date ? new Date(event.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'TBA'}"\n`;
+        csvContent += `"LOCATION:","${event.location || 'TBA'}"\n`;
+        csvContent += `"TOTAL PARTICIPANTS:","${approvedRequests.length}"\n`;
+        csvContent += `"EXPORT DATE:","${new Date().toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'medium' })}"\n`;
+        csvContent += `\n`;
+        
+        // Column headers
+        csvContent += [
+            'No',
+            'Student Number',
+            'Full Name',
+            'Email',
+            'Course',
+            'Year',
+            'Section',
+            'Sex',
+            'Age',
+            'Approved Date'
+        ].join(',') + '\n';
+        
+        // Add participant rows
+        approvedRequests.forEach((req, index) => {
+            // Format approved date - simple MM/DD/YYYY
+            let approvedDate = '-';
+            if (req.updated_at) {
+                const date = new Date(req.updated_at);
+                approvedDate = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+            } else if (req.created_at) {
+                const date = new Date(req.created_at);
+                approvedDate = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+            }
+            
+            // Build row
+            const row = [
+                index + 1,
+                req.student_number || '-',
+                req.name || '-',
+                req.email || '-',
+                req.course || '-',
+                req.year || '-',
+                req.section || '-',
+                req.sex || '-',
+                req.age || '-',
+                approvedDate
+            ];
+            
+            // Escape and join
+            csvContent += row.map(cell => {
+                if (cell === null || cell === undefined) return '"-"';
+                const str = String(cell);
+                if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                    return '"' + str.replace(/"/g, '""') + '"';
+                }
+                return str;
+            }).join(',') + '\n';
+        });
+        
+        // Add spacing before summary
+        csvContent += `\n\n`;
+        csvContent += `"══════════════════════════ SUMMARY STATISTICS ══════════════════════════"\n`;
+        csvContent += `\n`;
+        csvContent += `"Total Participants:",${approvedRequests.length}\n`;
+        csvContent += `\n`;
+        
+        // Count by course
+        const courseCount = {};
+        approvedRequests.forEach(req => {
+            const course = req.course || 'Undeclared';
+            courseCount[course] = (courseCount[course] || 0) + 1;
+        });
+        
+        csvContent += `"PARTICIPANTS BY COURSE:"\n`;
+        Object.entries(courseCount)
+            .sort((a, b) => b[1] - a[1])
+            .forEach(([course, count]) => {
+                const percentage = ((count / approvedRequests.length) * 100).toFixed(1);
+                csvContent += `"  • ${course}:",${count},"(${percentage}%)"\n`;
+            });
+        
+        csvContent += `\n`;
+        
+        // Count by year
+        const yearCount = {};
+        approvedRequests.forEach(req => {
+            const year = req.year || 'Undeclared';
+            yearCount[year] = (yearCount[year] || 0) + 1;
+        });
+        
+        csvContent += `"PARTICIPANTS BY YEAR:"\n`;
+        const yearOrder = ['1st yr', '2nd yr', '3rd yr', '4th yr', 'Undeclared'];
+        yearOrder.forEach(year => {
+            if (yearCount[year]) {
+                const percentage = ((yearCount[year] / approvedRequests.length) * 100).toFixed(1);
+                csvContent += `"  • ${year}:",${yearCount[year]},"(${percentage}%)"\n`;
+            }
+        });
+        Object.entries(yearCount).forEach(([year, count]) => {
+            if (!yearOrder.includes(year)) {
+                const percentage = ((count / approvedRequests.length) * 100).toFixed(1);
+                csvContent += `"  • ${year}:",${count},"(${percentage}%)"\n`;
+            }
+        });
+        
+        csvContent += `\n`;
+        
+        // Count by section
+        const sectionCount = {};
+        approvedRequests.forEach(req => {
+            const section = req.section || 'Undeclared';
+            sectionCount[section] = (sectionCount[section] || 0) + 1;
+        });
+        
+        csvContent += `"PARTICIPANTS BY SECTION:"\n`;
+        const sectionOrder = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'Undeclared'];
+        sectionOrder.forEach(section => {
+            if (sectionCount[section]) {
+                const percentage = ((sectionCount[section] / approvedRequests.length) * 100).toFixed(1);
+                csvContent += `"  • Section ${section}:",${sectionCount[section]},"(${percentage}%)"\n`;
+            }
+        });
+        
+        csvContent += `\n`;
+        csvContent += `"═══════════════════════════════════════════════════════════════════════"\n`;
+        csvContent += `"Generated by EduEvent System on ${new Date().toLocaleString()}"\n`;
+        
+        // Create and download file
+        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        
+        // Generate filename
+        const eventTitle = (event.title || 'event').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const exportDate = new Date().toISOString().split('T')[0];
+        const filename = `participants_${eventTitle}_${exportDate}.csv`;
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        showSuccess(`✅ Exported ${approvedRequests.length} participants successfully!`, 'Export Complete');
+        
+    } catch (error) {
+        console.error('Error exporting participants:', error);
+        showError('Error exporting participants: ' + error.message, 'Export Failed');
+    }
 }
 
 async function sendCertificate(userId, eventId) {
@@ -1848,7 +2326,7 @@ async function initBusEventFilter() {
         activeEvents.forEach(event => {
             const option = document.createElement('option');
             option.value = event.id;
-            const eventDate = event.date ? new Date(event.date).toLocaleDateString() : 'TBA';
+            const eventDate = event.date ? formatPHDateShort(event.date) : 'TBA';
 
             // Truncate long event titles (max 50 characters)
             let displayTitle = event.title;
@@ -1952,9 +2430,8 @@ async function updateEventTitle(eventId) {
 
         const pageTitle = document.querySelector('#bus h1');
         if (pageTitle && event) {
-            const eventDate = event.date ? new Date(event.date).toLocaleDateString() : 'TBA';
+            const eventDate = event.date ? formatPHDateShort(event.date) : 'TBA';
 
-            // Truncate long titles with CSS instead of JavaScript
             pageTitle.innerHTML = `
                 <div class="flex flex-col">
                     <span class="text-2xl font-bold text-white truncate" title="${event.title} (${eventDate})">
@@ -2059,7 +2536,6 @@ async function loadBuses() {
 }
 
 async function loadEventsForBusFilter() {
-    // This function is now handled by initBusEventFilter
     initBusEventFilter();
 }
 
@@ -2087,7 +2563,7 @@ async function loadEventBusAssignments(eventId) {
         const assignments = await assignmentsResponse.json();
 
         if (assignments.length === 0) {
-            const eventDate = event.date ? new Date(event.date).toLocaleDateString() : 'TBA';
+            const eventDate = event.date ? formatPHDateShort(event.date) : 'TBA';
             container.innerHTML = `
                 <div class="text-center py-10 bg-gray-900/50 rounded-lg">
                     <i class='bx bx-bus text-4xl text-gray-500 mb-3'></i>
@@ -2116,7 +2592,7 @@ async function loadEventBusAssignments(eventId) {
         });
 
         // Show event info
-        const eventDate = event.date ? new Date(event.date).toLocaleDateString() : 'TBA';
+        const eventDate = event.date ? formatPHDateShort(event.date) : 'TBA';
         container.innerHTML = `
     <div class="mb-6 p-4 bg-gray-900/50 rounded-lg border border-gray-800">
         <div class="flex flex-col">
@@ -2159,7 +2635,7 @@ async function loadEventBusAssignments(eventId) {
                                         <div class="flex items-center space-x-3 text-gray-500 text-xs mt-1">
                                             <span>
                                                 <i class='bx bx-calendar'></i> 
-                                                ${new Date(assignment.assignment_date).toLocaleDateString()}
+                                                ${formatPHDateShort(assignment.assignment_date)}
                                             </span>
                                         </div>
                                         ${assignment.notes ? `
@@ -2406,30 +2882,6 @@ async function openMoveBusModal(assignmentId, currentBusId, userId, userName, cu
     }
 }
 
-async function addBus(busData) {
-    try {
-        const response = await fetch('/api/buses', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(busData)
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            showSuccess('Bus added successfully!');
-            document.getElementById('add-bus-form').reset();
-            document.getElementById('add-bus-modal').classList.add('hidden');
-            loadBuses();
-        } else {
-            showError('Error: ' + result.error);
-        }
-    } catch (error) {
-        console.error('Error adding bus:', error);
-        showError('Error adding bus: ' + error.message);
-    }
-}
-
 async function assignToBus(assignmentData) {
     try {
         // Validate bus selection
@@ -2515,7 +2967,7 @@ async function viewBusAssignments(busId) {
             message += `${index + 1}. ${assignment.user_name} (${assignment.student_number})\n`;
             message += `   Event: ${assignment.event_title}\n`;
             message += `   Date: ${new Date(assignment.event_date).toLocaleDateString()}\n`;
-            message += `   Assigned: ${new Date(assignment.assignment_date).toLocaleDateString()}\n\n`;
+            message += `   Assigned: ${formatPHDateShort(assignment.assignment_date)}\n\n`;
         });
 
         showAlert(message);
@@ -2525,161 +2977,9 @@ async function viewBusAssignments(busId) {
     }
 }
 
+// Open Edit Bus Modal
 async function editBus(busId) {
-    try {
-        const response = await fetch(`/api/buses/${busId}`);
-        const bus = await response.json();
-
-        const newBusNumber = prompt('Enter new bus number:', bus.bus_number);
-        if (!newBusNumber) return;
-
-        const newCapacity = prompt('Enter new capacity:', bus.capacity);
-        if (!newCapacity) return;
-
-        const capacityNum = parseInt(newCapacity);
-        if (isNaN(capacityNum) || capacityNum <= 0) {
-            showAlert('Please enter a valid capacity number greater than 0');
-            return;
-        }
-
-        if (capacityNum < bus.current_passengers) {
-            showAlert(`Cannot set capacity lower than current passengers (${bus.current_passengers})`);
-            return;
-        }
-
-        const updateResponse = await fetch(`/api/buses/${busId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ bus_number: newBusNumber, capacity: capacityNum })
-        });
-
-        const result = await updateResponse.json();
-
-        if (result.success) {
-            showSuccess('Bus updated successfully!');
-            loadBuses();
-        } else {
-            showError('Error: ' + result.error);
-        }
-    } catch (error) {
-        console.error('Error editing bus:', error);
-        showError('Error editing bus: ' + error.message);
-    }
-}
-
-async function deleteBus(busId) {
-    if (!confirm('Are you sure you want to delete this bus? This action cannot be undone.')) {
-        return;
-    }
-
-    try {
-        const response = await fetch(`/api/buses/${busId}`, {
-            method: 'DELETE'
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            showSuccess('Bus deleted successfully!');
-            loadBuses();
-        } else {
-            showError('Error: ' + result.error);
-        }
-    } catch (error) {
-        console.error('Error deleting bus:', error);
-        showError('Error deleting bus: ' + error.message);
-    }
-}
-
-// Load all buses
-async function loadBuses() {
-    try {
-        const busList = document.getElementById('bus-list');
-        if (!busList) return;
-
-        busList.innerHTML = `
-            <div class="col-span-3 flex items-center justify-center h-48">
-                <div class="text-center">
-                    <i class='bx bx-loader-circle bx-spin text-4xl text-blue-500 mb-2'></i>
-                    <p class="text-gray-400">Loading buses...</p>
-                </div>
-            </div>
-        `;
-
-        const response = await fetch('/api/buses');
-        const buses = await response.json();
-
-        if (buses.length === 0) {
-            busList.innerHTML = `
-                <div class="col-span-3 text-center py-10">
-                    <i class='bx bx-bus text-4xl text-gray-500 mb-3'></i>
-                    <p class="text-gray-400">No buses added yet</p>
-                    <button id="add-first-bus" class="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
-                        Add Your First Bus
-                    </button>
-                </div>
-            `;
-
-            document.getElementById('add-first-bus')?.addEventListener('click', () => {
-                document.getElementById('add-bus-modal').classList.remove('hidden');
-            });
-
-            return;
-        }
-
-        busList.innerHTML = buses.map(bus => `
-            <div class="bg-black border border-gray-800 rounded-xl p-5 hover:border-blue-500/30 transition-colors">
-                <div class="flex justify-between items-start mb-4">
-                    <div>
-                        <h3 class="text-lg font-semibold text-white">${bus.bus_number}</h3>
-                        <p class="text-gray-400 text-sm">Capacity: ${bus.current_passengers}/${bus.capacity}</p>
-                        <p class="text-gray-500 text-xs mt-1">ID: ${bus.id}</p>
-                    </div>
-                    <span class="px-2 py-1 ${bus.current_passengers >= bus.capacity ? 'bg-red-900/30 text-red-400 border-red-800' : 'bg-green-900/30 text-green-400 border-green-800'} rounded text-xs font-medium">
-                        ${bus.current_passengers >= bus.capacity ? 'FULL' : 'AVAILABLE'}
-                    </span>
-                </div>
-                
-                <div class="mb-4">
-                    <div class="w-full bg-gray-800 rounded-full h-2">
-                        <div class="bg-blue-600 h-2 rounded-full" 
-                             style="width: ${(bus.current_passengers / bus.capacity) * 100}%"></div>
-                    </div>
-                </div>
-                
-                <div class="flex space-x-2">
-                    <button class="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-                            onclick="viewBusDetails(${bus.id})">
-                        <i class='bx bx-group mr-1'></i> View Details
-                    </button>
-                    <button class="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors"
-                            onclick="openEditBusModal(${bus.id})">
-                        <i class='bx bx-edit'></i>
-                    </button>
-                    <button class="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
-                            onclick="deleteBus(${bus.id})">
-                        <i class='bx bx-trash'></i>
-                    </button>
-                </div>
-            </div>
-        `).join('');
-
-    } catch (error) {
-        console.error('Error loading buses:', error);
-        const busList = document.getElementById('bus-list');
-        if (busList) {
-            busList.innerHTML = `
-                <div class="col-span-3 text-center py-10">
-                    <i class='bx bx-error text-4xl text-red-500 mb-3'></i>
-                    <p class="text-gray-400">Error loading buses</p>
-                    <button onclick="loadBuses()" 
-                            class="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
-                        Try Again
-                    </button>
-                </div>
-            `;
-        }
-    }
+    openEditBusModal(busId);
 }
 
 // Add new bus
@@ -2836,7 +3136,7 @@ function initializeEditBusForm() {
 async function deleteBus(busId) {
     const confirmed = await showConfirm({
         title: 'Delete Bus',
-        message: 'Are you sure you want to delete this bus? This action cannot be undone.',
+        message: 'Are you sure you want to delete this bus?\n\nThis action cannot be undone.',
         type: 'error',
         confirmText: 'Yes, Delete',
         cancelText: 'Cancel'
@@ -2883,226 +3183,12 @@ async function loadEventsForBusFilter() {
         activeEvents.forEach(event => {
             const option = document.createElement('option');
             option.value = event.id;
-            option.textContent = `${event.title} (${new Date(event.date).toLocaleDateString()})`;
+            option.textContent = `${event.title} (${formatPHDateShort(event.date)})`;
             eventFilter.appendChild(option);
         });
 
     } catch (error) {
         console.error('Error loading events for filter:', error);
-    }
-}
-
-// Load bus assignments for a specific event
-async function loadEventBusAssignments(eventId) {
-    try {
-        const container = document.getElementById('bus-assignments-container');
-        if (!container) return;
-
-        container.innerHTML = `
-            <div class="flex items-center justify-center h-48">
-                <div class="text-center">
-                    <i class='bx bx-loader-circle bx-spin text-4xl text-blue-500 mb-2'></i>
-                    <p class="text-gray-400">Loading bus assignments...</p>
-                </div>
-            </div>
-        `;
-
-        const response = await fetch(`/api/events/${eventId}/bus-assignments`);
-        const assignments = await response.json();
-
-        if (assignments.length === 0) {
-            container.innerHTML = `
-                <div class="text-center py-10 bg-gray-900/50 rounded-lg">
-                    <i class='bx bx-bus text-4xl text-gray-500 mb-3'></i>
-                    <p class="text-gray-400">No bus assignments for this event yet</p>
-                    <p class="text-gray-500 text-sm">Assign participants from the list below</p>
-                </div>
-            `;
-            return;
-        }
-
-        // Group assignments by bus
-        const assignmentsByBus = {};
-        assignments.forEach(assignment => {
-            const busId = assignment.bus_id;
-            if (!assignmentsByBus[busId]) {
-                assignmentsByBus[busId] = {
-                    bus_id: busId,
-                    bus_number: assignment.bus_number,
-                    capacity: assignment.capacity,
-                    assignments: []
-                };
-            }
-            assignmentsByBus[busId].assignments.push(assignment);
-        });
-
-        container.innerHTML = Object.values(assignmentsByBus).map(bus => `
-            <div class="bg-black border border-gray-800 rounded-xl p-5 mb-4">
-                <div class="flex justify-between items-center mb-4">
-                    <div>
-                        <h3 class="text-lg font-semibold text-white">${bus.bus_number}</h3>
-                        <p class="text-gray-400 text-sm">Capacity: ${bus.assignments.length}/${bus.capacity}</p>
-                    </div>
-                    <span class="px-3 py-1 ${bus.assignments.length >= bus.capacity ? 'bg-red-900/30 text-red-400 border-red-800' : 'bg-green-900/30 text-green-400 border-green-800'} rounded-full text-sm font-medium">
-                        ${bus.assignments.length >= bus.capacity ? 'FULL' : 'AVAILABLE'}
-                    </span>
-                </div>
-                
-                <div class="space-y-3">
-                    ${bus.assignments.map(assignment => `
-                        <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 flex justify-between items-center">
-                            <div class="flex-1">
-                                <h4 class="text-white font-medium">${assignment.user_name}</h4>
-                                <p class="text-gray-400 text-sm">${assignment.student_number} • ${assignment.email}</p>
-                                <div class="flex items-center space-x-3 text-gray-500 text-xs mt-1">
-                                    <span>
-                                        <i class='bx bx-calendar'></i> 
-                                        ${new Date(assignment.assignment_date).toLocaleDateString()}
-                                    </span>
-                                    <span>
-                                        <i class='bx bx-time'></i> 
-                                        ${new Date(assignment.assignment_date).toLocaleTimeString()}
-                                    </span>
-                                </div>
-                                ${assignment.notes ? `
-                                    <div class="mt-2 text-gray-400 text-xs">
-                                        <i class='bx bx-note'></i> ${assignment.notes}
-                                    </div>
-                                ` : ''}
-                            </div>
-                            <div class="flex space-x-2 ml-4">
-                                <button class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
-                                        onclick="openMoveBusModal(${assignment.id}, ${assignment.bus_id}, ${assignment.user_id}, '${assignment.user_name.replace(/'/g, "\\'")}', '${assignment.bus_number}')">
-                                    <i class='bx bx-transfer mr-1'></i> Move
-                                </button>
-                                <button class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium transition-colors"
-                                        onclick="removeBusAssignment(${assignment.id}, '${assignment.user_name.replace(/'/g, "\\'")}')">
-                                    <i class='bx bx-user-x mr-1'></i> Remove
-                                </button>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `).join('');
-
-    } catch (error) {
-        console.error('Error loading event bus assignments:', error);
-        const container = document.getElementById('bus-assignments-container');
-        if (container) {
-            container.innerHTML = `
-                <div class="text-center py-10">
-                    <i class='bx bx-error text-4xl text-red-500 mb-3'></i>
-                    <p class="text-gray-400">Error loading bus assignments</p>
-                    <button onclick="loadEventBusAssignments(${eventId})" 
-                            class="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
-                        Try Again
-                    </button>
-                </div>
-            `;
-        }
-    }
-}
-
-// Load eligible participants (approved but not assigned)
-async function loadEligibleParticipants(eventId) {
-    try {
-        console.log(`Loading eligible participants for event ${eventId}...`);
-
-        const list = document.getElementById('eligible-participants-list');
-        const section = document.getElementById('eligible-participants-section');
-
-        if (!list || !section) return;
-
-        list.innerHTML = `
-            <div class="text-center py-8">
-                <i class='bx bx-loader-circle bx-spin text-2xl text-blue-500 mb-2'></i>
-                <p class="text-gray-400">Loading eligible participants...</p>
-            </div>
-        `;
-
-        // Load participants
-        const response = await fetch(`/api/events/${eventId}/eligible-participants`);
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const participants = await response.json();
-
-        console.log(`Received ${participants.length} participants from server`);
-
-        if (participants.length === 0) {
-            list.innerHTML = `
-                <div class="text-center py-6 bg-gray-900/50 rounded-lg">
-                    <i class='bx bx-check-circle text-2xl text-green-500 mb-2'></i>
-                    <p class="text-gray-400">All approved participants have been assigned to buses!</p>
-                    <p class="text-gray-500 text-sm mt-1">No eligible participants remaining.</p>
-                    <button onclick="refreshEligibleList()" 
-                            class="mt-3 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors">
-                        <i class='bx bx-refresh mr-1'></i> Refresh List
-                    </button>
-                </div>
-            `;
-            return;
-        }
-
-        // Render participants
-        list.innerHTML = participants.map(participant => {
-            // Safety check: Log each participant
-            console.log(`Rendering participant: ${participant.name} (ID: ${participant.id})`);
-
-            return `
-                <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 flex justify-between items-center hover:bg-gray-800/50 transition-colors mb-3">
-                    <div class="flex-1">
-                        <h4 class="text-white font-medium">${participant.name}</h4>
-                        <p class="text-gray-400 text-sm">${participant.student_number} • ${participant.email}</p>
-                        <div class="flex items-center mt-2">
-                            <span class="inline-block px-2 py-1 bg-green-900/30 text-green-400 border border-green-800 rounded text-xs mr-2">
-                                Approved
-                            </span>
-                            <span class="text-gray-500 text-xs">
-                                <i class='bx bx-calendar mr-1'></i>
-                                ${new Date(participant.registration_date).toLocaleDateString()}
-                            </span>
-                        </div>
-                    </div>
-                    <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
-                            onclick="openAssignBusModal(${participant.id}, ${eventId}, '${participant.name.replace(/'/g, "\\'")}', '${participant.student_number}', '${participant.email.replace(/'/g, "\\'")}')">
-                        <i class='bx bx-bus mr-1'></i> Assign to Bus
-                    </button>
-                </div>
-            `;
-        }).join('');
-
-        list.innerHTML += `
-            <div class="text-center mt-4">
-                <button onclick="refreshEligibleList()" 
-                        class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors">
-                    <i class='bx bx-refresh mr-2'></i> Refresh List
-                </button>
-            </div>
-        `;
-
-        section.classList.remove('hidden');
-        console.log('Eligible participants list rendered successfully');
-
-    } catch (error) {
-        console.error('❌ Error loading eligible participants:', error);
-        const list = document.getElementById('eligible-participants-list');
-        if (list) {
-            list.innerHTML = `
-                <div class="text-center py-6">
-                    <i class='bx bx-error text-2xl text-red-500 mb-2'></i>
-                    <p class="text-gray-400">Error loading participants</p>
-                    <p class="text-gray-500 text-sm mb-3">${error.message}</p>
-                    <button onclick="loadEligibleParticipants(${eventId})" 
-                            class="mt-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors">
-                        Try Again
-                    </button>
-                </div>
-            `;
-        }
     }
 }
 
@@ -3112,323 +3198,6 @@ function refreshEligibleList() {
     if (eventId) {
         console.log('Refreshing eligible list for event:', eventId);
         loadEligibleParticipants(eventId);
-    }
-}
-
-// Open modal to assign participant to bus
-async function openAssignBusModal(userId, eventId, userName, studentNumber, userEmail) {
-    try {
-        console.log('Opening assign modal for:', { userId, eventId, userName });
-
-        // First check if user already has a bus assignment for this event
-        try {
-            const checkResponse = await fetch(`/api/events/${eventId}/bus-assignments`);
-            const assignments = await checkResponse.json();
-
-            const existingAssignment = assignments.find(assignment =>
-                assignment.user_id == userId
-            );
-
-            if (existingAssignment) {
-                showError(`⚠️ ${userName} is already assigned to Bus ${existingAssignment.bus_number}.\n\nUse the "Move" option instead.`);
-                return;
-            }
-        } catch (checkError) {
-            console.warn('Could not check existing assignments:', checkError);
-        }
-
-        // Load available buses
-        const response = await fetch('/api/buses');
-        const buses = await response.json();
-
-        const select = document.getElementById('assign-bus-select');
-        select.innerHTML = '<option value="">Select a bus</option>';
-
-        // Filter buses with available capacity
-        const availableBuses = buses.filter(bus => bus.current_passengers < bus.capacity);
-
-        if (availableBuses.length === 0) {
-            select.innerHTML = '<option value="">No available buses</option>';
-            select.disabled = true;
-        } else {
-            availableBuses.forEach(bus => {
-                const option = document.createElement('option');
-                option.value = bus.id;
-                const available = bus.capacity - bus.current_passengers;
-                option.textContent = `${bus.bus_number} (${available} seats available)`;
-                select.appendChild(option);
-            });
-            select.disabled = false;
-        }
-
-        // Set participant info
-        document.getElementById('assign-user-id').value = userId;
-        document.getElementById('assign-event-id').value = eventId;
-
-        const infoDiv = document.getElementById('assign-participant-info');
-        infoDiv.innerHTML = `
-            <div class="flex items-center mb-2">
-                <i class='bx bx-user-circle text-blue-400 text-xl mr-3'></i>
-                <div>
-                    <p class="text-white font-medium">${userName}</p>
-                    <p class="text-gray-400 text-sm">${studentNumber} • ${userEmail}</p>
-                </div>
-            </div>
-        `;
-
-        // Show modal
-        document.getElementById('assign-bus-modal').classList.remove('hidden');
-
-    } catch (error) {
-        console.error('Error opening assign bus modal:', error);
-        showError('Error loading bus information: ' + error.message);
-    }
-}
-
-// Open modal to move participant to different bus
-async function openMoveBusModal(assignmentId, currentBusId, userId, userName, currentBusNumber) {
-    try {
-        // Load all buses except current one
-        const response = await fetch('/api/buses');
-        const buses = await response.json();
-
-        const select = document.getElementById('move-bus-select');
-        select.innerHTML = '<option value="">Select a new bus</option>';
-
-        // Filter buses with available capacity (excluding current bus)
-        const availableBuses = buses.filter(bus =>
-            bus.id != currentBusId && bus.current_passengers < bus.capacity
-        );
-
-        if (availableBuses.length === 0) {
-            select.innerHTML = '<option value="">No available buses</option>';
-            select.disabled = true;
-        } else {
-            availableBuses.forEach(bus => {
-                const option = document.createElement('option');
-                option.value = bus.id;
-                const available = bus.capacity - bus.current_passengers;
-                option.textContent = `${bus.bus_number} (${available} seats available)`;
-                select.appendChild(option);
-            });
-            select.disabled = false;
-        }
-
-        // Set form data
-        document.getElementById('move-assignment-id').value = assignmentId;
-        document.getElementById('move-current-bus-id').value = currentBusId;
-
-        const infoDiv = document.getElementById('move-participant-info');
-        infoDiv.innerHTML = `
-            <div class="flex items-center">
-                <i class='bx bx-user-circle text-yellow-400 text-xl mr-3'></i>
-                <div>
-                    <p class="text-white font-medium">${userName}</p>
-                    <p class="text-gray-400 text-sm">Currently on: ${currentBusNumber}</p>
-                </div>
-            </div>
-        `;
-
-        // Reset form
-        document.getElementById('move-reason').value = '';
-
-        // Show modal
-        document.getElementById('move-bus-modal').classList.remove('hidden');
-
-    } catch (error) {
-        console.error('Error opening move bus modal:', error);
-        showError('Error loading bus information: ' + error.message);
-    }
-}
-
-// Assign participant to bus
-async function assignToBus(assignmentData) {
-    try {
-        // Validate bus selection
-        if (!assignmentData.bus_id) {
-            showAlert('Please select a bus');
-            return;
-        }
-
-        const response = await fetch('/api/bus-assignments', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(assignmentData)
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            showSuccess('✅ Participant assigned to bus successfully!');
-            document.getElementById('assign-bus-form').reset();
-            document.getElementById('assign-bus-modal').classList.add('hidden');
-
-            // Refresh data
-            const eventId = document.getElementById('bus-event-filter').value;
-            if (eventId) {
-                loadEventBusAssignments(eventId);
-                loadEligibleParticipants(eventId);
-            }
-            loadBuses();
-        } else {
-            showError('❌ Error: ' + result.error);
-        }
-    } catch (error) {
-        console.error('Error assigning to bus:', error);
-        showError('❌ Error assigning to bus: ' + error.message);
-    }
-}
-
-// Move participant to different bus
-async function moveBusAssignment(assignmentId, newBusId, reason) {
-    try {
-        console.log('Moving assignment:', { assignmentId, newBusId, reason });
-
-        // Validate bus selection
-        if (!newBusId) {
-            showAlert('Please select a new bus');
-            return;
-        }
-
-        // Validate assignmentId is a number
-        const assignmentIdNum = parseInt(assignmentId);
-        const newBusIdNum = parseInt(newBusId);
-
-        if (isNaN(assignmentIdNum) || isNaN(newBusIdNum)) {
-            showAlert('Invalid assignment or bus ID');
-            return;
-        }
-
-        const payload = {
-            new_bus_id: newBusIdNum,
-            notes: reason ? `Moved: ${reason}` : 'Moved to different bus'
-        };
-
-        console.log('Sending move request to:', `/api/bus-assignments/${assignmentIdNum}`);
-        console.log('Payload:', payload);
-
-        // Try to call the API
-        let response;
-        try {
-            response = await fetch(`/api/bus-assignments/${assignmentIdNum}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
-        } catch (fetchError) {
-            console.error('Fetch error:', fetchError);
-            throw new Error(`Network error: ${fetchError.message}. Please check if the server is running.`);
-        }
-
-        console.log('Response status:', response.status, response.statusText);
-
-        // Check if we got a response
-        if (!response.ok) {
-            let errorMessage = `Server error: ${response.status} ${response.statusText}`;
-
-            try {
-                const errorText = await response.text();
-                console.error('Error response text:', errorText);
-
-                // Try to parse as JSON
-                try {
-                    const errorJson = JSON.parse(errorText);
-                    errorMessage = errorJson.error || errorJson.message || errorMessage;
-                } catch {
-                    // If not JSON, use the text
-                    errorMessage = errorText || errorMessage;
-                }
-            } catch (textError) {
-                console.error('Could not read error response:', textError);
-            }
-
-            throw new Error(errorMessage);
-        }
-
-        // Try to parse successful response
-        let result;
-        try {
-            const responseText = await response.text();
-            console.log('Response text:', responseText);
-
-            if (responseText) {
-                result = JSON.parse(responseText);
-            } else {
-                result = { success: true }; // Empty response treated as success
-            }
-        } catch (parseError) {
-            console.error('Failed to parse response:', parseError);
-            throw new Error('Server returned invalid JSON response');
-        }
-
-        if (result.success) {
-            showSuccess('✅ Participant moved to new bus successfully!');
-            document.getElementById('move-bus-form').reset();
-            document.getElementById('move-bus-modal').classList.add('hidden');
-
-            // Refresh data
-            const eventId = document.getElementById('bus-event-filter').value;
-            if (eventId) {
-                loadEventBusAssignments(eventId);
-            }
-            loadBuses();
-        } else {
-            throw new Error(result.error || 'Unknown error from server');
-        }
-    } catch (error) {
-        console.error('Error moving bus assignment:', error);
-
-        // Show detailed error message
-        let userMessage = error.message;
-
-        // Provide more helpful messages based on error type
-        if (error.message.includes('Network error') || error.message.includes('Failed to fetch')) {
-            userMessage = `Cannot connect to server. Please check:\n
-1. Is your backend server running?\n
-2. Check browser console for CORS errors\n
-3. Try refreshing the page`;
-        } else if (error.message.includes('404')) {
-            userMessage = 'API endpoint not found. The server may be misconfigured.';
-        } else if (error.message.includes('500')) {
-            userMessage = 'Server internal error. Check backend logs for details.';
-        }
-
-        showError(`❌ Error moving bus assignment:\n\n${userMessage}`);
-    }
-}
-
-// Remove bus assignment
-async function removeBusAssignment(assignmentId, userName) {
-    if (!confirm(`Are you sure you want to remove ${userName} from their bus assignment?\n\nThis will free up their seat on the bus.`)) {
-        return;
-    }
-
-    try {
-        const response = await fetch(`/api/bus-assignments/${assignmentId}`, {
-            method: 'DELETE'
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            showSuccess('✅ Bus assignment removed successfully!');
-
-            // Refresh data
-            const eventId = document.getElementById('bus-event-filter').value;
-            if (eventId) {
-                loadEventBusAssignments(eventId);
-                loadEligibleParticipants(eventId);
-            }
-            loadBuses();
-        } else {
-            showError('❌ Error: ' + result.error);
-        }
-    } catch (error) {
-        console.error('Error removing bus assignment:', error);
-        showError('❌ Error removing bus assignment: ' + error.message);
     }
 }
 
@@ -3587,6 +3356,339 @@ function sortParticipants(participants, sortBy) {
         }
     });
 }
+
+// Create announcement
+async function createAnnouncement(formData) {
+    try {
+        const response = await fetch('/api/announcements', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ...formData,
+                created_by: currentUser?.id
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('Announcement created successfully!');
+            document.getElementById('announcement-modal').classList.add('hidden');
+            document.getElementById('create-announcement-form').reset();
+            loadAnnouncements();
+        } else {
+            showError(result.error || 'Failed to create announcement');
+        }
+    } catch (error) {
+        console.error('Error creating announcement:', error);
+        showError('Error creating announcement');
+    }
+}
+
+// Delete announcement
+async function deleteAnnouncement(id) {
+    const confirmed = await showConfirm({
+        title: 'Delete Announcement',
+        message: 'Are you sure you want to delete this announcement?',
+        type: 'warning',
+        confirmText: 'Yes, Delete',
+        cancelText: 'Cancel'
+    });
+    
+    if (!confirmed) return;
+    
+    try {
+        const response = await fetch(`/api/announcements/${id}`, { method: 'DELETE' });
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('Announcement deleted!');
+            loadAnnouncements();
+        } else {
+            showError(result.error || 'Failed to delete announcement');
+        }
+    } catch (error) {
+        console.error('Error deleting announcement:', error);
+        showError('Error deleting announcement');
+    }
+}
+// Load events for announcement target select
+async function loadEventsForAnnouncementSelect() {
+    try {
+        const select = document.getElementById('announcement-target-event');
+        if (!select) return;
+        
+        const response = await fetch('/api/events?all=true');
+        const events = await response.json();
+        
+        const activeEvents = events.filter(e => e.status === 'active' || e.status === 'upcoming');
+        
+        select.innerHTML = '<option value="">Select an event</option>';
+        activeEvents.forEach(event => {
+            const option = document.createElement('option');
+            option.value = event.id;
+            option.textContent = `${event.title} (${event.date ? formatPHDateShort(event.date) : 'TBA'})`;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading events:', error);
+    }
+}
+
+// Open modal for creating announcement
+function openCreateAnnouncementModal() {
+    document.getElementById('announcement-modal-title').textContent = 'Create Announcement';
+    document.getElementById('announcement-id').value = '';
+    document.getElementById('announcement-form').reset();
+    document.getElementById('target-course-container').classList.add('hidden');
+    document.getElementById('target-event-container').classList.add('hidden');
+    loadEventsForAnnouncementSelect();
+    document.getElementById('announcement-modal').classList.remove('hidden');
+}
+
+// Open modal for editing announcement
+async function openEditAnnouncementModal(id) {
+    try {
+        const response = await fetch('/api/announcements');
+        const announcements = await response.json();
+        const announcement = announcements.find(a => a.id === id);
+        
+        if (!announcement) {
+            showError('Announcement not found');
+            return;
+        }
+        
+        document.getElementById('announcement-modal-title').textContent = 'Edit Announcement';
+        document.getElementById('announcement-id').value = announcement.id;
+        document.getElementById('announcement-title').value = announcement.title;
+        document.getElementById('announcement-message').value = announcement.message;
+        document.getElementById('announcement-type').value = announcement.type || 'info';
+        document.getElementById('announcement-target-type').value = announcement.target_type || 'all';
+        
+        // Show/hide target fields based on type
+        const targetType = announcement.target_type;
+        document.getElementById('target-course-container').classList.toggle('hidden', targetType !== 'course');
+        document.getElementById('target-event-container').classList.toggle('hidden', targetType !== 'event');
+        
+        if (targetType === 'course') {
+            document.getElementById('announcement-target-course').value = announcement.target_course || '';
+        }
+        
+        if (targetType === 'event') {
+            await loadEventsForAnnouncementSelect();
+            document.getElementById('announcement-target-event').value = announcement.target_event_id || '';
+        }
+        
+        document.getElementById('announcement-modal').classList.remove('hidden');
+    } catch (error) {
+        console.error('Error loading announcement:', error);
+        showError('Error loading announcement');
+    }
+}
+
+// Close announcement modal
+function closeAnnouncementModal() {
+    document.getElementById('announcement-modal').classList.add('hidden');
+    document.getElementById('announcement-form').reset();
+}
+
+// Save announcement (create or update)
+async function saveAnnouncement(e) {
+    e.preventDefault();
+    
+    const id = document.getElementById('announcement-id').value;
+    const title = document.getElementById('announcement-title').value;
+    const message = document.getElementById('announcement-message').value;
+    const type = document.getElementById('announcement-type').value;
+    const targetType = document.getElementById('announcement-target-type').value;
+    
+    const data = {
+        title,
+        message,
+        type,
+        target_type: targetType,
+        created_by: currentUser?.id
+    };
+    
+    if (targetType === 'course') {
+        data.target_course = document.getElementById('announcement-target-course').value;
+        if (!data.target_course) {
+            showAlert('Please select a course', 'warning');
+            return;
+        }
+    } else if (targetType === 'event') {
+        data.target_event_id = document.getElementById('announcement-target-event').value;
+        if (!data.target_event_id) {
+            showAlert('Please select an event', 'warning');
+            return;
+        }
+    }
+    
+    try {
+        const url = id ? `/api/announcements/${id}` : '/api/announcements';
+        const method = id ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess(id ? 'Announcement updated!' : 'Announcement created!');
+            closeAnnouncementModal();
+            loadAnnouncements();
+        } else {
+            showError(result.error || 'Failed to save announcement');
+        }
+    } catch (error) {
+        console.error('Error saving announcement:', error);
+        showError('Error saving announcement');
+    }
+}
+
+// Load Announcements
+async function loadAnnouncements() {
+    try {
+        const container = document.getElementById('announcements-list');
+        if (!container) return;
+        
+        container.innerHTML = `
+            <div class="text-center py-8">
+                <i class='bx bx-loader-circle bx-spin text-2xl text-blue-500'></i>
+            </div>
+        `;
+        
+        const response = await fetch('/api/announcements');
+        const announcements = await response.json();
+        
+        if (announcements.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-10">
+                    <i class='bx bx-message text-4xl text-gray-500 mb-3'></i>
+                    <p class="text-gray-400">No announcements yet</p>
+                    <p class="text-gray-500 text-sm">Create your first announcement to get started</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = announcements.map(a => {
+            const typeColors = {
+                info: 'border-blue-800 bg-blue-900/20',
+                success: 'border-green-800 bg-green-900/20',
+                warning: 'border-yellow-800 bg-yellow-900/20',
+                urgent: 'border-red-800 bg-red-900/20'
+            };
+            
+            const typeIcons = {
+                info: 'bx-info-circle text-blue-400',
+                success: 'bx-check-circle text-green-400',
+                warning: 'bx-error text-yellow-400',
+                urgent: 'bx-alarm-exclamation text-red-400'
+            };
+            
+            let targetText = 'All Users';
+            if (a.target_type === 'course') targetText = `Course: ${a.target_course}`;
+            else if (a.target_type === 'event') targetText = `Specific Event`;
+            
+            return `
+                <div class="bg-black border ${typeColors[a.type] || 'border-gray-800'} rounded-xl p-5">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex items-center">
+                            <i class='bx ${typeIcons[a.type] || 'bx-info-circle'} text-xl mr-3'></i>
+                            <div>
+                                <h3 class="text-lg font-semibold text-white">${a.title}</h3>
+                                <p class="text-gray-500 text-xs">${new Date(a.created_at).toLocaleString()} • ${targetText}</p>
+                            </div>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="openEditAnnouncementModal(${a.id})" class="text-gray-400 hover:text-blue-400">
+                                <i class='bx bx-edit'></i>
+                            </button>
+                            <button onclick="deleteAnnouncement(${a.id})" class="text-gray-400 hover:text-red-400">
+                                <i class='bx bx-trash'></i>
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-gray-300 text-sm whitespace-pre-line">${a.message}</p>
+                    ${a.creator_name ? `<p class="text-gray-500 text-xs mt-3">Posted by: ${a.creator_name}</p>` : ''}
+                </div>
+            `;
+        }).join('');
+        
+    } catch (error) {
+        console.error('Error loading announcements:', error);
+        showError('Error loading announcements', 'Error');
+    }
+}
+// Initialize announcement form
+function initAnnouncementForm() {
+    const form = document.getElementById('create-announcement-form');
+    if (!form) return;
+    
+    const audienceSelect = document.getElementById('announcement-audience');
+    const courseSelect = document.getElementById('announcement-course');
+    const eventSelect = document.getElementById('announcement-event');
+    
+    // Show/hide additional fields based on audience
+    audienceSelect?.addEventListener('change', () => {
+        const value = audienceSelect.value;
+        document.getElementById('course-select-container')?.classList.toggle('hidden', value !== 'course');
+        document.getElementById('event-select-container')?.classList.toggle('hidden', value !== 'event');
+    });
+    
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const audience = audienceSelect?.value || 'all';
+        const data = {
+            title: document.getElementById('announcement-title').value,
+            message: document.getElementById('announcement-message').value,
+            type: document.getElementById('announcement-type').value,
+            target_type: audience
+        };
+        
+        if (audience === 'course') {
+            data.target_course = document.getElementById('announcement-course')?.value;
+        } else if (audience === 'event') {
+            data.target_event_id = document.getElementById('announcement-event')?.value;
+        }
+        
+        await createAnnouncement(data);
+    });
+}
+// Initialize announcement features
+function initAnnouncementFeatures() {
+    // Create button
+    const createBtn = document.getElementById('create-announcement-btn');
+    if (createBtn) {
+        createBtn.addEventListener('click', openCreateAnnouncementModal);
+    }
+    
+    // Form submission
+    const form = document.getElementById('announcement-form');
+    if (form) {
+        form.addEventListener('submit', saveAnnouncement);
+    }
+    
+    // Target type change
+    const targetTypeSelect = document.getElementById('announcement-target-type');
+    if (targetTypeSelect) {
+        targetTypeSelect.addEventListener('change', function() {
+            const value = this.value;
+            document.getElementById('target-course-container').classList.toggle('hidden', value !== 'course');
+            document.getElementById('target-event-container').classList.toggle('hidden', value !== 'event');
+            
+            if (value === 'event') {
+                loadEventsForAnnouncementSelect();
+            }
+        });
+    }
+}
+
 // Certificate Management Functions
 let currentTemplates = [];
 
@@ -3637,9 +3739,13 @@ async function loadTemplates() {
                 </div>
                 <div class="flex space-x-2 mt-3">
                     <a href="${template.template_url}" target="_blank" 
-                       class="flex-1 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors text-center">
+                    class="flex-1 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors text-center">
                         <i class='bx bx-download mr-1'></i> Download
                     </a>
+                    <button onclick="openTemplateEditor(${template.id})" 
+                            class="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors">
+                        <i class='bx bx-edit-alt'></i>
+                    </button>
                     <button onclick="deleteTemplate(${template.id})" 
                             class="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors">
                         <i class='bx bx-trash'></i>
@@ -3671,7 +3777,7 @@ async function loadEventsForCertificateSelect() {
         eligibleEvents.forEach(event => {
             const option = document.createElement('option');
             option.value = event.id;
-            option.textContent = `${event.title} (${event.date ? new Date(event.date).toLocaleDateString() : 'TBA'})`;
+            option.textContent = `${event.title} (${event.date ? formatPHDateShort(event.date) : 'TBA'})`;
             select.appendChild(option);
         });
 
@@ -3701,8 +3807,15 @@ async function loadEventCertificates(eventId) {
 
         const response = await fetch(`/api/certificates/event/${eventId}`);
         const certificates = await response.json();
+        
+        // Store current event ID for Send All button
+        window.currentCertificateEventId = eventId;
 
         if (certificates.length === 0) {
+            // Update total count
+            const totalSpan = document.getElementById('total-certificates-count');
+            if (totalSpan) totalSpan.textContent = '0';
+            
             container.innerHTML = `
                 <div class="text-center py-8">
                     <i class='bx bx-certification text-4xl text-gray-500 mb-3'></i>
@@ -3713,25 +3826,46 @@ async function loadEventCertificates(eventId) {
             return;
         }
 
+        // Update total count
+        const totalSpan = document.getElementById('total-certificates-count');
+        if (totalSpan) totalSpan.textContent = certificates.length;
+        
+        const sentCount = certificates.filter(c => c.sent).length;
+        const unsentCount = certificates.length - sentCount;
+
         container.innerHTML = `
             <div class="bg-black border border-gray-800 rounded-xl p-4 mb-4">
                 <div class="flex justify-between items-center">
-                    <span class="text-white">Total Certificates: ${certificates.length}</span>
-                    <button onclick="downloadAllCertificates(${eventId})" 
-                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
-                        <i class='bx bx-download mr-1'></i> Download All
-                    </button>
+                    <div>
+                        <span class="text-white">Total Certificates: ${certificates.length}</span>
+                        <span class="text-gray-400 text-sm ml-4">
+                            <span class="text-green-400">✓ ${sentCount} Sent</span>
+                            ${unsentCount > 0 ? `<span class="text-yellow-400 ml-2">⌛ ${unsentCount} Pending</span>` : ''}
+                        </span>
+                    </div>
+                    <div class="flex space-x-2">
+                        ${unsentCount > 0 ? `
+                            <button onclick="sendAllCertificates()" 
+                                    class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors">
+                                <i class='bx bx-envelope mr-1'></i> Send All (${unsentCount})
+                            </button>
+                        ` : ''}
+                        <button onclick="downloadAllCertificates(${eventId})" 
+                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
+                            <i class='bx bx-download mr-1'></i> Download All
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="space-y-3">
                 ${certificates.map(cert => `
-                    <div class="bg-black border border-gray-800 rounded-lg p-4 flex justify-between items-center">
+                    <div class="bg-black border ${cert.sent ? 'border-green-800/50' : 'border-gray-800'} rounded-lg p-4 flex justify-between items-center">
                         <div>
                             <h4 class="text-white font-medium">${cert.name}</h4>
                             <p class="text-gray-400 text-sm">${cert.student_number} • ${cert.email}</p>
                             <p class="text-gray-500 text-xs mt-1">
                                 Generated: ${new Date(cert.generated_at).toLocaleString()}
-                                ${cert.sent ? '<span class="ml-2 text-green-400">✓ Sent</span>' : '<span class="ml-2 text-yellow-400">⌛ Not Sent</span>'}
+                                ${cert.sent ? '<span class="ml-2 text-green-400"><i class="bx bx-check-circle"></i> Sent</span>' : '<span class="ml-2 text-yellow-400"><i class="bx bx-time"></i> Not Sent</span>'}
                             </p>
                         </div>
                         <div class="flex space-x-2">
@@ -3744,7 +3878,13 @@ async function loadEventCertificates(eventId) {
                                         class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors">
                                     <i class='bx bx-envelope'></i>
                                 </button>
-                            ` : ''}
+                            ` : `
+                                <button onclick="sendCertificateEmail(${cert.id}, ${cert.user_id})" 
+                                        class="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors"
+                                        title="Resend certificate">
+                                    <i class='bx bx-envelope'></i>
+                                </button>
+                            `}
                         </div>
                     </div>
                 `).join('')}
@@ -3756,7 +3896,6 @@ async function loadEventCertificates(eventId) {
         showError('Error loading certificates', 'Error');
     }
 }
-
 // Upload template form handler
 function initCertificateUpload() {
     const uploadBtn = document.getElementById('upload-template-btn');
@@ -3805,7 +3944,354 @@ function initCertificateUpload() {
         });
     }
 }
+// Template Editor Variables
+let currentPositioningType = null;
+let templateEditorData = {
+    id: null,
+    imageWidth: 0,
+    imageHeight: 0,
+    namePosition: { x: 50, y: 50, size: 36, color: '#1a1a4d' }
+};
 
+// Open template editor
+async function openTemplateEditor(templateId) {
+    try {
+        const response = await fetch(`/api/certificates/templates/${templateId}`);
+        const template = await response.json();
+        
+        if (!template) {
+            showError('Template not found', 'Error');
+            return;
+        }
+        
+        templateEditorData.id = templateId;
+        
+        // Parse saved position if any
+        if (template.name_position) {
+            try {
+                const saved = JSON.parse(template.name_position);
+                templateEditorData.namePosition = { ...templateEditorData.namePosition, ...saved };
+            } catch (e) {
+                console.error('Error parsing saved position:', e);
+            }
+        }
+        
+        // Load values into inputs immediately
+        loadPositionInputs();
+        
+        // Get the preview container
+        const previewContainer = document.getElementById('template-preview-container');
+        
+        // Check if it's a PDF
+        if (template.template_url.toLowerCase().endsWith('.pdf')) {
+            previewContainer.innerHTML = `
+                <div class="relative" style="width: 100%;">
+                    <iframe id="template-preview-pdf" 
+                            src="${template.template_url}#toolbar=0&navpanes=0&scrollbar=0&view=Fit" 
+                            frameborder="0"
+                            scrolling="no">
+                    </iframe>
+                    <div id="preview-name-indicator" 
+                        class="absolute border-2 border-blue-500 bg-blue-500/20 rounded pointer-events-none" 
+                        style="display: none; width: 120px; height: 40px; transform: translate(-50%, -50%);">
+                        <span class="absolute -top-6 left-1/2 -translate-x-1/2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded whitespace-nowrap">Name Position</span>
+                    </div>
+                    <div id="pdf-click-overlay" 
+                        class="absolute inset-0" 
+                        style="background: transparent; cursor: default;"
+                        title="Click to set name position"></div>
+                </div>
+            `;
+
+            showAlert('For PDF templates, click on the preview area where you want the name to appear, or use the X/Y input fields.', 'info', 'PDF Template');
+
+            // Setup click handler for PDF overlay
+            setTimeout(() => {
+                const overlay = document.getElementById('pdf-click-overlay');
+                const pdfFrame = document.getElementById('template-preview-pdf');
+                
+                if (overlay) {
+                    overlay.addEventListener('click', function(e) {
+                        if (currentPositioningType !== 'name') return;
+                        
+                        const rect = this.getBoundingClientRect();
+                        
+                        // Calculate percentage position (0-100)
+                        const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+                        const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
+                        
+                        // Clamp values between 0 and 100
+                        const clampedX = Math.max(0, Math.min(100, Math.round(xPercent)));
+                        const clampedY = Math.max(0, Math.min(100, Math.round(yPercent)));
+                        
+                        // Update the position
+                        templateEditorData.namePosition.x = clampedX;
+                        templateEditorData.namePosition.y = clampedY;
+                        
+                        // Update inputs
+                        document.getElementById('name-x').value = clampedX;
+                        document.getElementById('name-y').value = clampedY;
+                        
+                        // Update preview indicator
+                        const indicator = document.getElementById('preview-name-indicator');
+                        if (indicator) {
+                            indicator.style.display = 'block';
+                            indicator.style.left = clampedX + '%';
+                            indicator.style.top = clampedY + '%';
+                        }
+                        
+                        // Exit positioning mode
+                        currentPositioningType = null;
+                        if (indicator) {
+                            indicator.style.borderWidth = '2px';
+                            indicator.style.borderColor = '#3b82f6';
+                        }
+                        
+                        showSuccess(`Name position set to ${clampedX}%, ${clampedY}%`, 'Position Updated');
+                    });
+                    
+                    // Update cursor when in positioning mode
+                    overlay.addEventListener('mouseenter', () => {
+                        if (currentPositioningType === 'name') {
+                            overlay.style.cursor = 'crosshair';
+                        }
+                    });
+                    
+                    overlay.addEventListener('mouseleave', () => {
+                        overlay.style.cursor = 'default';
+                    });
+                }
+                
+                // Save position
+                setTimeout(() => {
+                    updatePreviewIndicator();
+                }, 200);
+            }, 100);
+            
+        } else {
+            // For images, use img tag
+            previewContainer.innerHTML = `
+                <div class="relative" style="width: 100%;">
+                    <img id="template-preview-image" 
+                        src="${template.template_url}" 
+                        alt="Template Preview" 
+                        style="width: 100%; height: auto; background: white; border-radius: 0.5rem;">
+                    <div id="preview-name-indicator" 
+                        class="absolute border-2 border-blue-500 bg-blue-500/20 rounded pointer-events-none" 
+                        style="display: none; width: 120px; height: 40px; transform: translate(-50%, -50%);">
+                        <span class="absolute -top-6 left-1/2 -translate-x-1/2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded whitespace-nowrap">Name Position</span>
+                    </div>
+                </div>
+            `;
+            
+            const newPreviewImg = document.getElementById('template-preview-image');
+            newPreviewImg.onload = function() {
+                templateEditorData.imageWidth = this.naturalWidth;
+                templateEditorData.imageHeight = this.naturalHeight;
+                updatePreviewIndicator();
+            };
+            
+            if (newPreviewImg.complete) {
+                templateEditorData.imageWidth = newPreviewImg.naturalWidth;
+                templateEditorData.imageHeight = newPreviewImg.naturalHeight;
+                updatePreviewIndicator();
+            }
+        }
+        
+        // Show the modal
+        document.getElementById('edit-template-modal').classList.remove('hidden');
+        
+    } catch (error) {
+        console.error('Error opening template editor:', error);
+        showError('Error loading template: ' + error.message, 'Error');
+    }
+}
+
+// Update preview indicator
+function updatePreviewIndicator() {
+    const container = document.getElementById('template-preview-container');
+    const indicator = document.getElementById('preview-name-indicator');
+    const previewImg = document.getElementById('template-preview-image');
+    const pdfOverlay = document.getElementById('pdf-click-overlay');
+    
+    if (!indicator) return;
+    
+    const pos = templateEditorData.namePosition;
+    
+    if (pos.x !== undefined && pos.y !== undefined) {
+        indicator.style.display = 'block';
+        indicator.style.left = pos.x + '%';
+        indicator.style.top = pos.y + '%';
+    }
+    
+    // For PDFs, ensure overlay is ready
+    if (pdfOverlay && currentPositioningType === 'name') {
+        pdfOverlay.style.cursor = 'crosshair';
+    }
+}
+
+// Save template positions
+async function saveTemplatePositions() {
+    try {
+        // Get values from inputs
+        templateEditorData.namePosition = {
+            x: parseInt(document.getElementById('name-x').value) || 50,
+            y: parseInt(document.getElementById('name-y').value) || 50,
+            size: parseInt(document.getElementById('name-size').value) || 36,
+            color: document.getElementById('name-color').value || '#1a1a4d'
+        };
+        
+        const response = await fetch(`/api/certificates/templates/${templateEditorData.id}/positions`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name_position: JSON.stringify(templateEditorData.namePosition)
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('Template position saved!', 'Success');
+            document.getElementById('edit-template-modal').classList.add('hidden');
+            loadTemplates();
+        } else {
+            showError(result.error || 'Failed to save position', 'Error');
+        }
+    } catch (error) {
+        console.error('Error saving position:', error);
+        showError('Error saving position', 'Error');
+    }
+}
+
+// Initialize template preview click handler
+setTimeout(() => {
+    initTemplatePreviewClick();
+}, 500);
+
+// Close modal when clicking outside
+document.getElementById('edit-template-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'edit-template-modal') {
+        document.getElementById('edit-template-modal').classList.add('hidden');
+    }
+});
+// Load position values into input fields
+function loadPositionInputs() {
+    // Use namePosition if it exists, otherwise fallback to positions.name
+    const pos = templateEditorData.positions || {
+        name: templateEditorData.namePosition || { x: 50, y: 50, size: 36, color: '#1a1a4d' }
+    };
+    
+    const namePos = pos.name || templateEditorData.namePosition || { x: 50, y: 50, size: 36, color: '#1a1a4d' };
+    
+    document.getElementById('name-x').value = namePos.x || 50;
+    document.getElementById('name-y').value = namePos.y || 50;
+    document.getElementById('name-size').value = namePos.size || 36;
+    document.getElementById('name-color').value = namePos.color || '#1a1a4d';
+}
+
+// Start positioning mode
+function startPositioning(type) {
+    currentPositioningType = type;
+    
+    // Highlight the indicator
+    const indicator = document.getElementById(`preview-${type}-indicator`) || document.getElementById('preview-name-indicator');
+    if (indicator) {
+        indicator.style.borderWidth = '4px';
+        indicator.style.borderColor = '#3b82f6';
+    }
+    
+    // Update cursor for PDF overlay
+    const pdfOverlay = document.getElementById('pdf-click-overlay');
+    if (pdfOverlay) {
+        pdfOverlay.style.cursor = 'crosshair';
+    }
+    
+    const previewImg = document.getElementById('template-preview-image');
+    if (previewImg) {
+        previewImg.style.cursor = 'crosshair';
+    }
+    
+    showAlert('Click on the preview area to set the name position', 'info', 'Positioning Mode');
+}
+
+// Handle click on preview image
+function initTemplatePreviewClick() {
+    const previewImg = document.getElementById('template-preview-image');
+    
+    if (!previewImg) return;
+    
+    // Remove old listener and add new one
+    const newImg = previewImg.cloneNode(true);
+    previewImg.parentNode.replaceChild(newImg, previewImg);
+    
+    newImg.addEventListener('click', function(e) {
+        if (currentPositioningType !== 'name') return;
+        
+        const rect = this.getBoundingClientRect();
+        
+        // Calculate percentage position (0-100)
+        const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+        const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
+        
+        // Clamp values between 0 and 100
+        const clampedX = Math.max(0, Math.min(100, Math.round(xPercent)));
+        const clampedY = Math.max(0, Math.min(100, Math.round(yPercent)));
+        
+        // Update the position
+        templateEditorData.namePosition.x = clampedX;
+        templateEditorData.namePosition.y = clampedY;
+        
+        // Update inputs
+        document.getElementById('name-x').value = clampedX;
+        document.getElementById('name-y').value = clampedY;
+        
+        // Update preview indicator
+        updatePreviewIndicator();
+        
+        // Exit positioning mode
+        currentPositioningType = null;
+        const indicator = document.getElementById('preview-name-indicator');
+        if (indicator) {
+            indicator.style.borderWidth = '2px';
+            indicator.style.borderColor = '#3b82f6';
+        }
+        
+        showSuccess(`Name position set to ${clampedX}%, ${clampedY}%`, 'Position Updated');
+    });
+    
+    // Set cursor
+    newImg.addEventListener('mouseenter', () => {
+        if (currentPositioningType === 'name') {
+            newImg.style.cursor = 'crosshair';
+        }
+    });
+    
+    newImg.addEventListener('mouseleave', () => {
+        newImg.style.cursor = 'default';
+    });
+}
+
+// Close template editor
+function closeTemplateEditor() {
+    document.getElementById('edit-template-modal').classList.add('hidden');
+    currentPositioningType = null;
+}
+
+
+// Initialize template preview click handler
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+        initTemplatePreviewClick();
+    }, 1000);
+});
+document.addEventListener('DOMContentLoaded', function() {
+    // Ensure edit template modal is hidden on page load
+    const modal = document.getElementById('edit-template-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+});
 // Generate certificates
 async function generateCertificates() {
     const eventSelect = document.getElementById('certificate-event-select');
@@ -3938,6 +4424,105 @@ async function sendCertificateEmail(certificateId, userId) {
 function downloadAllCertificates(eventId) {
     showAlert('This feature will download all certificates as a ZIP file', 'info', 'Coming Soon');
 }
+// Send all certificates for the selected event
+async function sendAllCertificates() {
+    const eventSelect = document.getElementById('certificate-event-select');
+    const eventId = eventSelect?.value;
+    
+    if (!eventId) {
+        showAlert('Please select an event first', 'warning', 'No Event Selected');
+        return;
+    }
+    
+    // Get certificates for this event
+    try {
+        const response = await fetch(`/api/certificates/event/${eventId}`);
+        const certificates = await response.json();
+        
+        if (certificates.length === 0) {
+            showAlert('No certificates found for this event', 'info', 'No Certificates');
+            return;
+        }
+        
+        // Count unsent certificates
+        const unsentCertificates = certificates.filter(cert => !cert.sent);
+        const alreadySent = certificates.length - unsentCertificates.length;
+        
+        if (unsentCertificates.length === 0) {
+            showAlert(`All ${certificates.length} certificate(s) have already been sent!`, 'info', 'Already Sent');
+            return;
+        }
+        
+        // Confirm with user
+        let message = `Send certificates to ${unsentCertificates.length} participant(s)?`;
+        if (alreadySent > 0) {
+            message += `\n\n${alreadySent} certificate(s) already sent will be skipped.`;
+        }
+        
+        const confirmed = await showConfirm({
+            title: 'Send All Certificates',
+            message: message,
+            type: 'info',
+            confirmText: `Yes, Send ${unsentCertificates.length}`,
+            cancelText: 'Cancel'
+        });
+        
+        if (!confirmed) return;
+        
+        // Show progress
+        showAlert(`Sending ${unsentCertificates.length} certificate(s)... This may take a moment.`, 'info', 'Sending');
+        
+        let sent = 0;
+        let failed = 0;
+        const failedList = [];
+        
+        // Send each unsent certificate
+        for (const cert of unsentCertificates) {
+            try {
+                const sendResponse = await fetch(`/api/certificates/${cert.id}/send`, {
+                    method: 'POST'
+                });
+                
+                const result = await sendResponse.json();
+                
+                if (result.success) {
+                    sent++;
+                } else {
+                    failed++;
+                    failedList.push(`${cert.name} (${cert.email}): ${result.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                failed++;
+                failedList.push(`${cert.name} (${cert.email}): ${error.message}`);
+            }
+        }
+        
+        // Refresh the certificates list
+        loadEventCertificates(eventId);
+        
+        // Show results
+        if (failed === 0) {
+            showSuccess(
+                `✅ Successfully sent ${sent} certificate(s)!`,
+                'All Sent'
+            );
+        } else {
+            let errorDetails = failedList.slice(0, 5).join('\n');
+            if (failedList.length > 5) {
+                errorDetails += `\n... and ${failedList.length - 5} more`;
+            }
+            
+            showError(
+                `Sent: ${sent} certificate(s)\nFailed: ${failed} certificate(s)\n\nFailed details:\n${errorDetails}`,
+                'Partial Success'
+            );
+        }
+        
+    } catch (error) {
+        console.error('Error sending certificates:', error);
+        showError('Error sending certificates: ' + error.message, 'Error');
+    }
+}
 
 // Initialize certificate page
 function initCertificatePage() {
@@ -3957,13 +4542,27 @@ function initCertificatePage() {
     }
 }
 
-// Initialize modal event listeners
+let modalListenersInitialized = false;
+
 function initializeModalListeners() {
+    if (modalListenersInitialized) {
+        console.log('Modal listeners already initialized, skipping...');
+        return;
+    }
+    modalListenersInitialized = true;
+    
     // Add Bus Modal
     const addBusForm = document.getElementById('add-bus-form');
     if (addBusForm) {
-        addBusForm.addEventListener('submit', function (e) {
+        addBusForm.addEventListener('submit', async function (e) {
             e.preventDefault();
+            
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn.disabled) return;
+            
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="bx bx-loader-circle bx-spin mr-2"></i>Adding...';
+            submitBtn.disabled = true;
 
             const busData = {
                 bus_number: document.getElementById('bus-number').value.trim(),
@@ -3972,15 +4571,42 @@ function initializeModalListeners() {
 
             if (!busData.bus_number) {
                 showAlert('Please enter a bus number');
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
                 return;
             }
 
             if (isNaN(busData.capacity) || busData.capacity < 1) {
                 showAlert('Please enter a valid capacity (minimum 1)');
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
                 return;
             }
 
-            addBus(busData);
+            try {
+                const response = await fetch('/api/buses', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(busData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showSuccess('Bus added successfully!');
+                    addBusForm.reset();
+                    document.getElementById('add-bus-modal').classList.add('hidden');
+                    loadBuses();
+                } else {
+                    showError(result.error || 'Failed to add bus');
+                }
+            } catch (error) {
+                console.error('Error adding bus:', error);
+                showError('Error adding bus: ' + error.message);
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
         });
     }
 
@@ -3989,7 +4615,7 @@ function initializeModalListeners() {
     if (assignBusForm) {
         assignBusForm.addEventListener('submit', function (e) {
             e.preventDefault();
-
+            
             const assignmentData = {
                 user_id: parseInt(document.getElementById('assign-user-id').value),
                 event_id: parseInt(document.getElementById('assign-event-id').value),
@@ -4006,7 +4632,7 @@ function initializeModalListeners() {
     if (moveBusForm) {
         moveBusForm.addEventListener('submit', function (e) {
             e.preventDefault();
-
+            
             const assignmentId = parseInt(document.getElementById('move-assignment-id').value);
             const newBusId = parseInt(document.getElementById('move-bus-select').value);
             const reason = document.getElementById('move-reason').value.trim();
@@ -4046,6 +4672,7 @@ function initializeModalListeners() {
         }
     });
 }
+
 // Toast Modal System
 function showToast(options) {
     const {
@@ -4065,7 +4692,6 @@ function showToast(options) {
     const confirmBtn = document.getElementById('toast-confirm');
     const cancelBtn = document.getElementById('toast-cancel');
 
-    // Remove existing type classes
     modal.classList.remove('toast-success', 'toast-error', 'toast-warning', 'toast-info');
     modal.classList.add(`toast-${type}`);
 
@@ -4125,7 +4751,7 @@ function showToast(options) {
         modal.removeEventListener('click', handleOutsideClick);
     };
 
-    // Add listeners
+    // Button listeners
     confirmBtn.addEventListener('click', handleConfirm);
     cancelBtn.addEventListener('click', handleCancel);
     modal.addEventListener('click', handleOutsideClick);
@@ -4144,7 +4770,7 @@ function showConfirm(options) {
     });
 }
 
-// Simple alert replacement
+// Alert Modal
 function showAlert(message, type = 'info', title = 'Notification') {
     showToast({
         type,
@@ -4154,7 +4780,7 @@ function showAlert(message, type = 'info', title = 'Notification') {
     });
 }
 
-// Success alert
+// Success Modal
 function showSuccess(message, title = 'Success!') {
     showToast({
         type: 'success',
@@ -4164,7 +4790,7 @@ function showSuccess(message, title = 'Success!') {
     });
 }
 
-// Error alert
+// Error Modal
 function showError(message, title = 'Error!') {
     showToast({
         type: 'error',
@@ -4188,14 +4814,28 @@ async function logout() {
         window.location.href = '/';
     }
 }
+window.formatPHDate = formatPHDate;
+window.formatPHDateShort = formatPHDateShort;
+window.formatPHTime = formatPHTime;
+window.loadEventsForRequestFilter = loadEventsForRequestFilter;
 window.autoAssignAllParticipants = autoAssignAllParticipants;
 window.sortParticipants = sortParticipants;
+window.removeParticipantFromEvent = removeParticipantFromEvent;
 window.viewBusDetails = viewBusDetails;
 window.deleteBus = deleteBus;
 window.openEditBusModal = openEditBusModal;
 window.finishEvent = finishEvent;
+window.openCreateAnnouncementModal = openCreateAnnouncementModal;
+window.openEditAnnouncementModal = openEditAnnouncementModal;
+window.closeAnnouncementModal = closeAnnouncementModal;
+window.deleteAnnouncement = deleteAnnouncement;
 window.setDefaultTemplate = setDefaultTemplate;
 window.deleteTemplate = deleteTemplate;
 window.sendCertificateEmail = sendCertificateEmail;
 window.downloadAllCertificates = downloadAllCertificates;
+window.sendAllCertificates = sendAllCertificates;
 window.generateCertificates = generateCertificates;
+window.openTemplateEditor = openTemplateEditor;
+window.closeTemplateEditor = closeTemplateEditor;
+window.startPositioning = startPositioning;
+window.saveTemplatePositions = saveTemplatePositions;

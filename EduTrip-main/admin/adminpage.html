@@ -8,7 +8,7 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-    <title>EduTrip Admin</title>
+    <title>EduEvent Admin</title>
     <style>
         /* Black theme w/ blue accents */
         .black-bg {
@@ -781,6 +781,238 @@
 #upload-template-modal.hidden {
     display: none !important;
 }
+#edit-template-modal {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+#edit-template-modal.hidden {
+    display: none !important;
+}
+#pdf-click-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: transparent;
+    z-index: 10;
+}
+
+#pdf-click-overlay:hover {
+    background: rgba(59, 130, 246, 0.05);
+}
+
+#template-preview-container {
+    position: relative;
+    display: inline-block;
+}
+/* Template Preview Container - Fix overflow */
+#template-preview-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    max-width: 100%;
+    max-height: 400px;
+    overflow: auto;
+    background: #1f2937;
+    border-radius: 0.5rem;
+    padding: 1rem;
+}
+
+#template-preview-container img,
+#template-preview-container iframe {
+    max-width: 100%;
+    max-height: 380px;
+    object-fit: contain;
+    display: block;
+}
+
+#template-preview-container .relative {
+    max-width: 100%;
+    max-height: 380px;
+    display: flex;
+    justify-content: center;
+}
+
+#pdf-click-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: transparent;
+    z-index: 10;
+    cursor: default;
+}
+
+#pdf-click-overlay:hover {
+    background: rgba(59, 130, 246, 0.05);
+}
+
+/* Name position indicator */
+#preview-name-indicator {
+    position: absolute;
+    border: 2px solid #3b82f6;
+    background: rgba(59, 130, 246, 0.2);
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: 20;
+    transition: all 0.2s ease;
+}
+
+/* Modal content max height fix */
+#edit-template-modal > div {
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#edit-template-modal .p-6 {
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Preview section background */
+#template-preview-container .bg-gray-800 {
+    background: #1f2937;
+}
+
+/* Responsive fixes */
+@media (max-width: 768px) {
+    #template-preview-container {
+        max-height: 300px;
+    }
+    
+    #template-preview-container img,
+    #template-preview-container iframe {
+        max-height: 280px;
+    }
+}
+/* Template Preview - Clean, No Extra Scrollbars */
+#edit-template-modal {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+#edit-template-modal > div {
+    max-width: 1000px !important;
+    width: 95%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Modal body - only ONE scrollbar here if needed */
+#edit-template-modal .overflow-y-auto,
+#edit-template-modal .p-6 {
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+}
+
+/* Preview section - NO SCROLLBARS */
+#edit-template-modal .bg-gray-800.rounded-lg {
+    overflow: visible !important;
+    padding: 1rem;
+}
+
+/* Template Preview - Fixed Positioning */
+#template-preview-container {
+    position: relative;
+    display: inline-block;
+    width: auto;
+    background: #1f2937;
+    border-radius: 0.5rem;
+    overflow: visible !important;
+}
+
+#template-preview-container .relative {
+    position: relative;
+    display: inline-block;
+    width: auto;
+    line-height: 0; /* Removes extra space below image */
+}
+
+#template-preview-pdf,
+#template-preview-image {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    background: white;
+    border-radius: 0.5rem;
+}
+
+/* Indicator stays relative to the image/PDF */
+#preview-name-indicator {
+    position: absolute;
+    border: 3px solid #3b82f6;
+    background: rgba(59, 130, 246, 0.15);
+    border-radius: 6px;
+    pointer-events: none;
+    z-index: 30;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+/* Inner relative container */
+#template-preview-container .relative {
+    position: relative;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    overflow: visible !important;
+}
+
+/* PDF iframe - NO SCROLLBARS, auto height */
+#template-preview-pdf {
+    width: 100%;
+    height: auto;
+    min-height: 400px;
+    aspect-ratio: 1.4 / 1;
+    background: white;
+    border-radius: 0.5rem;
+    border: 1px solid #374151;
+    display: block;
+    overflow: hidden !important;
+}
+
+/* Image preview */
+#template-preview-image {
+    width: 100%;
+    height: auto;
+    background: white;
+    border-radius: 0.5rem;
+    display: block;
+}
+
+/* Overlay for click capture */
+#pdf-click-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: transparent;
+    z-index: 10;
+}
+
+#pdf-click-overlay:hover {
+    background: rgba(59, 130, 246, 0.05);
+}
+
+/* Name position indicator */
+#preview-name-indicator {
+    position: absolute;
+    border: 2px solid #3b82f6;
+    background: rgba(59, 130, 246, 0.2);
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: 20;
+}
     </style>
 </head>
 
@@ -793,7 +1025,7 @@
             <img src="/img/logo.png.png" alt="logo" class="w-11 h-10">
         </div>
         <div class="ml-3 header-text transition-all duration-300">
-            <div class="name text-white font-bold">EduTrip</div>
+            <div class="name text-white font-bold">EduEvent</div>
             <div class="desc text-gray-400 text-sm">Admin Portal</div>
         </div>
     </div>
@@ -920,51 +1152,41 @@
     </div>
 </div>
 
-        <!-- Requests Page -->
-        <div id="requests" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
-            <div class="flex justify-between items-center mb-6">
-                <h1 class="text-2xl font-bold text-white">Registration Requests</h1>
-                <div class="flex space-x-4">
-                    <select id="status-filter" class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500">
-                        <option value="all">All Status</option>
-                        <option value="pending">Pending</option>
-                        <option value="approved">Approved</option>
-                        <option value="rejected">Rejected</option>
-                    </select>
-                    <select id="event-status-filter" class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500">
-                        <option value="active">Active Events</option>
-                        <option value="all">All Events</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div class="requests-container">
-                <div class="requests-list space-y-4" id="requests-list">
-                    <!-- Sample request item -->
-                    <div class="bg-black border border-gray-800 rounded-lg p-5 hover:border-blue-500/50 transition-colors">
-                        <div class="flex justify-between items-start mb-4">
-                            <div>
-                                <h3 class="text-lg font-semibold text-white">John Doe</h3>
-                                <p class="text-gray-400 text-sm">Student #: S123456</p>
-                                <p class="text-gray-400 text-sm">Email: john@example.com</p>
-                                <p class="text-gray-400 text-sm">Event: Tech Conference 2025</p>
-                            </div>
-                            <span class="px-3 py-1 bg-yellow-900/30 text-yellow-400 border border-yellow-800 rounded-full text-sm font-medium">
-                                PENDING
-                            </span>
-                        </div>
-                        <div class="flex space-x-3">
-                            <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
-                                Approve
-                            </button>
-                            <button class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors">
-                                View Documents
-                            </button>
-                        </div>
-                    </div>
+<!-- Requests Page -->
+<div id="requests" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-white">Registration Requests</h1>
+        <div class="flex space-x-4">
+            <input type="text" id="requests-search" placeholder="Search by name, email, or student #..." 
+                   class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500 w-64">
+            <select id="status-filter" class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500">
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+            </select>
+            <select id="event-filter" class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500">
+                <option value="all">All Events</option>
+                <!-- Events will be loaded dynamically -->
+            </select>
+        </div>
+    </div>
+    
+    <!-- Result count -->
+    <div id="requests-result-count" class="mb-4 text-gray-400 text-sm"></div>
+    
+    <div class="requests-container">
+        <div class="requests-list space-y-4" id="requests-list">
+            <!-- Requests will be loaded here -->
+            <div class="flex items-center justify-center h-64">
+                <div class="text-center">
+                    <i class='bx bx-loader-circle bx-spin text-4xl text-blue-500 mb-2'></i>
+                    <p class="text-gray-400">Loading requests...</p>
                 </div>
             </div>
         </div>
+    </div>
+</div>
 
         <!-- Events Page -->
         <div id="events" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
@@ -1013,10 +1235,26 @@
             </select>
         </div>
         <div>
-            <label class="block text-gray-300 mb-2">Image (Optional)</label>
-            <input type="file" id="event-image" accept="image/*"
-                   class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500" />
+            <label class="block text-gray-300 mb-2">Target Year Level</label>
+            <select id="event-target-year" 
+                    class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                <option value="ALL">All Year Levels</option>
+                <option value="1st yr">1st Year</option>
+                <option value="2nd yr">2nd Year</option>
+                <option value="3rd yr">3rd Year</option>
+                <option value="4th yr">4th Year</option>
+            </select>
         </div>
+    </div>
+    <div>
+        <label class="block text-gray-300 mb-2">
+            External Link (Optional)
+            <span class="text-gray-500 text-xs ml-2">Facebook post URL, etc.</span>
+        </label>
+        <input type="url" id="event-url" 
+            class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+            placeholder="https://">
+        <p class="text-gray-500 text-xs mt-1">Students can click the event title to open this link in a new tab</p>
     </div>
     <button type="submit" 
             class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
@@ -1059,7 +1297,7 @@
             <option value="">Select Event</option>
             <!-- Events will be loaded dynamically -->
         </select>
-        <button id="add-bus-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors whitespace-nowrap">
+        <button id="add-bus-btn" type="button" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors whitespace-nowrap">
             <i class='bx bx-plus mr-2'></i> Add New Bus
         </button>
         <button id="auto-assign-all-btn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors whitespace-nowrap">
@@ -1076,7 +1314,7 @@
         </div>
     </div>
     
-    <!-- Event Bus Assignments Section - Show when event IS selected -->
+    <!-- Event Bus Assignments Section -->
     <div id="event-assignments-section" class="hidden">
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-xl font-semibold text-white">Event Bus Assignments</h2>
@@ -1109,72 +1347,92 @@
     
     <!-- Announcements List -->
     <div id="announcements-list" class="space-y-4">
-        <!-- Announcements will be loaded here -->
         <div class="text-center py-10">
-            <i class='bx bx-message text-4xl text-gray-500 mb-3'></i>
-            <p class="text-gray-400">No announcements yet</p>
-            <p class="text-gray-500 text-sm">Create your first announcement to get started</p>
+            <i class='bx bx-loader-circle bx-spin text-4xl text-blue-500'></i>
+            <p class="text-gray-400 mt-2">Loading announcements...</p>
         </div>
     </div>
-    
-    <!-- Create Announcement Modal -->
-    <div id="announcement-modal" class="fixed inset-0 bg-black bg-opacity-75 items-center justify-center z-50 hidden">
-        <div class="bg-gray-900 border border-gray-800 rounded-xl w-11/12 max-w-2xl">
-            <div class="sticky top-0 bg-gray-900 border-b border-gray-800 p-6 flex justify-between items-center">
-                <h3 class="text-xl font-semibold text-white">Create New Announcement</h3>
-                <button id="close-announcement-modal" class="text-gray-400 hover:text-white text-2xl">
-                    <i class='bx bx-x'></i>
-                </button>
+</div>
+
+<!-- Create/Edit Announcement Modal -->
+<div id="announcement-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-4">
+    <div class="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b border-gray-800 flex justify-between items-center sticky top-0 bg-gray-900">
+            <h3 class="text-xl font-semibold text-white" id="announcement-modal-title">Create Announcement</h3>
+            <button type="button" onclick="closeAnnouncementModal()" class="text-gray-500 hover:text-white text-2xl">&times;</button>
+        </div>
+        <form id="announcement-form" class="p-6 space-y-5">
+            <input type="hidden" id="announcement-id">
+            
+            <div>
+                <label class="block text-gray-300 mb-2">Title</label>
+                <input type="text" id="announcement-title" required 
+                       class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+                       placeholder="Enter announcement title">
             </div>
             
-            <div class="p-6">
-                <form id="create-announcement-form" class="space-y-5">
-                    <div>
-                        <label class="block text-gray-300 mb-2">Title</label>
-                        <input type="text" id="announcement-title" required 
-                               class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
-                               placeholder="Enter announcement title">
-                    </div>
-                    <div>
-                        <label class="block text-gray-300 mb-2">Message</label>
-                        <textarea id="announcement-message" rows="6" required 
-                                  class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
-                                  placeholder="Enter announcement message..."></textarea>
-                    </div>
-                    <div>
-                        <label class="block text-gray-300 mb-2">Type</label>
-                        <select id="announcement-type" 
-                                class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
-                            <option value="info">Information</option>
-                            <option value="warning">Warning</option>
-                            <option value="urgent">Urgent</option>
-                            <option value="success">Success</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-gray-300 mb-2">Target Audience</label>
-                        <select id="announcement-audience" 
-                                class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
-                            <option value="all">All Users</option>
-                            <option value="students">Students Only</option>
-                            <option value="participants">Event Participants Only</option>
-                            <option value="specific">Specific Event</option>
-                        </select>
-                    </div>
-                    
-                    <div class="flex space-x-4 pt-4">
-                        <button type="submit" 
-                                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
-                            Create Announcement
-                        </button>
-                        <button type="button" id="cancel-announcement" 
-                                class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
-                            Cancel
-                        </button>
-                    </div>
-                </form>
+            <div>
+                <label class="block text-gray-300 mb-2">Message</label>
+                <textarea id="announcement-message" rows="5" required 
+                          class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+                          placeholder="Enter announcement message..."></textarea>
             </div>
-        </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-gray-300 mb-2">Type</label>
+                    <select id="announcement-type" 
+                            class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                        <option value="info">Information</option>
+                        <option value="success">Success</option>
+                        <option value="warning">Warning</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-300 mb-2">Target Audience</label>
+                    <select id="announcement-target-type" 
+                            class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                        <option value="all">All Users</option>
+                        <option value="course">Specific Course</option>
+                        <option value="event">Specific Event</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div id="target-course-container" class="hidden">
+                <label class="block text-gray-300 mb-2">Select Course</label>
+                <select id="announcement-target-course" 
+                        class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                    <option value="">Select a course</option>
+                    <option value="BSCS">BSCS</option>
+                    <option value="BSHM">BSHM</option>
+                    <option value="BSTM">BSTM</option>
+                    <option value="BAPOLSCI">BAPOLSCI</option>
+                    <option value="BSED">BSED</option>
+                    <option value="BSBA">BSBA</option>
+                </select>
+            </div>
+            
+            <div id="target-event-container" class="hidden">
+                <label class="block text-gray-300 mb-2">Select Event</label>
+                <select id="announcement-target-event" 
+                        class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                    <option value="">Loading events...</option>
+                </select>
+            </div>
+            
+            <div class="flex space-x-3 pt-4">
+                <button type="submit" 
+                        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                    <i class='bx bx-save mr-2'></i> Save Announcement
+                </button>
+                <button type="button" onclick="closeAnnouncementModal()"
+                        class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                    Cancel
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -1213,6 +1471,27 @@
     <!-- Certificates List -->
     <div>
         <h2 class="text-lg font-semibold text-white mb-4">Generated Certificates</h2>
+        
+        <!-- Certificate Stats Bar (appears when certificates are loaded) -->
+        <div id="certificate-stats-bar" class="bg-black border border-gray-800 rounded-xl p-4 mb-4 hidden">
+            <div class="flex justify-between items-center">
+                <div>
+                    <span class="text-white">Total Certificates: <span id="total-certificates-count">0</span></span>
+                    <span class="text-gray-400 text-sm ml-4" id="certificate-sent-stats"></span>
+                </div>
+                <div class="flex space-x-2">
+                    <button id="send-all-certificates-btn" onclick="sendAllCertificates()" 
+                            class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors hidden">
+                        <i class='bx bx-envelope mr-1'></i> <span id="send-all-count">Send All</span>
+                    </button>
+                    <button onclick="downloadAllCertificates()" 
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors hidden">
+                        <i class='bx bx-download mr-1'></i> Download All
+                    </button>
+                </div>
+            </div>
+        </div>
+        
         <div id="certificates-list" class="space-y-4">
             <div class="text-center py-8 text-gray-400">Select an event to view certificates</div>
         </div>
@@ -1257,17 +1536,80 @@
         </form>
     </div>
 </div>
-        <!-- Other pages (simplified) -->
+<!-- Edit Template Positions Modal -->
+<div id="edit-template-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-4">
+    <div class="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b border-gray-800 flex justify-between items-center sticky top-0 bg-gray-900">
+            <h3 class="text-xl font-semibold text-white">Edit Template - Name Position</h3>
+            <button type="button" onclick="document.getElementById('edit-template-modal').classList.add('hidden')" class="text-gray-500 hover:text-white text-2xl">&times;</button>
+        </div>
+        
+        <div class="p-6">
+            <input type="hidden" id="edit-template-id">
+            
+            <!-- Preview Section -->
+            <div class="mb-6">
+                <h4 class="text-white font-medium mb-3">Template Preview</h4>
+                <div class="bg-gray-800 rounded-lg p-4 flex justify-center items-center">
+                    <div id="template-preview-container" class="relative w-full flex justify-center">
+                        <!-- Preview content will be loaded here dynamically -->
+                    </div>
+                </div>
+                <p class="text-gray-400 text-sm mt-2">Click "Set Position" then click on the preview where you want the student's name to appear.</p>
+            </div>
+            
+            <!-- Name Position Controls -->
+            <div class="bg-black border border-gray-800 rounded-lg p-4 mb-6">
+                <div class="flex justify-between items-center mb-3">
+                    <h4 class="text-white font-medium">Student Name Position</h4>
+                    <button type="button" onclick="startPositioning('name')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm">
+                        <i class='bx bx-crosshair mr-1'></i> Set Position
+                    </button>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-400 text-xs mb-1">X Position (%)</label>
+                        <input type="number" id="name-x" class="w-full bg-gray-800 border border-gray-700 text-white rounded px-3 py-2" placeholder="50" min="0" max="100">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 text-xs mb-1">Y Position (%)</label>
+                        <input type="number" id="name-y" class="w-full bg-gray-800 border border-gray-700 text-white rounded px-3 py-2" placeholder="50" min="0" max="100">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 text-xs mb-1">Font Size</label>
+                        <input type="number" id="name-size" class="w-full bg-gray-800 border border-gray-700 text-white rounded px-3 py-2" value="36" min="8" max="72">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 text-xs mb-1">Font Color</label>
+                        <input type="color" id="name-color" class="w-full h-10 bg-gray-800 border border-gray-700 rounded" value="#1a1a4d">
+                    </div>
+                </div>
+                <p class="text-gray-500 text-xs mt-3">Default position is center (50%, 50%).</p>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="flex space-x-3">
+                <button type="button" onclick="saveTemplatePositions()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                    <i class='bx bx-save mr-2'></i> Save Position
+                </button>
+                <button type="button" onclick="document.getElementById('edit-template-modal').classList.add('hidden')" class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+        <!-- Other pages -->
 <div id="participants-page" class="page-container bg-gray-900 rounded-xl border border-gray-800 p-6 hidden">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-white">Participants Management</h1>
         <div class="flex space-x-4">
+                        <input type="text" id="participants-search" placeholder="Search by name, email, or student #..." 
+                   class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500 w-64">
             <select id="participants-event-filter" class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500">
                 <option value="all">All Events</option>
                 <!-- Events will be loaded here dynamically -->
             </select>
-            <input type="text" id="participants-search" placeholder="Search participants..." 
-                   class="bg-black border border-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500 w-64">
         </div>
     </div>
     
@@ -1372,6 +1714,17 @@
                         </select>
                     </div>
                     <div>
+                        <label class="block text-gray-300 mb-2">Target Year Level</label>
+                        <select id="edit-event-target-year" 
+                                class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                            <option value="ALL">All Year Levels</option>
+                            <option value="1st yr">1st Year</option>
+                            <option value="2nd yr">2nd Year</option>
+                            <option value="3rd yr">3rd Year</option>
+                            <option value="4th yr">4th Year</option>
+                        </select>
+                    </div>
+                    <div>
                         <label class="block text-gray-300 mb-2">Status</label>
                         <select id="edit-event-status" 
                                 class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
@@ -1381,6 +1734,12 @@
                             <option value="upcoming">Upcoming</option>
                         </select>
                     </div>
+                </div>
+                <div>
+                    <label class="block text-gray-300 mb-2">External Link (Optional)</label>
+                    <input type="url" id="edit-event-url" 
+                        class="w-full bg-black border border-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+                        placeholder="https://facebook.com/yourpage/posts/123">
                 </div>
                 
                 <div class="flex space-x-4 pt-4">

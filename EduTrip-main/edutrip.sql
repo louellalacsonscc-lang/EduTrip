@@ -1,6 +1,6 @@
 -- Create database
-CREATE DATABASE IF NOT EXISTS edutrip;
-USE edutrip;
+CREATE DATABASE IF NOT EXISTS eduevent;
+USE eduevent;
 
 -- Create tables
 CREATE TABLE IF NOT EXISTS users (
@@ -92,8 +92,8 @@ CREATE TABLE IF NOT EXISTS notifications (
 
 -- Insert default admin user (password: admin123)
 INSERT INTO users (name, email, password, role, verified) 
-VALUES ('Admin', 'admin@edutrip.com', '$2b$10$YKCQ2wGFL9UFL1XqQJnuJeFMBs3PN.Xk1ej91nDCSnIxX3wJ5DcvK', 'admin', 1);
+VALUES ('Admin', 'admin@eduevent.com', '$2b$10$YKCQ2wGFL9UFL1XqQJnuJeFMBs3PN.Xk1ej91nDCSnIxX3wJ5DcvK', 'admin', 1);
 
 -- Insert default student user (password: student123)
 INSERT INTO users (name, student_number, email, password, role, verified)
-VALUES ('John Student', 'S123456', 'student@edutrip.com', '$2b$10$XaIIRNG3tCGYc2/MN.NR9OSnr4AGNUwXInTy.tcK5AUpGgWJ.6phq', 'student', 1);
+VALUES ('John Student', 'S123456', 'student@eduevent.com', '$2b$10$XaIIRNG3tCGYc2/MN.NR9OSnr4AGNUwXInTy.tcK5AUpGgWJ.6phq', 'student', 1);
