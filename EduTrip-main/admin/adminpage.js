@@ -780,7 +780,7 @@ function filterEventsByCourse(course) {
             statusColor = 'bg-red-900/30 text-red-400 border-red-800';
         } else if (isCompleted) {
             statusBadge = 'COMPLETED';
-            statusColor = 'bg-purple-900/30 text-purple-400 border-purple-800';
+            statusColor = 'bg-purple-900/30 text-purple-500 border-purple-800';
         } else if (isHidden) {
             statusBadge = 'HIDDEN';
             statusColor = 'bg-yellow-900/30 text-yellow-400 border-yellow-800';
@@ -4130,6 +4130,28 @@ function updatePreviewIndicator() {
     }
 }
 
+// Font selector change handler
+document.getElementById('name-font')?.addEventListener('change', function(e) {
+    const selectedFont = e.target.value;
+    updatePreviewFont(selectedFont);
+});
+
+// Update preview with selected font
+function updatePreviewFont(fontFamily) {
+    const previewText = document.querySelector('.font-preview-text');
+    const nameInput = document.getElementById('name-x')?.closest('.bg-black')?.querySelector('.certificate-name-preview');
+    
+    if (previewText) {
+        previewText.style.fontFamily = fontFamily;
+    }
+    // Also update the position indicator preview
+    const indicator = document.getElementById('preview-name-indicator');
+    if (indicator) {
+        indicator.style.fontFamily = fontFamily;
+    }
+}
+
+
 // Save template positions
 async function saveTemplatePositions() {
     try {
@@ -4138,7 +4160,8 @@ async function saveTemplatePositions() {
             x: parseInt(document.getElementById('name-x').value) || 50,
             y: parseInt(document.getElementById('name-y').value) || 50,
             size: parseInt(document.getElementById('name-size').value) || 36,
-            color: document.getElementById('name-color').value || '#1a1a4d'
+            color: document.getElementById('name-color').value || '#1a1a4d',
+            fontFamily: document.getElementById('name-font')?.value || "'Playfair Display', serif"
         };
         
         const response = await fetch(`/api/certificates/templates/${templateEditorData.id}/positions`, {
@@ -4177,19 +4200,67 @@ document.getElementById('edit-template-modal')?.addEventListener('click', (e) =>
 });
 // Load position values into input fields
 function loadPositionInputs() {
-    // Use namePosition if it exists, otherwise fallback to positions.name
     const pos = templateEditorData.positions || {
-        name: templateEditorData.namePosition || { x: 50, y: 50, size: 36, color: '#1a1a4d' }
+        name: templateEditorData.namePosition || { 
+            x: 50, 
+            y: 50, 
+            size: 36, 
+            color: '#1a1a4d',
+            fontFamily: "'Playfair Display', serif"
+        }
     };
     
-    const namePos = pos.name || templateEditorData.namePosition || { x: 50, y: 50, size: 36, color: '#1a1a4d' };
+    const namePos = pos.name || templateEditorData.namePosition || { 
+        x: 50, 
+        y: 50, 
+        size: 36, 
+        color: '#1a1a4d',
+        fontFamily: "'Playfair Display', serif"
+    };
     
     document.getElementById('name-x').value = namePos.x || 50;
     document.getElementById('name-y').value = namePos.y || 50;
     document.getElementById('name-size').value = namePos.size || 36;
     document.getElementById('name-color').value = namePos.color || '#1a1a4d';
+    
+    // Set font family if saved
+    const fontSelect = document.getElementById('name-font');
+    if (fontSelect && namePos.fontFamily) {
+        fontSelect.value = namePos.fontFamily;
+    }
 }
 
+// Initialize font preview on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const fontSelect = document.getElementById('name-font');
+    if (fontSelect) {
+        // Set initial preview
+        updatePreviewFont(fontSelect.value);
+    }
+});
+// Update preview when font changes
+document.getElementById('name-font')?.addEventListener('change', function(e) {
+    const previewText = document.getElementById('font-preview-text');
+    if (previewText) {
+        previewText.style.fontFamily = e.target.value;
+    }
+});
+
+// Update preview when size changes
+document.getElementById('name-size')?.addEventListener('input', function(e) {
+    const previewText = document.getElementById('font-preview-text');
+    if (previewText) {
+        previewText.style.fontSize = e.target.value + 'px';
+    }
+});
+
+// Update preview when color changes
+document.getElementById('name-color')?.addEventListener('input', function(e) {
+    const previewText = document.getElementById('font-preview-text');
+    if (previewText) {
+        previewText.style.color = e.target.value;
+    }
+});
 // Start positioning mode
 function startPositioning(type) {
     currentPositioningType = type;

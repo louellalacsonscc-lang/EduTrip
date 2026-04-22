@@ -1,0 +1,320 @@
+/* ============================================
+   THEME TOGGLE BUTTON STYLES
+   ============================================ */
+
+/* Theme Toggle Button */
+.theme-toggle {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: transparent;
+    border: 2px solid #3b82f6;
+    color: #3b82f6;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    transition: all 0.3s ease;
+    margin-left: 16px;
+    flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+    background: #3b82f6;
+    color: white;
+    transform: scale(1.05);
+}
+
+.theme-toggle i {
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Toggle in sidebar */
+.theme-toggle-sidebar {
+    margin-left: auto !important;
+    margin-right: 8px !important;
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 18px !important;
+}
+
+/* Toggle in login page */
+.theme-toggle-absolute {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
+
+/* ============================================
+   DARK MODE STYLES
+   ============================================ */
+
+/* Dark Mode - Base */
+body.dark-mode {
+    background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%) !important;
+}
+
+body.dark-mode::before {
+    background: 
+        radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(37, 99, 235, 0.08) 0%, transparent 50%) !important;
+}
+
+/* Dark Mode - Navbar */
+body.dark-mode .navbar {
+    background: rgba(10, 15, 25, 0.9) !important;
+    backdrop-filter: blur(15px) !important;
+    border-bottom: 1px solid rgba(59, 130, 246, 0.2) !important;
+}
+
+body.dark-mode .logo-text {
+    background: linear-gradient(135deg, #60a5fa, #3b82f6) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+}
+
+/* Dark Mode - Sidebar */
+body.dark-mode .sidebar {
+    background: rgba(15, 20, 30, 0.95) !important;
+    border-right: 1px solid rgba(59, 130, 246, 0.15) !important;
+}
+
+body.dark-mode .sidebar .name {
+    color: #e0e0e0 !important;
+}
+
+body.dark-mode .sidebar .desc {
+    color: #888 !important;
+}
+
+body.dark-mode .sidebar-item {
+    color: #aaa !important;
+}
+
+body.dark-mode .sidebar-item:hover {
+    background: rgba(59, 130, 246, 0.15) !important;
+    color: #60a5fa !important;
+}
+
+/* Dark Mode - Cards & Containers */
+body.dark-mode .page-container,
+body.dark-mode .bg-black,
+body.dark-mode .bg-gray-900,
+body.dark-mode .bg-gray-900\/50,
+body.dark-mode .verify-container,
+body.dark-mode .container:not(.navbar *) {
+    background: rgba(20, 25, 40, 0.9) !important;
+    backdrop-filter: blur(15px) !important;
+    border: 1px solid rgba(59, 130, 246, 0.15) !important;
+}
+
+/* Dark Mode - Headings */
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode h4 {
+    color: #e0e0e0 !important;
+}
+
+body.dark-mode h1 {
+    background: linear-gradient(135deg, #e0e0e0, #60a5fa) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+}
+
+/* Dark Mode - Text */
+body.dark-mode .text-white {
+    color: #e0e0e0 !important;
+}
+
+body.dark-mode .text-gray-300,
+body.dark-mode .text-gray-400 {
+    color: #aaa !important;
+}
+
+body.dark-mode .text-gray-500 {
+    color: #777 !important;
+}
+
+body.dark-mode p,
+body.dark-mode span:not(.logo-text):not(.badge *) {
+    color: #bbb !important;
+}
+
+/* Dark Mode - Inputs */
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode textarea {
+    background: rgba(30, 40, 60, 0.8) !important;
+    border: 1.5px solid rgba(59, 130, 246, 0.2) !important;
+    color: #e0e0e0 !important;
+}
+
+body.dark-mode input:focus,
+body.dark-mode select:focus,
+body.dark-mode textarea:focus {
+    border-color: #3b82f6 !important;
+    background: rgba(40, 50, 70, 0.9) !important;
+}
+
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder {
+    color: #666 !important;
+}
+
+/* Dark Mode - Tables */
+body.dark-mode table {
+    background: rgba(20, 25, 40, 0.8) !important;
+}
+
+body.dark-mode thead {
+    background: rgba(30, 40, 60, 0.8) !important;
+    border-bottom: 2px solid #3b82f6 !important;
+}
+
+body.dark-mode th {
+    color: #ccc !important;
+}
+
+body.dark-mode td {
+    color: #bbb !important;
+    border-bottom: 1px solid rgba(59, 130, 246, 0.1) !important;
+}
+
+body.dark-mode tr:hover {
+    background: rgba(59, 130, 246, 0.08) !important;
+}
+
+/* Dark Mode - Modals */
+body.dark-mode .fixed.inset-0 > div {
+    background: rgba(20, 30, 45, 0.98) !important;
+    border: 1px solid rgba(59, 130, 246, 0.2) !important;
+}
+
+body.dark-mode .fixed.inset-0 {
+    background: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Dark Mode - Borders */
+body.dark-mode .border-gray-800,
+body.dark-mode .border-gray-800\/50,
+body.dark-mode .border-gray-800\/30,
+body.dark-mode .border-b {
+    border-color: rgba(59, 130, 246, 0.15) !important;
+}
+
+/* Dark Mode - Buttons */
+body.dark-mode .bg-gray-800,
+body.dark-mode .bg-gray-800:hover {
+    background: rgba(40, 50, 70, 0.9) !important;
+    color: #ddd !important;
+    border: 1px solid rgba(59, 130, 246, 0.2) !important;
+}
+
+/* Dark Mode - Announcement Cards */
+body.dark-mode .announcement-card {
+    background: rgba(20, 30, 45, 0.9) !important;
+}
+
+body.dark-mode .announcement-title {
+    color: #e0e0e0 !important;
+}
+
+body.dark-mode .announcement-message {
+    color: #bbb !important;
+}
+
+/* Dark Mode - Email Display */
+body.dark-mode .email-display {
+    background: rgba(30, 40, 60, 0.8) !important;
+    border: 1px solid rgba(59, 130, 246, 0.2) !important;
+}
+
+body.dark-mode .email-address {
+    color: #e0e0e0 !important;
+}
+
+/* Dark Mode - Info Box */
+body.dark-mode .info-box {
+    background: rgba(30, 40, 60, 0.6) !important;
+}
+
+/* Dark Mode - Toast */
+body.dark-mode #toast-modal > div,
+body.dark-mode .toast-content {
+    background: rgba(20, 30, 45, 0.98) !important;
+}
+
+body.dark-mode #toast-title {
+    color: #e0e0e0 !important;
+}
+
+body.dark-mode #toast-message {
+    color: #bbb !important;
+}
+
+/* Dark Mode - Footer */
+body.dark-mode .footer {
+    background: rgba(10, 15, 25, 0.9) !important;
+    border-top: 1px solid rgba(59, 130, 246, 0.15) !important;
+}
+
+body.dark-mode .footer-text {
+    color: #888 !important;
+}
+
+/* Dark Mode - Login/Register Forms */
+body.dark-mode form {
+    background: transparent !important;
+}
+
+body.dark-mode .form-container form {
+    background: transparent !important;
+}
+
+body.dark-mode .overlay {
+    background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%) !important;
+}
+
+/* Dark Mode - Certificate Preview */
+body.dark-mode #template-preview-container {
+    background: rgba(30, 40, 60, 0.8) !important;
+}
+
+/* Dark Mode - Theme Toggle */
+body.dark-mode .theme-toggle {
+    border-color: #60a5fa !important;
+    color: #60a5fa !important;
+}
+
+body.dark-mode .theme-toggle:hover {
+    background: #60a5fa !important;
+    color: #0a0a0f !important;
+}
+/* Hide theme toggle in collapsed sidebar */
+.sidebar.w-20 .theme-toggle,
+.sidebar.w-20 .theme-toggle-sidebar {
+    display: none !important;
+}
+
+/* Ensure toggle is visible when sidebar is expanded */
+.sidebar.w-64 .theme-toggle,
+.sidebar.w-64 .theme-toggle-sidebar {
+    display: flex !important;
+}
+
+/* Smooth transition for toggle appearance */
+.theme-toggle-sidebar {
+    transition: opacity 0.2s ease !important;
+}
+
+.sidebar.w-20 .theme-toggle-sidebar {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+.sidebar.w-64 .theme-toggle-sidebar {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}

@@ -4,291 +4,714 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE-edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Tailwind CSS -->
-    <link rel="stylesheet" href="/tailwind-output.css">
     <!-- Boxicons -->
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Theme System -->
+    <link rel="stylesheet" href="/theme.css">
+    <script src="/theme.js"></script>
     <title>EduEvent | Home</title>
     <style>
-        /* Black theme with blue accents */
-        .black-bg {
-            background: #000000;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        
-        /* Modern card design */
-        .modern-card {
-            background: rgba(17, 24, 39, 0.8);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 1rem;
-            transition: all 0.3s ease;
-        }
-        
-        .modern-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 40px rgba(59, 130, 246, 0.15);
-            border-color: rgba(59, 130, 246, 0.3);
-        }
-        
-        /* Image container */
-        .visual {
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(135deg, #f6f5f7 0%, #e8e4e9 100%);
+            min-height: 100vh;
             position: relative;
-            overflow: hidden;
-            border-radius: 0.75rem;
+            overflow-x: hidden;
         }
-        
-        .visual::after {
+
+        /* Animated Background */
+        body::before {
             content: '';
-            position: absolute;
-            bottom: 0;
+            position: fixed;
+            top: 0;
             left: 0;
             right: 0;
-            height: 50%;
-            background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.06) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(37, 99, 235, 0.06) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(96, 165, 250, 0.04) 0%, transparent 50%);
             pointer-events: none;
+            z-index: -1;
+            animation: bgPulse 15s ease-in-out infinite alternate;
         }
-        
-        .img {
-            width: 100%;
-            height: 192px;
-            object-fit: cover;
-            transition: transform 0.5s ease;
+
+        @keyframes bgPulse {
+            0% { opacity: 0.5; transform: scale(1); }
+            100% { opacity: 1; transform: scale(1.05); }
         }
-        
-        .modern-card:hover .img {
-            transform: scale(1.05);
+
+        /* ===== NAVBAR ===== */
+.navbar {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(15px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-        
-        /* Content styling */
-        .content {
-            padding: 1.5rem;
-            color: #e5e7eb;
-        }
-        
-        .title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: white;
-            margin-bottom: 0.75rem;
-            line-height: 1.3;
-        }
-        
-        .desc {
-            font-size: 0.875rem;
-            color: #9ca3af;
-            margin-bottom: 1.5rem;
-            line-height: 1.5;
-        }
-        
-        .card-link {
-            display: inline-flex;
+        .navbar .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 0.5rem;
-            color: #3b82f6;
-            text-decoration: none;
-            font-weight: 500;
-            font-size: 0.875rem;
-            padding: 0.5rem 1rem;
-            background: rgba(59, 130, 246, 0.1);
-            border-radius: 0.5rem;
-            transition: all 0.2s ease;
+        }
+        /* Logo container */
+        .logo-icon {
+            width: 42px;
+            height: 42px;
+            background: transparent !important;
+            border-radius: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: none !important;
+            padding: 0;
+            overflow: visible;
+            flex-shrink: 0;
+            border: none !important;
+            outline: none !important;
         }
         
-        .card-link:hover {
-            background: rgba(59, 130, 246, 0.2);
+        .logo-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border: none !important;
+            outline: none !important;
+        }
+        /* Dark mode logo container */
+        body.dark-mode .logo-icon {
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+        body.dark-mode .theme-toggle {
+            border-color: #60a5fa;
             color: #60a5fa;
         }
-        
-        /* Infinite Carousel Container */
-        .infinite-carousel {
-            position: relative;
-            width: 100%;
-            overflow: hidden;
-            padding: 2rem 0;
-        }
-        
-        /* Carousel Track - Infinite */
-        .infinite-track {
+        .logo-container {
             display: flex;
-            gap: 1.5rem;
-            animation: scroll 30s linear infinite;
-            width: max-content;
+            align-items: center;
+            gap: 10px;
         }
-        
-        .infinite-track.paused {
-            animation-play-state: paused;
+
+        .logo-icon:hover {
+            transform: scale(1.05) rotate(5deg);
         }
-        
-        /* Individual card */
-        .carousel-card {
-            flex: 0 0 auto;
-            width: 320px;
+
+.logo-text {
+    font-size: 26px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    white-space: nowrap;
+}
+.navbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.login-btn {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    font-weight: 700;
+    padding: 12px 28px;
+    border-radius: 50px;
+    text-decoration: none;
+    font-size: 15px;
+    letter-spacing: 0.5px;
+    box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3);
+    transition: all 0.3s ease;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
+}
+
+        .login-btn i {
+            font-size: 20px;
         }
-        
-        /* Keyframes for infinite scrolling */
-        @keyframes scroll {
-            0% {
-                transform: translateX(0);
-            }
-            100% {
-                transform: translateX(calc(-320px * 5 - 1.5rem * 5)); /* 5 cards */
-            }
+.theme-toggle {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: transparent;
+    border: 2px solid #3b82f6;
+    color: #3b82f6;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+.theme-toggle:hover {
+    background: #3b82f6;
+    color: white;
+}
+        /* ===== MAIN CONTENT ===== */
+        .main-content {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 50px 24px;
         }
-        
-        /* Header styling */
+
+        /* ===== HEADER SECTION ===== */
         .section-header {
             text-align: center;
-            margin-bottom: 3rem;
+            margin-bottom: 50px;
+            animation: fadeInUp 0.8s ease;
         }
-        
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         .section-title {
-            font-size: 2.5rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            font-size: 48px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #1a1a1a, #3b82f6);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            margin-bottom: 1rem;
+            margin-bottom: 16px;
         }
-        
+
         .section-subtitle {
-            color: #9ca3af;
-            font-size: 1.125rem;
+            color: #666;
+            font-size: 18px;
+            font-weight: 500;
             max-width: 600px;
             margin: 0 auto;
+            line-height: 1.6;
         }
-        
-        /* Loading and empty states */
+
+        /* ===== ANNOUNCEMENTS CONTAINER ===== */
+        .announcements-wrapper {
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .announcements-list {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-height: 650px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        /* Custom Scrollbar */
+        .announcements-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .announcements-list::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+        }
+
+        .announcements-list::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #3b82f6, #2563eb);
+            border-radius: 10px;
+        }
+
+        .announcements-list::-webkit-scrollbar-thumb:hover {
+            background: #1d4ed8;
+        }
+
+        /* ===== ANNOUNCEMENT CARD ===== */
+        .announcement-card {
+            background: white;
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 28px;
+            transition: all 0.4s ease;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.1);
+            animation: cardFadeIn 0.6s ease forwards;
+            opacity: 0;
+            animation-delay: calc(var(--index) * 0.1s);
+        }
+
+        @keyframes cardFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .announcement-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(59, 130, 246, 0.12);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        /* Announcement Type Borders */
+        .announcement-card.info {
+            border-left: 5px solid #3b82f6;
+        }
+
+        .announcement-card.success {
+            border-left: 5px solid #10b981;
+        }
+
+        .announcement-card.warning {
+            border-left: 5px solid #f59e0b;
+        }
+
+        .announcement-card.urgent {
+            border-left: 5px solid #ef4444;
+        }
+
+        /* Announcement Header */
+        .announcement-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .announcement-icon {
+            flex-shrink: 0;
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease;
+        }
+
+        .announcement-card:hover .announcement-icon {
+            transform: scale(1.05);
+        }
+
+        .announcement-icon i {
+            font-size: 28px;
+        }
+
+        .announcement-icon.info {
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+        }
+        .announcement-icon.info i { color: #3b82f6; }
+
+        .announcement-icon.success {
+            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+        }
+        .announcement-icon.success i { color: #10b981; }
+
+        .announcement-icon.warning {
+            background: linear-gradient(135deg, #fffbeb, #fef3c7);
+        }
+        .announcement-icon.warning i { color: #f59e0b; }
+
+        .announcement-icon.urgent {
+            background: linear-gradient(135deg, #fef2f2, #fee2e2);
+        }
+        .announcement-icon.urgent i { color: #ef4444; }
+
+        .announcement-title-section {
+            flex: 1;
+        }
+
+        .announcement-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 6px;
+            line-height: 1.4;
+        }
+
+        .announcement-time {
+            font-size: 13px;
+            color: #888;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .announcement-time i {
+            font-size: 16px;
+        }
+
+        /* Announcement Message */
+        .announcement-message {
+            color: #555;
+            font-size: 15px;
+            line-height: 1.7;
+            margin-bottom: 20px;
+            padding-left: 68px;
+        }
+
+        /* Announcement Footer */
+        .announcement-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-left: 68px;
+        }
+
+        .announcement-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 50px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+
+        .announcement-badge.info {
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            color: #3b82f6;
+        }
+
+        .announcement-badge.success {
+            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+            color: #10b981;
+        }
+
+        .announcement-badge.warning {
+            background: linear-gradient(135deg, #fffbeb, #fef3c7);
+            color: #f59e0b;
+        }
+
+        .announcement-badge.urgent {
+            background: linear-gradient(135deg, #fef2f2, #fee2e2);
+            color: #ef4444;
+        }
+
+        .announcement-author {
+            font-size: 13px;
+            color: #999;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* ===== LOADING STATE ===== */
         .loading {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 4rem 1rem;
+            padding: 80px 24px;
+            animation: fadeIn 0.5s ease;
         }
-        
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
         .spinner {
-            width: 48px;
-            height: 48px;
-            border: 3px solid rgba(59, 130, 246, 0.2);
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(59, 130, 246, 0.1);
             border-top-color: #3b82f6;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 1rem;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 20px;
         }
-        
-        .no-events {
-            text-align: center;
-            padding: 4rem 1rem;
-            color: #6b7280;
-        }
-        
+
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-        
-        /* Gradient overlay for fade effect */
-        .carousel-wrapper {
-            position: relative;
+
+        .loading p {
+            color: #666;
+            font-size: 16px;
+            font-weight: 500;
         }
-        
-        .carousel-wrapper::before,
-        .carousel-wrapper::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 100px;
-            z-index: 2;
-            pointer-events: none;
+
+        /* ===== NO ANNOUNCEMENTS STATE ===== */
+        .no-announcements {
+            text-align: center;
+            padding: 80px 24px;
+            color: #888;
+            animation: fadeIn 0.5s ease;
         }
-        
-        .carousel-wrapper::before {
-            left: 0;
-            background: linear-gradient(to right, #000, transparent);
+
+        .no-announcements i {
+            font-size: 56px;
+            color: #ccc;
+            margin-bottom: 20px;
         }
-        
-        .carousel-wrapper::after {
-            right: 0;
-            background: linear-gradient(to left, #000, transparent);
+
+        .no-announcements h3 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
         }
-        
-        /* Responsive adjustments */
+
+        .no-announcements p {
+            color: #888;
+            font-size: 15px;
+        }
+
+        /* ===== FOOTER ===== */
+        .footer {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(15px);
+            padding: 24px;
+            border-top: 1px solid rgba(59, 130, 246, 0.1);
+            margin-top: 60px;
+        }
+
+        .footer .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .footer-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .footer-logo i {
+            font-size: 24px;
+            color: #3b82f6;
+        }
+
+        .footer-logo span {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .footer-text {
+            color: #888;
+            font-size: 14px;
+        }
+
+        .footer-text i {
+            color: #3b82f6;
+            animation: heartBeat 1.5s ease-in-out infinite;
+        }
+
+        @keyframes heartBeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        .footer-text a {
+            color: #3b82f6;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .footer-text a:hover {
+            text-decoration: underline;
+        }
+
+        /* Hidden class */
+        .hidden {
+            display: none !important;
+        }
+
+        /* ===== RESPONSIVE ===== */
         @media (max-width: 768px) {
-            .carousel-card {
-                width: 280px;
-            }
-            
             .section-title {
-                font-size: 2rem;
+                font-size: 36px;
             }
-            
-            @keyframes scroll {
-                0% {
-                    transform: translateX(0);
-                }
-                100% {
-                    transform: translateX(calc(-280px * 5 - 1.5rem * 5));
-                }
+
+            .section-subtitle {
+                font-size: 16px;
+            }
+
+            .announcement-card {
+                padding: 20px;
+            }
+
+            .announcement-header {
+                gap: 12px;
+            }
+
+            .announcement-icon {
+                width: 45px;
+                height: 45px;
+            }
+
+            .announcement-icon i {
+                font-size: 24px;
+            }
+
+            .announcement-title {
+                font-size: 18px;
+            }
+
+            .announcement-message,
+            .announcement-footer {
+                padding-left: 57px;
+            }
+
+            .footer .container {
+                flex-direction: column;
+                text-align: center;
             }
         }
-        
+
         @media (max-width: 480px) {
-            .carousel-card {
-                width: 260px;
+            .navbar .container {
+                padding: 12px 16px;
             }
-            
+
+            .logo-text {
+                font-size: 22px;
+            }
+
+            .login-btn {
+                padding: 10px 18px;
+                font-size: 13px;
+            }
+
             .section-title {
-                font-size: 1.75rem;
+                font-size: 30px;
             }
-            
-            @keyframes scroll {
-                0% {
-                    transform: translateX(0);
-                }
-                100% {
-                    transform: translateX(calc(-260px * 5 - 1.5rem * 5));
-                }
+
+            .announcement-message,
+            .announcement-footer {
+                padding-left: 0;
+                margin-top: 12px;
+            }
+
+            .announcement-footer {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
             }
         }
+    .footer {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(15px);
+        padding: 24px;
+        border-top: 1px solid rgba(59, 130, 246, 0.15);
+        margin-top: 60px;
+    }
+
+    .footer .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 16px 24px;
+        background: rgba(255, 255, 255, 0.5);
+        border-radius: 20px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(59, 130, 246, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    /* Dark mode footer container */
+    body.dark-mode .footer {
+        background: rgba(10, 15, 25, 0.9) !important;
+        border-top: 1px solid rgba(59, 130, 246, 0.15) !important;
+    }
+
+    body.dark-mode .footer .container {
+        background: rgba(20, 30, 45, 0.7) !important;
+        border: 1px solid rgba(59, 130, 246, 0.15) !important;
+    }
+
+    body.dark-mode .footer-logo span {
+        color: #e0e0e0 !important;
+    }
+
+    body.dark-mode .footer-text {
+        color: #aaa !important;
+    }
     </style>
 </head>
-
-<body class="black-bg min-h-screen">
-    <!-- NAVBAR -->
-    <nav class="navbar bg-black/90 backdrop-blur-md sticky top-0 z-50 border-b border-gray-800">
-        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-            <!-- Logo -->
-            <div class="flex items-center space-x-2">
-                <img src="/img/logo.png.png" alt="EduEvent Logo" class="w-8 h-8">
-                <span class="text-xl font-bold text-blue-500">EduEvent</span>
+<body>
+<!-- NAVBAR -->
+<nav class="navbar">
+    <div class="container">
+        <!-- Left: Logo and Title -->
+        <div class="logo-container">
+            <div class="logo-icon">
+                <img src="/img/logo.png.png" alt="EduEvent Logo">
             </div>
-            
-            <!-- Login Button -->
-            <div class="flex items-center space-x-4">
-                <a href="/login" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-300">
-                    Login / Register
-                </a>
-            </div>
+            <span class="logo-text">EduEvent</span>
         </div>
-    </nav>
+        
+        <!-- Right: Theme Toggle and Login Button -->
+        <div class="navbar-right">
+            <!-- Theme toggle will be inserted here by JS -->
+            <a href="/login" class="login-btn">
+                <i class='bx bx-log-in'></i>
+                Login / Register
+            </a>
+        </div>
+    </div>
+</nav>
 
-    <!-- INFINITE CAROUSEL SECTION -->
-    <main class="min-h-screen flex items-center justify-center px-4 py-8">
-        <div class="w-full max-w-6xl">
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        <div class="announcements-wrapper">
             <!-- Header -->
             <div class="section-header">
-                <h1 class="section-title">Latest Announcements</h1>
-                <p class="section-subtitle">Discover upcoming educational events, seminars, and trips curated for students</p>
+                <h1 class="section-title">Announcements</h1>
+                <p class="section-subtitle">Stay updated with the latest news and events from EduEvent</p>
             </div>
             
-            <!-- Infinite Carousel -->
-            <div class="infinite-carousel">
-                <div class="carousel-wrapper">
-                    <div class="infinite-track" id="infiniteTrack">
-                        <!-- Events will be loaded dynamically here -->
-                    </div>
-                </div>
+            <!-- Announcements List -->
+            <div class="announcements-list" id="announcements-list">
+                <!-- Announcements will be loaded dynamically here -->
             </div>
             
             <!-- Loading State -->
@@ -297,35 +720,180 @@
                 <p>Loading announcements...</p>
             </div>
             
-            <!-- No Events State -->
-            <div class="no-events hidden" id="noEventsState">
-                <i class='bx bx-calendar-x text-4xl mb-4'></i>
-                <h3 class="text-xl font-semibold mb-2">No events available</h3>
-                <p class="text-gray-500">Check back later for upcoming announcements</p>
+            <!-- No Announcements State -->
+            <div class="no-announcements hidden" id="noAnnouncementsState">
+                <i class='bx bx-message-alt-x'></i>
+                <h3>No announcements yet</h3>
+                <p>Check back later for updates</p>
             </div>
         </div>
     </main>
 
     <!-- FOOTER -->
-    <footer class="bg-gray-900 py-8 px-4 border-t border-gray-800">
-        <div class="container mx-auto">
-            <div class="flex flex-col md:flex-row justify-between items-center">
-                <div class="mb-6 md:mb-0">
-                    <div class="flex items-center space-x-2 mb-4">
-                        <img src="/img/logo.png.png" alt="EduEvent Logo" class="w-10 h-10">
-                        <span class="text-2xl font-bold text-blue-500">EduEvent</span>
-                    </div>
-                    <p class="text-gray-400">Educational Seminars & Tours Platform.</p>
-                </div>
-                <div class="text-center md:text-right">
-                    <p class="text-gray-500 text-sm">© 2025 EduEvent. All rights reserved.</p>
-                    <p class="text-gray-500 text-sm">Made with ❤️ for educational purposes</p>
-                </div>
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-logo">
+                <i class='bx bxs-graduation'></i>
+                <span>EduEvent</span>
+            </div>
+            <div class="footer-text">
+                <p>© 2025 EduEvent • Made with <i class='bx bxs-heart'></i> for educational purposes</p>
             </div>
         </div>
     </footer>
 
-    <!-- JavaScript -->
-    <script src="frontp.js"></script>
+    <script>
+        class AnnouncementsDisplay {
+            constructor() {
+                this.container = document.getElementById('announcements-list');
+                this.loadingState = document.getElementById('loadingState');
+                this.noAnnouncementsState = document.getElementById('noAnnouncementsState');
+                this.init();
+            }
+            
+            async init() {
+                console.log('🚀 AnnouncementsDisplay initialized');
+                await this.loadAnnouncements();
+            }
+            
+            async loadAnnouncements() {
+                try {
+                    console.log('📡 Fetching announcements...');
+                    const response = await fetch('/api/announcements/public');
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const announcements = await response.json();
+                    console.log('📢 Announcements received:', announcements);
+                    
+                    // Hide loading state
+                    if (this.loadingState) {
+                        this.loadingState.style.display = 'none';
+                        this.loadingState.classList.add('hidden');
+                    }
+                    
+                    if (announcements.length === 0) {
+                        console.log('ℹ️ No announcements found');
+                        if (this.noAnnouncementsState) {
+                            this.noAnnouncementsState.style.display = 'block';
+                            this.noAnnouncementsState.classList.remove('hidden');
+                        }
+                        return;
+                    }
+                    
+                    // Show announcements
+                    if (this.noAnnouncementsState) {
+                        this.noAnnouncementsState.style.display = 'none';
+                        this.noAnnouncementsState.classList.add('hidden');
+                    }
+                    
+                    this.renderAnnouncements(announcements);
+                    
+                } catch (error) {
+                    console.error('❌ Error loading announcements:', error);
+                    if (this.loadingState) {
+                        this.loadingState.style.display = 'none';
+                        this.loadingState.classList.add('hidden');
+                    }
+                }
+            }
+            
+            formatTimeAgo(dateString) {
+                const date = new Date(dateString);
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays = Math.floor(diffMs / 86400000);
+                
+                if (diffMins < 1) return 'Just now';
+                if (diffMins < 60) return `${diffMins} min${diffMins === 1 ? '' : 's'} ago`;
+                if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+                if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            }
+            
+            getIconForType(type) {
+                const icons = {
+                    info: 'bx-info-circle',
+                    success: 'bx-check-circle',
+                    warning: 'bx-error',
+                    urgent: 'bx-alarm-exclamation'
+                };
+                return icons[type] || 'bx-info-circle';
+            }
+            
+            getBadgeText(type) {
+                const badges = {
+                    info: 'Information',
+                    success: 'Success',
+                    warning: 'Warning',
+                    urgent: 'Urgent'
+                };
+                return badges[type] || 'Information';
+            }
+            
+            renderAnnouncements(announcements) {
+                console.log('🎨 Rendering', announcements.length, 'announcements');
+                
+                // Sort by newest first
+                const sorted = [...announcements].sort((a, b) => 
+                    new Date(b.created_at) - new Date(a.created_at)
+                );
+                
+                // Clear container
+                this.container.innerHTML = '';
+                
+                sorted.forEach((announcement, index) => {
+                    const type = announcement.type || 'info';
+                    const timeAgo = this.formatTimeAgo(announcement.created_at);
+                    const badgeText = this.getBadgeText(type);
+                    const icon = this.getIconForType(type);
+                    
+                    const card = document.createElement('div');
+                    card.className = `announcement-card ${type}`;
+                    card.style.setProperty('--index', index);
+                    card.innerHTML = `
+                        <div class="announcement-header">
+                            <div class="announcement-icon ${type}">
+                                <i class='bx ${icon}'></i>
+                            </div>
+                            <div class="announcement-title-section">
+                                <h3 class="announcement-title">${announcement.title}</h3>
+                                <span class="announcement-time">
+                                    <i class='bx bx-time-five'></i> ${timeAgo}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="announcement-message">
+                            ${announcement.message.replace(/\n/g, '<br>')}
+                        </div>
+                        <div class="announcement-footer">
+                            <span class="announcement-badge ${type}">
+                                <i class='bx ${icon}'></i> ${badgeText}
+                            </span>
+                            ${announcement.creator_name ? `
+                                <span class="announcement-author">
+                                    <i class='bx bx-user'></i> ${announcement.creator_name}
+                                </span>
+                            ` : ''}
+                        </div>
+                    `;
+                    
+                    this.container.appendChild(card);
+                });
+                
+                console.log('✅ Announcements rendered successfully');
+            }
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('📄 DOM loaded, starting AnnouncementsDisplay');
+            new AnnouncementsDisplay();
+        });
+    </script>
 </body>
 </html>

@@ -1,111 +1,527 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="/tailwind-output.css">
+    <title>EduEvent | Verify Email</title>
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-    <title>Verify Email - EduEvent</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Theme System -->
+    <link rel="stylesheet" href="/theme.css">
+    <script src="/theme.js"></script>
     <style>
-        .black-bg {
-            background: #000000;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        .input-focus:focus {
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
-            border-color: #3b82f6;
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(135deg, #f6f5f7 0%, #e8e4e9 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
         }
-        
-        /* Code input styling */
-        .code-input {
-            letter-spacing: 0.5em;
+
+        /* Animated Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 30% 70%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 70% 30%, rgba(255, 75, 43, 0.08) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+            animation: bgPulse 15s ease-in-out infinite alternate;
+        }
+
+        @keyframes bgPulse {
+            0% { opacity: 0.5; transform: scale(1); }
+            100% { opacity: 1; transform: scale(1.05); }
+        }
+
+        /* Main Container */
+        .verify-container {
+            background: #FFFFFF;
+            border-radius: 30px;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.1),
+                0 15px 15px rgba(0, 0, 0, 0.08),
+                0 0 0 1px rgba(0, 0, 0, 0.02);
+            width: 450px;
+            max-width: 95%;
+            padding: 40px;
+            margin: 20px;
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Logo Section */
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 28px;
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .logo-text {
+            font-size: 28px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Header */
+        h1 {
+            font-weight: 800;
+            font-size: 28px;
+            color: #1a1a1a;
             text-align: center;
-            font-size: 1.5rem;
-            font-weight: 600;
+            margin-bottom: 10px;
         }
-        
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 30px;
+        }
+
+        /* Email Display */
+        .email-display {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 15px;
+            padding: 15px 20px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .email-display i {
+            color: #3b82f6;
+            font-size: 24px;
+        }
+
+        .email-display div {
+            flex: 1;
+        }
+
+        .email-label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 3px;
+        }
+
+        .email-address {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            word-break: break-all;
+        }
+
+        /* Code Input */
+        .input-group {
+            position: relative;
+            width: 100%;
+            margin-bottom: 25px;
+        }
+
+        .input-group i {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            font-size: 20px;
+            transition: color 0.3s ease;
+            z-index: 1;
+        }
+
+        .code-input {
+            width: 100%;
+            padding: 16px 20px 16px 55px;
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 50px;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: 20px;
+            text-align: center;
+            color: #333;
+            transition: all 0.3s ease;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .code-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background: #ffffff;
+            box-shadow: 0 5px 20px rgba(59, 130, 246, 0.15);
+        }
+
+        .code-input:focus + i {
+            color: #3b82f6;
+        }
+
         .code-input::placeholder {
             letter-spacing: normal;
-            font-size: 1rem;
-            font-weight: normal;
+            font-size: 14px;
+            font-weight: 400;
+            color: #aaa;
+        }
+
+        /* Buttons */
+        button {
+            border-radius: 50px;
+            border: none;
+            font-size: 14px;
+            font-weight: 700;
+            padding: 14px 30px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            font-family: 'Montserrat', sans-serif;
+            width: 100%;
+            margin-bottom: 12px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+            border: 1px solid #3b82f6;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(59, 130, 246, 0.4);
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            transform: none;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #3b82f6;
+            border: 2px solid #3b82f6;
+            box-shadow: none;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(59, 130, 246, 0.05);
+            transform: translateY(-2px);
+        }
+
+        /* Resend Link */
+        .resend-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .resend-text {
+            color: #888;
+            font-size: 13px;
+        }
+
+        .resend-link {
+            color: #3b82f6;
+            font-weight: 700;
+            text-decoration: none;
+            margin-left: 5px;
+            transition: color 0.3s ease;
+            background: none;
+            border: none;
+            padding: 0;
+            width: auto;
+            display: inline;
+            text-transform: none;
+            letter-spacing: normal;
+            font-size: 13px;
+            box-shadow: none;
+        }
+
+        .resend-link:hover {
+            color: #2563eb;
+            text-decoration: underline;
+            transform: none;
+        }
+
+        .resend-link:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Info Box */
+        .info-box {
+            background: linear-gradient(135deg, #fff5f5, #fff0f0);
+            border-left: 4px solid #3b82f6;
+            border-radius: 12px;
+            padding: 16px 18px;
+            margin-top: 25px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .info-box i {
+            color: #3b82f6;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .info-box p {
+            color: #666;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .info-box strong {
+            color: #333;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #999;
+            font-size: 12px;
+        }
+
+        .footer i {
+            color: #3b82f6;
+            animation: heartBeat 1.5s ease-in-out infinite;
+        }
+
+        @keyframes heartBeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        /* Toast Notification */
+        #toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            transition: all 0.3s ease;
+            max-width: 350px;
+        }
+
+        .toast-content {
+            background: white;
+            border-radius: 15px;
+            padding: 16px 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: toastSlideIn 0.4s ease;
+        }
+
+        @keyframes toastSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .toast-success {
+            border-left: 4px solid #22c55e;
+        }
+
+        .toast-error {
+            border-left: 4px solid #ef4444;
+        }
+
+        .toast-info {
+            border-left: 4px solid #3b82f6;
+        }
+
+        .toast-content i {
+            font-size: 24px;
+        }
+
+        .toast-success i {
+            color: #22c55e;
+        }
+
+        .toast-error i {
+            color: #ef4444;
+        }
+
+        .toast-info i {
+            color: #3b82f6;
+        }
+
+        .toast-message {
+            flex: 1;
+            color: #333;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* Hidden class */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Loading spinner */
+        .bx-spin {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .verify-container {
+                padding: 30px 20px;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+            
+            .logo-text {
+                font-size: 24px;
+            }
+            
+            .code-input {
+                font-size: 20px;
+                letter-spacing: 15px;
+                padding: 14px 15px 14px 50px;
+            }
         }
     </style>
 </head>
-
-<body class="black-bg min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-md">
-        <!-- Logo/Header -->
-        <div class="text-center mb-10">
-            <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-900 rounded-2xl mb-4 border border-gray-800">
-                <i class='bx bxs-envelope text-4xl text-blue-500'></i>
+<body>
+    <div class="verify-container">
+        <!-- Logo -->
+        <div class="logo-container">
+            <div class="logo-icon">
+                <i class='bx bxs-envelope'></i>
             </div>
-            <h1 class="text-4xl font-bold text-white mb-2">Verify Email</h1>
-            <p class="text-gray-400">Check your email for verification code</p>
+            <span class="logo-text">EduEvent</span>
         </div>
 
-        <!-- Verification Card -->
-        <div class="bg-gray-900 rounded-xl border border-gray-800 p-8">
-            <h2 class="text-2xl font-bold text-white mb-2">Enter Verification Code</h2>
-            <p class="text-gray-400 mb-6">
-                We've sent a 6-digit verification code to your email address.
-                Please enter it below to complete your registration.
+        <!-- Header -->
+        <h1>Verify Your Email</h1>
+        <p class="subtitle">Enter the code we sent to your email</p>
+
+        <!-- Email Display -->
+        <div class="email-display">
+            <i class='bx bx-envelope'></i>
+            <div>
+                <div class="email-label">Verification code sent to:</div>
+                <div class="email-address" id="display-email">loading...</div>
+            </div>
+        </div>
+
+        <!-- Verification Form -->
+        <form id="verification-form">
+            <input type="hidden" id="user-id" value="">
+            <input type="hidden" id="user-email" value="">
+            
+            <div class="input-group">
+                <i class='bx bx-key'></i>
+                <input type="text" 
+                       id="verification-code" 
+                       class="code-input" 
+                       required 
+                       maxlength="6" 
+                       inputmode="numeric" 
+                       pattern="\d{6}"
+                       placeholder="000000"
+                       autocomplete="off">
+            </div>
+
+            <button type="submit" class="btn-primary" id="verify-btn">
+                <i class='bx bx-check-circle'></i>
+                <span>Verify Email</span>
+            </button>
+        </form>
+
+        <!-- Resend Option -->
+        <div class="resend-container">
+            <span class="resend-text">Didn't receive the code?</span>
+            <button type="button" id="resend-code" class="resend-link">
+                Resend Code
+            </button>
+        </div>
+
+        <!-- Info Box -->
+        <div class="info-box">
+            <i class='bx bx-info-circle'></i>
+            <p>
+                <strong>Note:</strong> The verification code is valid for 24 hours. 
+                Check your spam folder if you don't see the email in your inbox.
             </p>
-
-            <form id="verification-form">
-                <div class="space-y-5">
-                    <div>
-                        <input type="hidden" id="user-id" value="">
-                        <input type="hidden" id="user-email" value="">
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Verification Code</label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <i class='bx bx-key text-gray-500'></i>
-                            </div>
-                            <input type="text" id="verification-code" required maxlength="6" inputmode="numeric" pattern="\d{6}"
-                                class="code-input pl-10 w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-600 input-focus transition-all"
-                                placeholder="000000">
-                        </div>
-                    </div>
-
-                    <button type="submit"
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300">
-                        <i class='bx bx-check-circle mr-2'></i>
-                        Verify Email
-                    </button>
-
-                    <div class="text-center">
-                        <p class="text-gray-500 text-sm">
-                            Didn't receive the code?
-                            <button type="button" id="resend-code" class="text-blue-400 hover:text-blue-300">
-                                Resend Code
-                            </button>
-                        </p>
-                    </div>
-                </div>
-            </form>
-
-            <div class="mt-6 p-4 bg-gray-800/50 rounded-lg">
-                <div class="flex items-start">
-                    <i class='bx bx-info-circle text-blue-400 mt-1 mr-2'></i>
-                    <div class="text-sm text-gray-400">
-                        <p class="font-medium text-gray-300 mb-1">Note:</p>
-                        <p>The verification code is valid for 24 hours. Check your spam folder if you don't see the email.</p>
-                    </div>
-                </div>
-            </div>
         </div>
 
-        <p class="mt-8 text-center text-gray-600 text-sm">
-            © 2025 EduEvent. Educational platform for trips and events.
-        </p>
+        <!-- Footer -->
+        <div class="footer">
+            <p>© 2025 EduEvent • Made with <i class='bx bxs-heart'></i> for students</p>
+        </div>
     </div>
 
-    <!-- Simple Toast Notification -->
-    <div id="toast" class="fixed top-4 right-4 z-50 hidden transition-all duration-300">
-        <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 shadow-lg flex items-center max-w-md">
-            <i id="toast-icon" class="text-xl mr-3"></i>
-            <span id="toast-message" class="text-white"></span>
+    <!-- Toast Notification -->
+    <div id="toast" class="hidden">
+        <div class="toast-content" id="toast-content">
+            <i id="toast-icon"></i>
+            <span class="toast-message" id="toast-message"></span>
         </div>
     </div>
 
@@ -113,19 +529,28 @@
         // Toast function
         function showToast(message, type = 'info') {
             const toast = document.getElementById('toast');
+            const toastContent = document.getElementById('toast-content');
             const icon = document.getElementById('toast-icon');
             const msg = document.getElementById('toast-message');
             
-            const icons = {
-                success: { class: 'bx-check-circle text-green-400', color: 'text-green-400' },
-                error: { class: 'bx-error-circle text-red-400', color: 'text-red-400' },
-                info: { class: 'bx-info-circle text-blue-400', color: 'text-blue-400' }
-            };
+            // Remove existing type classes
+            toastContent.classList.remove('toast-success', 'toast-error', 'toast-info');
             
-            icon.className = `bx ${icons[type].class} text-xl mr-3`;
+            // Set icon and class based on type
+            if (type === 'success') {
+                toastContent.classList.add('toast-success');
+                icon.className = 'bx bx-check-circle';
+            } else if (type === 'error') {
+                toastContent.classList.add('toast-error');
+                icon.className = 'bx bx-error-circle';
+            } else {
+                toastContent.classList.add('toast-info');
+                icon.className = 'bx bx-info-circle';
+            }
+            
             msg.textContent = message;
-            
             toast.classList.remove('hidden');
+            
             setTimeout(() => {
                 toast.classList.add('hidden');
             }, 4000);
@@ -136,6 +561,9 @@
         const userId = urlParams.get('user_id') || localStorage.getItem('verification_user_id');
         const userEmail = urlParams.get('email') || localStorage.getItem('verification_email');
 
+        // Display email
+        const displayEmail = document.getElementById('display-email');
+        
         if (userId) {
             document.getElementById('user-id').value = userId;
             localStorage.setItem('verification_user_id', userId);
@@ -147,6 +575,9 @@
         if (userEmail) {
             document.getElementById('user-email').value = userEmail;
             localStorage.setItem('verification_email', userEmail);
+            displayEmail.textContent = userEmail;
+        } else {
+            displayEmail.textContent = 'your email address';
         }
 
         // Handle form submission
@@ -161,9 +592,9 @@
                 return;
             }
 
-            const submitBtn = e.target.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerHTML;
-            submitBtn.innerHTML = '<i class="bx bx-loader-circle bx-spin mr-2"></i> Verifying...';
+            const submitBtn = document.getElementById('verify-btn');
+            const originalHTML = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="bx bx-loader-circle bx-spin"></i><span>Verifying...</span>';
             submitBtn.disabled = true;
 
             try {
@@ -182,22 +613,23 @@
                     localStorage.removeItem('verification_user_id');
                     localStorage.removeItem('verification_email');
                     setTimeout(() => {
-                        window.location.href = '/login';
+                        window.location.href = '/';
                     }, 2000);
                 } else {
                     showToast('❌ ' + (data.error || 'Verification failed'), 'error');
+                    submitBtn.innerHTML = originalHTML;
+                    submitBtn.disabled = false;
                 }
             } catch (error) {
                 console.error('Verification error:', error);
                 showToast('❌ Network error. Please try again.', 'error');
-            } finally {
-                submitBtn.innerHTML = originalText;
+                submitBtn.innerHTML = originalHTML;
                 submitBtn.disabled = false;
             }
         });
 
         // Handle resend code
-        document.getElementById('resend-code').addEventListener('click', async () => {
+        document.getElementById('resend-code').addEventListener('click', async function() {
             const email = localStorage.getItem('verification_email');
             if (!email) {
                 showToast('Email not found. Please register again.', 'error');
@@ -205,10 +637,9 @@
                 return;
             }
 
-            const resendBtn = document.getElementById('resend-code');
-            const originalText = resendBtn.textContent;
-            resendBtn.textContent = 'Sending...';
-            resendBtn.disabled = true;
+            const originalText = this.textContent;
+            this.textContent = 'Sending...';
+            this.disabled = true;
 
             try {
                 const response = await fetch('/api/resend-verification', {
@@ -230,8 +661,8 @@
                 console.error('Resend error:', error);
                 showToast('❌ Network error. Please try again.', 'error');
             } finally {
-                resendBtn.textContent = originalText;
-                resendBtn.disabled = false;
+                this.textContent = originalText;
+                this.disabled = false;
             }
         });
 
@@ -252,5 +683,4 @@
         });
     </script>
 </body>
-
 </html>

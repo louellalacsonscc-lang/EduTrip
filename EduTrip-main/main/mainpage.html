@@ -1,429 +1,951 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE-edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Tailwind CSS -->
-    <link rel="stylesheet" href="/tailwind-output.css">
-    <!-- Boxicons -->
-    <link href='https://cdn.boxicons.com/fonts/basic/boxicons.min.css' rel='stylesheet'>
-    <title>EduEvent | Login</title>
-    <!-- Custom black theme with blue accents -->
+    <title>EduEvent | Welcome</title>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
-        /* Black theme */
-        .black-bg {
-            background: #000000;
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&display=swap');
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
-        .input-focus:focus {
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        body {
+            background: linear-gradient(135deg, #f6f5f7 0%, #e8e4e9 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            font-family: 'Montserrat', sans-serif;
+            min-height: 100vh;
+            margin: -20px 0 50px;
+        }
+
+        h1 {
+            font-weight: 800;
+            margin: 0;
+            color: #1a1a1a;
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+
+        p {
+            font-size: 14px;
+            font-weight: 500;
+            line-height: 20px;
+            letter-spacing: 0.5px;
+            margin: 20px 0 30px;
+            color: #666;
+        }
+
+        span {
+            font-size: 13px;
+            color: #777;
+        }
+
+        a {
+            color: #333;
+            font-size: 14px;
+            text-decoration: none;
+            margin: 15px 0;
+            transition: color 0.3s ease;
+        }
+
+        a:hover {
+            color: #3b82f6;
+        }
+
+        /* ===== BUTTON STYLES ===== */
+        button {
+            border-radius: 20px;
+            border: 1px solid #3b82f6;
+            background: #3b82f6;
+            color: #FFFFFF;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 12px 45px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+            border-color: #1d4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        button:focus {
+            outline: none;
+        }
+
+        button.ghost {
+            background-color: transparent;
+            border-color: #FFFFFF;
+            border-width: 2px;
+        }
+
+        button.ghost:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: #FFFFFF;
+            box-shadow: 0 10px 25px rgba(255, 255, 255, 0.2);
+        }
+
+        /* ===== FORM STYLES ===== */
+        form {
+            background-color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 0 50px;
+            height: 100%;
+            text-align: center;
+        }
+
+        .input-group {
+            position: relative;
+            width: 100%;
+            margin: 6px 0;
+        }
+
+        .input-group i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            font-size: 18px;
+            transition: color 0.3s ease;
+            z-index: 1;
+        }
+
+        .input-group input,
+        .input-group select {
+            background-color: #f0f0f0;
+            border: 2px solid transparent;
+            padding: 12px 15px 12px 45px;
+            margin: 0;
+            width: 100%;
+            border-radius: 25px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus {
+            outline: none;
             border-color: #3b82f6;
+            background-color: #ffffff;
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.15);
         }
 
-        /* Neon blue glow effects */
-        .neon-glow {
-            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5),
-                0 0 20px rgba(59, 130, 246, 0.3),
-                0 0 30px rgba(59, 130, 246, 0.1);
+        .input-group input:focus + i,
+        .input-group select:focus + i {
+            color: #3b82f6;
         }
 
-        .neon-glow-hover:hover {
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.7),
-                0 0 25px rgba(59, 130, 246, 0.4),
-                0 0 35px rgba(59, 130, 246, 0.2);
+        /* Row for side-by-side inputs */
+        .input-row {
+            display: flex;
+            gap: 10px;
+            width: 100%;
         }
 
-        .text-glow {
-            text-shadow: 0 0 5px rgba(59, 130, 246, 0.7);
+        .input-row .input-group {
+            flex: 1;
+        }
+
+        /* ===== CONTAINER STYLES ===== */
+        .container {
+            background-color: #fff;
+            border-radius: 25px;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.1),
+                0 15px 15px rgba(0, 0, 0, 0.08),
+                0 0 0 1px rgba(0, 0, 0, 0.02);
+            position: relative;
+            overflow: hidden;
+            width: 900px;
+            max-width: 100%;
+            min-height: 700px;
+            margin: 20px;
+        }
+
+        .form-container {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            transition: all 0.5s ease-in-out;
+        }
+
+        .sign-in-container {
+            left: 0;
+            width: 50%;
+            z-index: 2;
+        }
+
+        .container.right-panel-active .sign-in-container {
+            transform: translateX(100%);
+        }
+
+        .sign-up-container {
+            left: 0;
+            width: 50%;
+            opacity: 0;
+            z-index: 1;
+            overflow-y: auto;
+            max-height: 700px;
+            padding: 25px 0 15px 0;
+        }
+
+        .sign-up-container form {
+            padding-top: 10px;
+        }
+
+        /* Custom scrollbar for sign-up form */
+        .sign-up-container::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .sign-up-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .sign-up-container::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+            border-radius: 10px;
+        }
+
+        .container.right-panel-active .sign-up-container {
+            transform: translateX(100%);
+            opacity: 1;
+            z-index: 5;
+            animation: show 0.6s;
+        }
+        .sign-up-container button[type="submit"] {
+            margin-top: 10px;
+            margin-bottom: 5px;
+        }
+
+        @keyframes show {
+            0%, 49.99% {
+                opacity: 0;
+                z-index: 1;
+            }
+            50%, 100% {
+                opacity: 1;
+                z-index: 5;
+            }
+        }
+
+        /* ===== OVERLAY STYLES ===== */
+        .overlay-container {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 50%;
+            height: 100%;
+            overflow: hidden;
+            transition: all 0.5s ease-in-out;
+            z-index: 100;
+        }
+
+        .container.right-panel-active .overlay-container {
+            transform: translateX(-100%);
+        }
+
+        .overlay {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            background-size: cover;
+            background-position: 0 0;
+            color: #FFFFFF;
+            position: relative;
+            left: -100%;
+            height: 100%;
+            width: 200%;
+            transform: translateX(0);
+            transition: all 0.5s ease-in-out;
+            box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Animated gradient overlay */
+        .overlay::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+            animation: overlayShine 3s ease-in-out infinite;
+        }
+
+        @keyframes overlayShine {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.6; }
+        }
+
+        .container.right-panel-active .overlay {
+            transform: translateX(50%);
+        }
+
+        .overlay-panel {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 0 40px;
+            text-align: center;
+            top: 0;
+            height: 100%;
+            width: 50%;
+            transform: translateX(0);
+            transition: all 0.5s ease-in-out;
+        }
+
+        .overlay-panel h1 {
+            color: white;
+            font-size: 32px;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .overlay-panel p {
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 15px;
+            font-weight: 500;
+            margin: 20px 0 30px;
+        }
+
+        .overlay-left {
+            transform: translateX(-20%);
+        }
+
+        .container.right-panel-active .overlay-left {
+            transform: translateX(0);
+        }
+
+        .overlay-right {
+            right: 0;
+            transform: translateX(0);
+        }
+
+        .container.right-panel-active .overlay-right {
+            transform: translateX(20%);
+        }
+
+        /* ===== LOGO STYLES ===== */
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .logo-icon {
+            width: 42px;
+            height: 42px;
+            background: transparent !important;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: none !important;
+            padding: 0;
+            overflow: hidden;
+            flex-shrink: 0;
+            border: none !important;
+            outline: none !important;
+        }
+        .logo-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border: none !important;
+            outline: none !important;
+        }
+
+        .logo-text {
+        font-size: 24px;
+        font-weight: 800;
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        }
+
+        /* ===== FORGOT PASSWORD ===== */
+        .forgot-link {
+            color: #3b82f6;
+            font-weight: 600;
+            margin-top: 5px;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: border-color 0.3s ease;
+        }
+
+        .forgot-link:hover {
+            border-bottom-color: #3b82f6;
+        }
+
+        /* ===== FOOTER ===== */
+        footer {
+            background-color: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            color: #333;
+            font-size: 14px;
+            bottom: 0;
+            position: fixed;
+            left: 0;
+            right: 0;
+            text-align: center;
+            z-index: 999;
+            padding: 12px 0;
+            box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        footer p {
+            margin: 0;
+            color: #666;
+        }
+
+        footer i {
+            color: #3b82f6;
+            animation: heartBeat 1.5s ease-in-out infinite;
+        }
+
+        @keyframes heartBeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        footer a {
+            color: #3b82f6;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .container {
+                min-height: 700px;
+            }
+            
+            form {
+                padding: 0 30px;
+            }
+            
+            .input-row {
+                flex-direction: column;
+                gap: 0;
+            }
+            
+            .overlay-panel {
+                padding: 0 20px;
+            }
+            
+            .overlay-panel h1 {
+                font-size: 24px;
+            }
+            
+            .overlay-panel p {
+                font-size: 13px;
+            }
         }
     </style>
 </head>
-
-<body class="black-bg min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-md">
-        <!-- Logo/Header -->
-        <div class="text-center mb-10">
-            <div
-                class="inline-flex items-center justify-center w-16 h-16 bg-gray-900 rounded-2xl mb-4 border border-gray-800">
-                <i class='bx bxs-bus text-4xl text-blue-500'></i>
-            </div>
-            <h1 class="text-4xl font-bold text-white mb-2">EduEvent</h1>
-            <p class="text-gray-400">Educational Trips & Events Platform</p>
+<body>
+    <div class="container" id="container">
+        <!-- Sign Up Form -->
+        <div class="form-container sign-up-container">
+            <form id="registerForm">
+                <div class="logo-container">
+                    <div class="logo-icon">
+                        <img src="/img/logo.png.png" alt="EduEvent Logo">
+                    </div>
+                    <span class="logo-text">EduEvent</span>
+                </div>
+                <h1>Create Account</h1>
+                
+                <div class="input-group">
+                    <i class='bx bx-user'></i>
+                    <input type="text" id="register-name" placeholder="Full Name" required />
+                </div>
+                
+                <div class="input-group">
+                    <i class='bx bx-id-card'></i>
+                    <input type="text" id="register-student-number" placeholder="Student Number" required />
+                </div>
+                
+                <div class="input-row">
+                    <div class="input-group">
+                        <i class='bx bx-book'></i>
+                        <select id="register-course" required>
+                            <option value="" disabled selected>Course</option>
+                            <option value="BSCS">BSCS</option>
+                            <option value="BSHM">BSHM</option>
+                            <option value="BSTM">BSTM</option>
+                            <option value="BAPOLSCI">BAPOLSCI</option>
+                            <option value="BSED">BSED</option>
+                            <option value="BSBA">BSBA</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <i class='bx bx-layer'></i>
+                        <select id="register-section" required>
+                            <option value="" disabled selected>Section</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                            <option value="E">E</option>
+                            <option value="F">F</option>
+                            <option value="G">G</option>
+                            <option value="H">H</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="input-row">
+                    <div class="input-group">
+                        <i class='bx bx-calendar'></i>
+                        <select id="register-year" required>
+                            <option value="" disabled selected>Year</option>
+                            <option value="1st yr">1st Year</option>
+                            <option value="2nd yr">2nd Year</option>
+                            <option value="3rd yr">3rd Year</option>
+                            <option value="4th yr">4th Year</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <i class='bx bx-cake'></i>
+                        <input type="date" id="register-birthdate" required />
+                    </div>
+                </div>
+                
+                <div class="input-row">
+                    <div class="input-group">
+                        <i class='bx bx-hash'></i>
+                        <input type="number" id="register-age" placeholder="Age" min="15" max="99" required />
+                    </div>
+                    <div class="input-group">
+                        <i class='bx bx-venus-mars'></i>
+                        <select id="register-sex" required>
+                            <option value="" disabled selected>Sex</option>
+                            <option value="female">Female</option>
+                            <option value="male">Male</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <i class='bx bx-envelope'></i>
+                    <input type="email" id="register-email" placeholder="Email" required />
+                </div>
+                
+                <div class="input-group">
+                    <i class='bx bx-lock-alt'></i>
+                    <input type="password" id="register-password" placeholder="Password" required />
+                </div>
+                
+                <div class="input-group">
+                    <i class='bx bx-lock-alt'></i>
+                    <input type="password" id="register-confirm-password" placeholder="Confirm Password" required />
+                </div>
+                
+                <button type="submit">Sign Up</button>
+            </form>
         </div>
 
-        <!-- Login/Register Card -->
-        <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-            <!-- Toggle Buttons -->
-            <div class="flex border-b border-gray-800">
-                <button id="login-toggle"
-                    class="flex-1 py-4 font-semibold text-white bg-gray-900 border-b-2 border-blue-500 transition-all duration-300">
-                    <i class='bx bx-log-in mr-2 text-blue-400'></i>
-                    Login
-                </button>
-                <button id="register-toggle"
-                    class="flex-1 py-4 font-semibold text-gray-400 hover:text-white transition-all duration-300 border-b-2 border-transparent">
-                    <i class='bx bx-user-plus mr-2 text-gray-500'></i>
-                    Register
-                </button>
-            </div>
-
-            <!-- Login Form -->
-            <div id="login-form" class="p-8">
-                <h2 class="text-2xl font-bold text-white mb-6">Welcome Back</h2>
-                <form id="loginForm">
-                    <div class="space-y-5">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class='bx bx-envelope text-gray-500'></i>
-                                </div>
-                                <input type="email" required
-                                    class="pl-10 w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-600 input-focus transition-all"
-                                    placeholder="student@example.com">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class='bx bx-lock-alt text-gray-500'></i>
-                                </div>
-                                <input type="password" required
-                                    class="pl-10 w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-600 input-focus transition-all"
-                                    placeholder="••••••••">
-                            </div>
-                        </div>
-
-                        <button type="submit"
-                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]">
-                            <i class='bx bx-log-in mr-2'></i>
-                            Sign In
-                        </button>
-                        <div class="text-center mt-4">
-                            <p class="text-gray-500 text-sm">
-                                <a href="#" id="forgot-password" class="text-blue-400 hover:text-blue-300">
-                                    Forgot Password?
-                                </a>
-                            </p>
-                        </div>
+        <!-- Sign In Form -->
+        <div class="form-container sign-in-container">
+            <form id="loginForm">
+                <div class="logo-container">
+                    <div class="logo-icon">
+                        <img src="/img/logo.png.png" alt="EduEvent Logo">
                     </div>
-                </form>
-            </div>
-
-            <!-- Register Form -->
-            <div id="register-form" class="p-8 hidden">
-                <h2 class="text-2xl font-bold text-white mb-6">Create Account</h2>
-                <form id="registerForm">
-                    <div class="space-y-5">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Full Name</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class='bx bx-user text-gray-500'></i>
-                                </div>
-                                <input id="register-name" type="text" required
-                                    class="pl-10 w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-600 input-focus transition-all"
-                                    placeholder="John Doe">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Student Number</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class='bx bx-id-card text-gray-500'></i>
-                                </div>
-                                <input id="register-student-number" type="text" required
-                                    class="pl-10 w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-600 input-focus transition-all"
-                                    placeholder="S123456">
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-300 mb-2">Course</label>
-                                <select id="register-course" required
-                                    class="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white input-focus transition-all">
-                                    <option value="" disabled selected>Select Course</option>
-                                    <option value="BSCS">BSCS</option>
-                                    <option value="BSHM">BSHM</option>
-                                    <option value="BSTM">BSTM</option>
-                                    <option value="BAPOLSCIE">BAPOLSCIE</option>
-                                    <option value="BSEED">BSEED</option>
-                                    <option value="BSBA">BSBA</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-300 mb-2">Section</label>
-                                <select id="register-section" required
-                                    class="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white input-focus transition-all">
-                                    <option value="" disabled selected>Select Section</option>
-                                    <option value="A">A</option>
-                                    <option value="B">B</option>
-                                    <option value="C">C</option>
-                                    <option value="D">D</option>
-                                    <option value="E">E</option>
-                                    <option value="F">F</option>
-                                    <option value="G">G</option>
-                                    <option value="H">H</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-300 mb-2">Year</label>
-                                <select id="register-year" required
-                                    class="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white input-focus transition-all">
-                                    <option value="" disabled selected>Select Year</option>
-                                    <option value="1st yr">1st yr</option>
-                                    <option value="2nd yr">2nd yr</option>
-                                    <option value="3rd yr">3rd yr</option>
-                                    <option value="4th yr">4th yr</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-300 mb-2">Birthdate</label>
-                                <input id="register-birthdate" type="date" required
-                                    class="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white input-focus transition-all">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-300 mb-2">Age</label>
-                                <input id="register-age" type="number" min="10" max="99" required
-                                    class="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white input-focus transition-all"
-                                    placeholder="18">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-300 mb-2">Sex</label>
-                                <select id="register-sex" required
-                                    class="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white input-focus transition-all">
-                                    <option value="" disabled selected>Select Sex</option>
-                                    <option value="female">Female</option>
-                                    <option value="male">Male</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class='bx bx-envelope text-gray-500'></i>
-                                </div>
-                                <input id="register-email" type="email" required
-                                    class="pl-10 w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-600 input-focus transition-all"
-                                    placeholder="student@example.com">
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
-                                <input type="password" required
-                                    class="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-600 input-focus transition-all"
-                                    placeholder="••••••••">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-300 mb-2">Confirm Password</label>
-                                <input type="password" required
-                                    class="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-600 input-focus transition-all"
-                                    placeholder="••••••••">
-                            </div>
-                        </div>
-
-                        <button type="submit"
-                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]">
-                            <i class='bx bx-user-plus mr-2'></i>
-                            Create Account
-                        </button>
-                    </div>
-                </form>
-
-                <p class="mt-6 text-center text-gray-500 text-sm">
-                    Already have an account?
-                    <button type="button" id="switch-to-login"
-                        class="text-blue-400 hover:text-blue-300 font-semibold ml-1">
-                        Sign in here
-                    </button>
-                </p>
-            </div>
+                    <span class="logo-text">EduEvent</span>
+                </div>
+                <h1>Welcome Back</h1>
+                
+                <div class="input-group">
+                    <i class='bx bx-envelope'></i>
+                    <input type="email" id="login-email" placeholder="Email" required />
+                </div>
+                
+                <div class="input-group">
+                    <i class='bx bx-lock-alt'></i>
+                    <input type="password" id="login-password" placeholder="Password" required />
+                </div>
+                
+                <a href="#" id="forgot-password-link" class="forgot-link">Forgot your password?</a>
+                
+                <button type="submit">Sign In</button>
+            </form>
         </div>
 
-        <!-- Footer -->
-        <p class="mt-8 text-center text-gray-600 text-sm">
-            © 2025 EduEvent. Educational Seminars & Tours Platform.
-        </p>
-    </div>
-    <!-- Forgot Password Flow - All in one modal sequence -->
-    <!-- Step 1: Enter Email Modal -->
-    <div id="forgot-password-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-4">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-md">
-                <div class="p-6 border-b border-gray-800">
-                    <div class="flex justify-between items-center">
-                        <h2 class="text-xl font-bold text-white">Reset Password</h2>
-                        <button id="close-forgot-modal" class="text-gray-500 hover:text-white text-2xl">&times;</button>
-                    </div>
+        <!-- Overlay -->
+        <div class="overlay-container">
+            <div class="overlay">
+                <div class="overlay-panel overlay-left">
+                    <h1>Welcome Back!</h1>
+                    <p>To keep connected with us please login with your personal info</p>
+                    <button class="ghost" id="signIn">Sign In</button>
                 </div>
-                <div id="step-1" class="p-6">
-                    <p class="text-gray-300 mb-6">Enter your email address and we'll send you a verification code to
-                        reset your password.</p>
-
-                    <form id="forgot-password-form" class="space-y-5">
-                        <div>
-                            <label class="block text-gray-300 mb-2">Email Address</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class='bx bx-envelope text-gray-500'></i>
-                                </div>
-                                <input type="email" id="reset-email" required
-                                    class="pl-10 w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-600"
-                                    placeholder="your-email@example.com">
-                            </div>
-                        </div>
-
-                        <div class="flex space-x-3">
-                            <button type="submit"
-                                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all">
-                                Send Verification Code
-                            </button>
-                            <button type="button" id="cancel-forgot"
-                                class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-all">
-                                Cancel
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- Step 2: Enter Code -->
-                <div id="step-2" class="p-6 hidden">
-                    <div class="mb-6">
-                        <div class="flex items-center text-green-500 mb-2">
-                            <i class='bx bx-check-circle text-xl mr-2'></i>
-                            <span class="font-medium">Verification code sent!</span>
-                        </div>
-                        <p class="text-gray-300 text-sm">We've sent a 6-digit verification code to <span
-                                id="sent-to-email" class="text-blue-400"></span></p>
-                    </div>
-
-                    <form id="enter-code-form" class="space-y-5">
-                        <input type="hidden" id="enter-code-email">
-
-                        <div>
-                            <label class="block text-gray-300 mb-2">6-Digit Verification Code</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class='bx bx-key text-gray-500'></i>
-                                </div>
-                                <input type="text" id="reset-code-input" required maxlength="6"
-                                    class="pl-10 w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-600 text-center text-xl tracking-widest"
-                                    placeholder="000000" autocomplete="off">
-                            </div>
-                            <p class="text-gray-500 text-sm mt-2 flex justify-between">
-                                <span>Didn't receive code?</span>
-                                <button type="button" id="resend-code-btn" class="text-blue-400 hover:text-blue-300">
-                                    Resend Code
-                                </button>
-                            </p>
-                        </div>
-
-                        <div class="flex space-x-3">
-                            <button type="submit"
-                                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all">
-                                Verify Code
-                            </button>
-                            <button type="button" id="back-to-step1"
-                                class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-all">
-                                Back
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- Step 3: Enter New Password -->
-                <div id="step-3" class="p-6 hidden">
-                    <div class="mb-6">
-                        <div class="flex items-center text-green-500 mb-2">
-                            <i class='bx bx-check-circle text-xl mr-2'></i>
-                            <span class="font-medium">Code verified!</span>
-                        </div>
-                        <p class="text-gray-300 text-sm">Now create your new password</p>
-                    </div>
-
-                    <form id="new-password-form" class="space-y-5">
-                        <input type="hidden" id="newpass-email">
-                        <input type="hidden" id="newpass-reset-token">
-
-                        <div>
-                            <label class="block text-gray-300 mb-2">New Password</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class='bx bx-lock-alt text-gray-500'></i>
-                                </div>
-                                <input type="password" id="new-pass" required minlength="6"
-                                    class="pl-10 w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-600"
-                                    placeholder="Enter new password">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-gray-300 mb-2">Confirm New Password</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class='bx bx-lock-alt text-gray-500'></i>
-                                </div>
-                                <input type="password" id="confirm-new-pass" required minlength="6"
-                                    class="pl-10 w-full px-4 py-3 bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-600"
-                                    placeholder="Confirm new password">
-                            </div>
-                            <p id="password-error" class="text-red-500 text-sm mt-1 hidden"></p>
-                        </div>
-
-                        <div class="flex space-x-3">
-                            <button type="submit"
-                                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all">
-                                Reset Password
-                            </button>
-                            <button type="button" id="back-to-step2"
-                                class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-all">
-                                Back
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- Step 4: Success Message -->
-                <div id="step-4" class="p-6 hidden">
-                    <div class="text-center">
-                        <div
-                            class="w-16 h-16 bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <i class='bx bx-check text-4xl text-green-500'></i>
-                        </div>
-                        <h3 class="text-xl font-bold text-white mb-2">Password Reset Successful!</h3>
-                        <p class="text-gray-300 mb-6">Your password has been reset successfully. You can now login with
-                            your new password.</p>
-
-                        <div class="space-y-3">
-                            <button id="go-to-login"
-                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all">
-                                <i class='bx bx-log-in mr-2'></i>
-                                Go to Login
-                            </button>
-                            <button type="button" id="close-success"
-                                class="w-full bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-all">
-                                Close
-                            </button>
-                        </div>
-                    </div>
+                <div class="overlay-panel overlay-right">
+                    <h1>Hello, Student!</h1>
+                    <p>Enter your personal details and start your journey with us</p>
+                    <button class="ghost" id="signUp">Sign Up</button>
                 </div>
             </div>
         </div>
     </div>
-    <script src="mainpage.js"></script>
+
+    <!-- Forgot Password Modal -->
+    <div id="forgot-password-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 20px; padding: 30px; max-width: 400px; width: 90%;">
+            <h2 style="margin-bottom: 20px; color: #333;">Reset Password</h2>
+            <p style="color: #666; margin-bottom: 20px;">Enter your email and we'll send you a verification code.</p>
+            
+            <div id="step-1">
+                <div class="input-group">
+                    <i class='bx bx-envelope'></i>
+                    <input type="email" id="reset-email" placeholder="Your Email" required />
+                </div>
+                <button id="send-code-btn" style="width: 100%;">Send Code</button>
+            </div>
+            
+            <div id="step-2" style="display: none;">
+                <div class="input-group">
+                    <i class='bx bx-key'></i>
+                    <input type="text" id="reset-code" placeholder="Verification Code" maxlength="6" required />
+                </div>
+                <button id="verify-code-btn" style="width: 100%;">Verify Code</button>
+            </div>
+            
+            <div id="step-3" style="display: none;">
+                <div class="input-group">
+                    <i class='bx bx-lock-alt'></i>
+                    <input type="password" id="new-password" placeholder="New Password" required />
+                </div>
+                <div class="input-group">
+                    <i class='bx bx-lock-alt'></i>
+                    <input type="password" id="confirm-new-password" placeholder="Confirm Password" required />
+                </div>
+                <button id="reset-password-btn" style="width: 100%;">Reset Password</button>
+            </div>
+            
+            <button id="close-modal" style="margin-top: 15px; background: #f0f0f0; color: #333; border: none; width: 100%;">Cancel</button>
+        </div>
+    </div>
+
+    <footer>
+        <p>© 2025 EduEvent • Made with <i class='bx bxs-heart'></i> for educational purposes</p>
+    </footer>
+
+    <script>
+        // ===== SLIDING ANIMATION (KEPT EXACTLY AS ORIGINAL) =====
+        const signUpButton = document.getElementById('signUp');
+        const signInButton = document.getElementById('signIn');
+        const container = document.getElementById('container');
+
+        signUpButton.addEventListener('click', () => {
+            container.classList.add("right-panel-active");
+        });
+
+        signInButton.addEventListener('click', () => {
+            container.classList.remove("right-panel-active");
+        });
+
+        // ===== LOGIN FUNCTIONALITY =====
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Signing in...';
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    localStorage.setItem('token', 'logged-in');
+                    
+                    if (data.user.role === 'admin') {
+                        window.location.href = '/admin';
+                    } else {
+                        window.location.href = '/student';
+                    }
+                } else if (data.requires_verification) {
+                    alert('⚠️ Email not verified. Please check your email for verification code.');
+                    localStorage.setItem('verification_user_id', data.user_id);
+                    localStorage.setItem('verification_email', email);
+                    window.location.href = '/verify-email.html?user_id=' + data.user_id;
+                } else {
+                    alert(data.error || 'Login failed');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Server error. Please try again.');
+            } finally {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+
+        // ===== REGISTER FUNCTIONALITY =====
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const name = document.getElementById('register-name').value;
+            const studentNumber = document.getElementById('register-student-number').value;
+            const course = document.getElementById('register-course').value;
+            const section = document.getElementById('register-section').value;
+            const year = document.getElementById('register-year').value;
+            const birthdate = document.getElementById('register-birthdate').value;
+            const age = document.getElementById('register-age').value;
+            const sex = document.getElementById('register-sex').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const confirmPassword = document.getElementById('register-confirm-password').value;
+
+            if (!course || !section || !year || !birthdate || !age || !sex) {
+                alert('Please fill in all required fields.');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                alert('Passwords do not match!');
+                return;
+            }
+
+            if (password.length < 6) {
+                alert('Password must be at least 6 characters!');
+                return;
+            }
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Creating Account...';
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        studentNumber,
+                        course,
+                        section,
+                        year,
+                        birthdate,
+                        age,
+                        sex,
+                        email,
+                        password
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    if (data.requires_verification) {
+                        localStorage.setItem('verification_user_id', data.user_id);
+                        localStorage.setItem('verification_email', email);
+
+                        alert('✅ ' + data.message);
+                        window.location.href = '/verify-email.html?user_id=' + data.user_id;
+                    } else {
+                        alert('✅ Registration successful! Please login.');
+                        signInButton.click();
+                        document.getElementById('registerForm').reset();
+                    }
+                } else {
+                    alert('❌ ' + (data.error || 'Registration failed'));
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                alert('❌ Network error. Please try again.');
+            } finally {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+
+        // ===== FORGOT PASSWORD FUNCTIONALITY =====
+        const modal = document.getElementById('forgot-password-modal');
+        const forgotLink = document.getElementById('forgot-password-link');
+        const closeModal = document.getElementById('close-modal');
+        const step1 = document.getElementById('step-1');
+        const step2 = document.getElementById('step-2');
+        const step3 = document.getElementById('step-3');
+        
+        let resetEmail = '';
+
+        forgotLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            modal.style.display = 'flex';
+            step1.style.display = 'block';
+            step2.style.display = 'none';
+            step3.style.display = 'none';
+        });
+
+        closeModal.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+
+        // Step 1: Send code
+        document.getElementById('send-code-btn').addEventListener('click', async () => {
+            const email = document.getElementById('reset-email').value;
+            if (!email) {
+                alert('Please enter your email');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/forgot-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    resetEmail = email;
+                    step1.style.display = 'none';
+                    step2.style.display = 'block';
+                    alert('Verification code sent!');
+                } else {
+                    alert(data.error || 'Failed to send code');
+                }
+            } catch (error) {
+                alert('Network error. Please try again.');
+            }
+        });
+
+        // Step 2: Verify code
+        document.getElementById('verify-code-btn').addEventListener('click', async () => {
+            const code = document.getElementById('reset-code').value;
+            if (!code || code.length !== 6) {
+                alert('Please enter a valid 6-digit code');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/verify-reset-token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: resetEmail, reset_token: code })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    step2.style.display = 'none';
+                    step3.style.display = 'block';
+                } else {
+                    alert(data.error || 'Invalid code');
+                }
+            } catch (error) {
+                alert('Network error. Please try again.');
+            }
+        });
+
+        // Step 3: Reset password
+        document.getElementById('reset-password-btn').addEventListener('click', async () => {
+            const newPassword = document.getElementById('new-password').value;
+            const confirmPassword = document.getElementById('confirm-new-password').value;
+            const code = document.getElementById('reset-code').value;
+
+            if (newPassword !== confirmPassword) {
+                alert('Passwords do not match!');
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                alert('Password must be at least 6 characters!');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: resetEmail,
+                        reset_token: code,
+                        new_password: newPassword
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ Password reset successful! Please login.');
+                    modal.style.display = 'none';
+                    document.getElementById('login-email').value = resetEmail;
+                } else {
+                    alert(data.error || 'Failed to reset password');
+                }
+            } catch (error) {
+                alert('Network error. Please try again.');
+            }
+        });
+
+        // Check if already logged in
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = localStorage.getItem('user');
+            if (user) {
+                const userData = JSON.parse(user);
+                if (userData.role === 'admin') {
+                    window.location.href = '/admin';
+                } else if (userData.role === 'student') {
+                    window.location.href = '/student';
+                }
+            }
+        });
+    </script>
 </body>
-
 </html>

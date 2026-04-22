@@ -1,211 +1,150 @@
-class InfiniteCarousel {
+class AnnouncementsDisplay {
     constructor() {
-        this.events = [];
-        this.track = document.getElementById('infiniteTrack');
-        this.isPlaying = true;
-        this.animationSpeed = 30;
-        this.duplicateFactor = 2;
+        this.container = document.getElementById('announcements-list');
+        this.loadingState = document.getElementById('loadingState');
+        this.noAnnouncementsState = document.getElementById('noAnnouncementsState');
         this.init();
     }
     
     async init() {
-        await this.loadEvents();
-        if (this.events.length > 0) {
-            this.createInfiniteTrack();
-            this.setupHoverPause();
-            this.startAnimation();
-        }
+        console.log('🚀 AnnouncementsDisplay initialized');
+        await this.loadAnnouncements();
     }
     
-    async loadEvents() {
-        const loadingState = document.getElementById('loadingState');
-        const noEventsState = document.getElementById('noEventsState');
-        
+    async loadAnnouncements() {
         try {
-            const response = await fetch('/api/frontpage-events');
+            console.log('📡 Fetching announcements...');
+            const response = await fetch('/api/announcements/public');
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
-            this.events = await response.json();
+            const announcements = await response.json();
+            console.log('📢 Announcements received:', announcements);
             
-            if (this.events.length === 0) {
-                loadingState.classList.add('hidden');
-                noEventsState.classList.remove('hidden');
+            // HIDE LOADING STATE
+            if (this.loadingState) {
+                this.loadingState.style.display = 'none';
+                this.loadingState.classList.add('hidden');
+            }
+            
+            if (announcements.length === 0) {
+                console.log('ℹ️ No announcements found');
+                if (this.noAnnouncementsState) {
+                    this.noAnnouncementsState.style.display = 'block';
+                    this.noAnnouncementsState.classList.remove('hidden');
+                }
                 return;
             }
             
-            loadingState.classList.add('hidden');
+            // SHOW ANNOUNCEMENTS
+            if (this.noAnnouncementsState) {
+                this.noAnnouncementsState.style.display = 'none';
+                this.noAnnouncementsState.classList.add('hidden');
+            }
+            
+            this.renderAnnouncements(announcements);
             
         } catch (error) {
-            console.error('Error loading events:', error);
-            loadingState.classList.add('hidden');
-            noEventsState.classList.remove('hidden');
+            console.error('❌ Error loading announcements:', error);
+            if (this.loadingState) {
+                this.loadingState.style.display = 'none';
+                this.loadingState.classList.add('hidden');
+            }
         }
     }
     
-    formatDate(dateString) {
-        try {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            });
-        } catch (error) {
-            return dateString || 'Date TBA';
-        }
+    formatTimeAgo(dateString) {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+        
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins} min ago`;
+        if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+        if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
     
-    getEventImage(eventId) {
-        const imageUrls = [
-            'https://images.unsplash.com/photo-1540575467063-178a50c2df87?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80',
-            'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80',
-            'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80',
-            'https://images.unsplash.com/photo-1515187029135-18ee286d815b?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80',
-            'https://images.unsplash.com/photo-1557804506-669a67965ba0?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'
-        ];
-        
-        const imageIndex = eventId ? eventId % imageUrls.length : 0;
-        return imageUrls[imageIndex];
+    getIconForType(type) {
+        const icons = {
+            info: 'bx-info-circle',
+            success: 'bx-check-circle',
+            warning: 'bx-error',
+            urgent: 'bx-alarm-exclamation'
+        };
+        return icons[type] || 'bx-info-circle';
     }
     
-    createEventCard(event) {
-        const imageUrl = this.getEventImage(event.id);
+    getBadgeText(type) {
+        const badges = {
+            info: 'Information',
+            success: 'Success',
+            warning: 'Warning',
+            urgent: 'Urgent'
+        };
+        return badges[type] || 'Information';
+    }
+    
+    renderAnnouncements(announcements) {
+        console.log('🎨 Rendering', announcements.length, 'announcements');
         
-        return `
-            <div class="carousel-card">
-                <div class="modern-card">
-                    <div class="visual">
-                        <img
-                            class="img"
-                            width="384"
-                            height="192"
-                            src="${imageUrl}"
-                            alt="${event.title || 'Educational event'}"
-                        />
+        // Sort by newest first
+        const sorted = [...announcements].sort((a, b) => 
+            new Date(b.created_at) - new Date(a.created_at)
+        );
+        
+        // Clear container and build HTML
+        this.container.innerHTML = '';
+        
+        sorted.forEach(announcement => {
+            const type = announcement.type || 'info';
+            const timeAgo = this.formatTimeAgo(announcement.created_at);
+            const badgeText = this.getBadgeText(type);
+            const icon = this.getIconForType(type);
+            
+            const card = document.createElement('div');
+            card.className = `announcement-card ${type}`;
+            card.innerHTML = `
+                <div class="announcement-header">
+                    <div class="announcement-icon ${type}">
+                        <i class='bx ${icon}'></i>
                     </div>
-                    <div class="content">
-                        <div class="content-wrapper">
-                            <h3 class="title">${event.title || 'New Event'}</h3>
-                            <p class="desc">
-                                ${event.description || 'No description available'}
-                            </p>
-                        </div>
-                        <div class="mt-4 flex items-center justify-between">
-                            <div class="text-sm text-gray-500">
-                                <div class="flex items-center gap-2">
-                                    <i class='bx bx-calendar'></i>
-                                    <span>${this.formatDate(event.date)}</span>
-                                </div>
-                                <div class="flex items-center gap-2 mt-1">
-                                    <i class='bx bx-map'></i>
-                                    <span>${event.location || 'Location TBA'}</span>
-                                </div>
-                            </div>
-                            <a href="/login" class="card-link">
-                                View Details
-                                <i class='bx bx-chevron-right'></i>
-                            </a>
-                        </div>
+                    <div class="announcement-title-section">
+                        <h3 class="announcement-title">${announcement.title}</h3>
+                        <span class="announcement-time">
+                            <i class='bx bx-time-five'></i> ${timeAgo}
+                        </span>
                     </div>
                 </div>
-            </div>
-        `;
-    }
-    
-    createInfiniteTrack() {
-        if (this.events.length === 0) return;
-        
-        this.track.innerHTML = '';
-        
-        // Create enough cards for seamless infinite scrolling
-        const totalCardsNeeded = this.events.length * this.duplicateFactor;
-        
-        for (let i = 0; i < totalCardsNeeded; i++) {
-            const eventIndex = i % this.events.length;
-            this.track.innerHTML += this.createEventCard(this.events[eventIndex]);
-        }
-        
-        this.updateAnimation();
-    }
-    
-    updateAnimation() {
-        const cardWidth = 320 + 24; // width + gap
-        const trackWidth = this.track.scrollWidth;
-        const animationDuration = trackWidth / (cardWidth / this.animationSpeed);
-        
-        this.track.style.animation = 'none';
-        
-        // Force reflow
-        void this.track.offsetWidth;
-        
-        this.track.style.animation = `scroll ${animationDuration}s linear infinite`;
-        
-        if (!this.isPlaying) {
-            this.track.classList.add('paused');
-        } else {
-            this.track.classList.remove('paused');
-        }
-    }
-    
-    startAnimation() {
-        this.isPlaying = true;
-        this.updateAnimation();
-    }
-    
-    pauseAnimation() {
-        this.isPlaying = false;
-        this.updateAnimation();
-    }
-    
-    toggleAnimation() {
-        this.isPlaying = !this.isPlaying;
-        this.updateAnimation();
-    }
-    
-    setupHoverPause() {
-        const carousel = document.querySelector('.infinite-carousel');
-        
-        carousel.addEventListener('mouseenter', () => {
-            if (this.isPlaying) {
-                this.pauseAnimation();
-            }
+                <div class="announcement-message">
+                    ${announcement.message.replace(/\n/g, '<br>')}
+                </div>
+                <div class="announcement-footer">
+                    <span class="announcement-badge ${type}">
+                        <i class='bx ${icon}'></i> ${badgeText}
+                    </span>
+                    ${announcement.creator_name ? `
+                        <span class="announcement-author">
+                            <i class='bx bx-user'></i> ${announcement.creator_name}
+                        </span>
+                    ` : ''}
+                </div>
+            `;
+            
+            this.container.appendChild(card);
         });
         
-        carousel.addEventListener('mouseleave', () => {
-            if (this.isPlaying) {
-                this.startAnimation();
-            }
-        });
-    }
-    
-    updateSpeed(speed) {
-        this.animationSpeed = speed;
-        this.updateAnimation();
+        console.log('✅ Announcements rendered successfully');
     }
 }
 
-// Initialize carousel when page loads
+// Initialize when page loads
 document.addEventListener('DOMContentLoaded', () => {
-    const carousel = new InfiniteCarousel();
-    
-    // Auto-refresh events every 30 seconds
-    setInterval(async () => {
-        try {
-            const response = await fetch('/api/frontpage-events');
-            if (response.ok) {
-                const newEvents = await response.json();
-                if (JSON.stringify(newEvents) !== JSON.stringify(carousel.events)) {
-                    carousel.events = newEvents;
-                    if (carousel.events.length > 0) {
-                        carousel.createInfiniteTrack();
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('Error refreshing events:', error);
-        }
-    }, 30000);
+    console.log('📄 DOM loaded, starting AnnouncementsDisplay');
+    new AnnouncementsDisplay();
 });

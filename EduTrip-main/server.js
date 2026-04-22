@@ -324,7 +324,10 @@ const transporter = (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) ? nod
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASSWORD
-    }
+    },
+    connectionTimeout: 5000,
+    greetingTimeout: 5000,
+    socketTimeout: 5000
 }) : null;
 
 if (transporter) {
@@ -2312,6 +2315,31 @@ app.delete('/api/announcements/:id', (req, res) => {
     });
 });
 
+// Get public announcements (for landing page)
+app.get('/api/announcements/public', (req, res) => {
+    const query = `
+        SELECT a.*, u.name as creator_name
+        FROM announcements a
+        LEFT JOIN users u ON a.created_by = u.id
+        WHERE a.target_type = 'all' 
+           OR a.target_type IS NULL 
+           OR a.target_type = ''
+        ORDER BY a.created_at DESC
+        LIMIT 20
+    `;
+    
+    console.log('📢 Fetching public announcements...');
+    
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error('Error fetching public announcements:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        console.log(`✅ Found ${results.length} public announcements`);
+        res.json(results);
+    });
+});
+
 // ========== NOTIFICATIONS ==========
 
 // Create notification
@@ -2650,84 +2678,105 @@ app.post('/api/certificates/generate/:eventId', async (req, res) => {
         // Load the template PDF once
         const templateBytes = fs.readFileSync(templatePath);
         
-        for (const participant of participants) {
+for (const participant of participants) {
+    try {
+        const pdfDoc = await PDFDocument.load(templateBytes);
+        pdfDoc.registerFontkit(fontkit);
+        
+        const pages = pdfDoc.getPages();
+        const firstPage = pages[0];
+        
+        const { width, height } = firstPage.getSize();
+        
+        // Format participant name FIRST
+        let displayName = participant.name;
+        
+        // Try to parse LASTNAME, FIRSTNAME format
+        const nameParts = participant.name.split(',');
+        if (nameParts.length === 2) {
+            const lastName = nameParts[0].trim();
+            const firstParts = nameParts[1].trim().split(' ');
+            const firstName = firstParts[0] || '';
+            const middleInitial = firstParts[1] ? firstParts[1].charAt(0) + '.' : '';
+            displayName = `${lastName}, ${firstName} ${middleInitial}`.trim();
+        }
+        
+        // NOW load the font (displayName is defined)
+        let font;
+        const fontFamily = namePosition.fontFamily || "'Playfair Display', serif";
+
+        console.log(`🔤 Using font: ${fontFamily} for ${displayName}`);
+
+        try {
+            if (fontFamily.includes('Playfair') || fontFamily.includes('Georgia') || fontFamily.includes('Times')) {
+                font = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
+                console.log(`✅ Using TimesRomanBold`);
+            } else if (fontFamily.includes('Cormorant') || fontFamily.includes('Garamond') || fontFamily.includes('Old Standard')) {
+                font = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+                console.log(`✅ Using TimesRoman`);
+            } else if (fontFamily.includes('Great Vibes') || fontFamily.includes('cursive') || fontFamily.includes('Script')) {
+                font = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic);
+                console.log(`✅ Using TimesRomanItalic`);
+            } else {
+                font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+                console.log(`✅ Using HelveticaBold (default)`);
+            }
+        } catch (fontError) {
+            console.error(`❌ Font error, using fallback:`, fontError.message);
             try {
-                const pdfDoc = await PDFDocument.load(templateBytes);
-                pdfDoc.registerFontkit(fontkit);
-                
-                const pages = pdfDoc.getPages();
-                const firstPage = pages[0];
-                
-                // Try to load a font
-                let font;
-                try {
-                    font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-                } catch {
-                    font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-                }
-                
-                const { width, height } = firstPage.getSize();
-                
-                // Format participant name
-                let displayName = participant.name;
-                
-                // Try to parse LASTNAME, FIRSTNAME format
-                const nameParts = participant.name.split(',');
-                if (nameParts.length === 2) {
-                    const lastName = nameParts[0].trim();
-                    const firstParts = nameParts[1].trim().split(' ');
-                    const firstName = firstParts[0] || '';
-                    const middleInitial = firstParts[1] ? firstParts[1].charAt(0) + '.' : '';
-                    displayName = `${lastName}, ${firstName} ${middleInitial}`.trim();
-                }
-                
-                // Calculate position using saved percentages
-                const textX = (width * namePosition.x / 100);
-                const textY = height - (height * namePosition.y / 100);
-                
-                // Convert hex color to RGB
-                const hexColor = namePosition.color.replace('#', '');
-                const r = parseInt(hexColor.substring(0, 2), 16) / 255;
-                const g = parseInt(hexColor.substring(2, 4), 16) / 255;
-                const b = parseInt(hexColor.substring(4, 6), 16) / 255;
-                
-                // Center the text at the X position
-                const textWidth = font.widthOfTextAtSize(displayName, namePosition.size);
-                const centeredX = textX - (textWidth / 2);
-                
-                // Add participant name at saved position
-                firstPage.drawText(displayName, {
-                    x: centeredX,
-                    y: textY,
-                    size: namePosition.size,
-                    font: font,
-                    color: rgb(r, g, b)
-                });
-                
-                // Save the PDF
-                const pdfBytes = await pdfDoc.save();
-                const filename = `certificate_${participant.id}_${eventId}.pdf`;
-                const filePath = path.join(outputDir, filename);
-                fs.writeFileSync(filePath, pdfBytes);
-                
-                const certificateUrl = `/uploads/certificates/event_${eventId}/${filename}`;
-                
-                // Save to database
-                await db.promise().query(
-                    "INSERT INTO certificates (user_id, event_id, certificate_url, template_id) VALUES (?, ?, ?, ?)",
-                    [participant.id, eventId, certificateUrl, template.id]
-                );
-                
-                generatedCertificates.push({
-                    userId: participant.id,
-                    name: displayName,
-                    url: certificateUrl
-                });
-                
-            } catch (error) {
-                console.error(`Error generating certificate for ${participant.name}:`, error);
+                font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+            } catch {
+                font = await pdfDoc.embedFont(StandardFonts.Courier);
             }
         }
+        
+        // Calculate position using saved percentages
+        const textX = (width * namePosition.x / 100);
+        const textY = height - (height * namePosition.y / 100);
+        
+        // Convert hex color to RGB
+        const hexColor = (namePosition.color || '#1a1a4d').replace('#', '');
+        const r = parseInt(hexColor.substring(0, 2), 16) / 255;
+        const g = parseInt(hexColor.substring(2, 4), 16) / 255;
+        const b = parseInt(hexColor.substring(4, 6), 16) / 255;
+        
+        // Center the text at the X position
+        const textWidth = font.widthOfTextAtSize(displayName, namePosition.size || 36);
+        const centeredX = textX - (textWidth / 2);
+        
+        // Add participant name at saved position
+        firstPage.drawText(displayName, {
+            x: centeredX,
+            y: textY,
+            size: namePosition.size || 36,
+            font: font,
+            color: rgb(r, g, b)
+        });
+        
+        // Save the PDF
+        const pdfBytes = await pdfDoc.save();
+        const filename = `certificate_${participant.id}_${eventId}.pdf`;
+        const filePath = path.join(outputDir, filename);
+        fs.writeFileSync(filePath, pdfBytes);
+        
+        const certificateUrl = `/uploads/certificates/event_${eventId}/${filename}`;
+        
+        // Save to database
+        await db.promise().query(
+            "INSERT INTO certificates (user_id, event_id, certificate_url, template_id) VALUES (?, ?, ?, ?)",
+            [participant.id, eventId, certificateUrl, template.id]
+        );
+        
+        generatedCertificates.push({
+            userId: participant.id,
+            name: displayName,
+            url: certificateUrl
+        });
+        
+    } catch (error) {
+        console.error(`❌ Error generating certificate for ${participant.name}:`, error);
+    }
+}
         
         res.json({
             success: true,
