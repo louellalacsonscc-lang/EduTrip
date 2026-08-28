@@ -1,5 +1,5 @@
-# EduTrip
-EduTrip is a web-based system designed to simplify and automate the management of seminars and educational tours for BSCS students of St. Clare College.
+# EduEvent
+EduEvent is a web-based event management system designed to streamline the planning and coordination of school organization events, including seminars, workshops, educational tours, and internal school activities for BSCS students of St. Clare College.
 
 
 Admin
